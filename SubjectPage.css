@@ -1,0 +1,44 @@
+.subject-page {
+  margin: 20px;
+  background-color: #f5f7fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.subject-nav {
+  margin-bottom: 15px;
+}
+
+.back-link {
+  text-decoration: none;
+  color: #004080;
+  font-weight: bold;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.filters input, .filters select {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.search-btn {
+  background-color: #0073e6;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+}
+
+.results {
+  margin-top: 20px;
+  background: white;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
