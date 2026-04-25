@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "id": "1777122463366",
+      "username": "Linaa",
+      "password": "$2b$10$voYrAFfn9ewZLRHk/B5nXOHV8bjatxeI5fMQpxTvYCA/zs/RjNI6.",
+      "role": "student",
+      "createdAt": "2026-04-25T13:07:43.366Z"
+    }
+  ],
+  "papers": [
+    {
+      "id": "1777125177741",
+      "title": "Mathematics Notes S4",
+      "subject": "Mathematics",
+      "year": "1",
+      "type": "Notes",
+      "filename": "1777125177588-792182043.pdf",
+      "originalName": "Core Math S4 SB.pdf",
+      "hash": "82de71bc0e7157326d77a7eac102afb1bdb57f031a13c4ca3f02694ee7b9a67e",
+      "uploadedBy": "Linaa",
+      "uploadedAt": "2026-04-25T13:52:57.741Z"
+    }
+  ]
+}

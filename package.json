@@ -13,12 +13,13 @@
     "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4"
   },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
+ "scripts": {
+  "start": "concurrently \"npm run react\" \"npm run backend\"",
+  "react": "react-scripts start",
+  "backend": "cd rcabackend && node server.js"
+}
+
+,
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -36,5 +37,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
