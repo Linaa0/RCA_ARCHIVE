@@ -51,3 +51,11 @@
 .logout-btn:hover {
   background-color: #a93226;
 }
+
+
+
+.logo-container img {
+  border-radius: 50%;  
+  display: block;     
+  width: 100%;
+}
