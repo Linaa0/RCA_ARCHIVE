@@ -7,7 +7,7 @@ function Login() {
     <div className="login-container">
       <div className="login-box">
         <h2>Rwanda Coding Academy</h2>
-        <p className="subtitle">Past Papers & Notes System — Admin Login</p>
+        <p className="subtitle">Past Papers & Notes System: Admin Login</p>
         
         <form>
           <label>Username</label>

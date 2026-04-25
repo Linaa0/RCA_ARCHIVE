@@ -42,3 +42,22 @@
   border: 1px solid #ddd;
   border-radius: 5px;
 }
+.dashboard-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.action-btn {
+  background-color: #004080;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background-color: #003366;
+}

@@ -1,0 +1,25 @@
+.dashboard-actions {
+    display: flex;
+    justify-content: center;
+    gap: 24px; /* slightly wider spacing for breathing room */
+    margin-top: 30px;
+}
+
+.action-btn {
+    background: linear-gradient(135deg, #004080, #0059b3); /* smooth gradient for depth */
+    color: #ffffff;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px; /* softer corners for comfort */
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease; /* smooth hover transitions */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* subtle shadow for lift */
+    margin: 40px 0; /* vertical spacing for better layout */
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #003366, #004080);
+    transform: translateY(-2px); /* gentle hover lift */
+}

@@ -7,6 +7,7 @@ import SubjectsList from "./components/SubjectsList";
 import Login from "./components/Login";
 import SubjectPage from "./components/SubjectPage";
 import AdminDashboard from "./components/AdminDashboard";
+import Upload from "./components/upload";
 import "./App.css";
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
         {/* Admin Dashboard */}
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
+      <Upload />
 
       {/* Footer always at bottom */}
       <footer className="footer">
