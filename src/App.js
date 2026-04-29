@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import SearchBar from "./components/SearchBar";
 import Stats from "./components/Stats";
@@ -13,20 +13,21 @@ const year1Subjects = [
   "Mathematics", "Physics", "Fundamentals of Programming", "Database",
   "English", "Networking", "PHP", "JavaScript", "Embedded Systems",
   "Web User Interface", "Graphical User Interface",
+  "Computer Basics", "Short Courses",
 ];
 
 const year2Subjects = [
   "Mathematics", "Physics", "Data Structures with C++", "Advanced Networking",
   "OOP and Web Development with Java", "Software Engineering", "Advanced Database",
   "English", "Embedded Systems (Integrate Hardware with Software)",
-  "Web 3 with Solidity", "3D Modelling with Blender",
+  "Web 3 with Solidity", "3D Modelling with Blender","Short Courses",
 ];
 
 const year3Subjects = [
   "Mathematics", "Physics", "Machine Learning with Python", "Cybersecurity",
   "DevOps", "English", "Intelligent Robotics and Some Embedded Systems",
   "Mobile Apps Development with React Native",
-  "Information Technology with Project Management",
+  "Information Technology with Project Management","Short Courses",
 ];
 
 function PaperCard({ paper }) {
@@ -89,6 +90,14 @@ function App() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
 
   const handleSearch = async () => {
     if (!search.trim()) return;

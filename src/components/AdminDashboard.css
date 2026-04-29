@@ -1,7 +1,8 @@
 .dashboard-container {
-  padding: 20px;
+  padding: 0;
   background-color: #f5f7fa;
   min-height: 100vh;
+  margin: 0;
 }
 
 .dashboard-header {
@@ -11,7 +12,8 @@
   background-color: #004080;
   color: white;
   padding: 15px 20px;
-  border-radius: 5px;
+  border-radius: 0;
+  margin: 0;
 }
 
 .logout-btn {
@@ -24,8 +26,9 @@
 }
 
 .dashboard-content {
-  margin-top: 30px;
+  margin-top: 20px;
   text-align: center;
+  padding: 0 20px;
 }
 
 .dashboard-content h3 {

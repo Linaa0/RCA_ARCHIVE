@@ -7,19 +7,22 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "jsonwebtoken": "^9.0.3",
+    "lowdb": "^7.0.1",
+    "multer": "^2.1.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^6.30.3",
     "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4"
   },
- "scripts": {
-  "start": "concurrently \"npm run react\" \"npm run backend\"",
-  "react": "react-scripts start",
-  "backend": "cd rcabackend && node server.js"
-}
-
-,
+  "scripts": {
+    "start": "concurrently \"npm run react\" \"npm run backend\"",
+    "react": "react-scripts start",
+    "backend": "cd rcabackend && node server.js"
+  },
   "eslintConfig": {
     "extends": [
       "react-app",

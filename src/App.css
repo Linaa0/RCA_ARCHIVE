@@ -1,32 +1,32 @@
-/* Navbar */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: #222;
-  color: white;
-}
-
-.navbar h2 {
+* {
   margin: 0;
-  font-size: 1.3rem;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.login-btn {
-  background: #c62828;
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.footer {
+  margin-top: auto;
+  background-color: #222;
   color: white;
-  padding: 0.5rem 1rem;
-  text-decoration: none;
-  border-radius: 4px;
-  transition: background 0.3s;
+  text-align: center;
+  padding: 15px;
+  font-weight: bold;
 }
 
-.login-btn:hover {
-  background: #b71c1c;
-}
-
-/* Search Section */
+/* ── Search Section ── */
 .search-section {
   text-align: center;
   margin: 2rem 0;
@@ -67,7 +67,7 @@
   background: #b71c1c;
 }
 
-/* Stats Section */
+/* ── Stats Section ── */
 .stats {
   display: flex;
   justify-content: center;
@@ -84,7 +84,7 @@
   text-align: center;
 }
 
-/* Subjects Section */
+/* ── Subjects Section ── */
 .subjects-list {
   margin: 2rem;
 }
@@ -113,22 +113,7 @@
   margin-bottom: 0.3rem;
 }
 
-.app-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.footer {
-  margin-top: auto;
-  background-color: #222;
-  color: white;
-  text-align: center;
-  padding: 15px;
-  font-weight: bold;
-}
-
-/* ── Search Results ─────────────────────────────────────────── */
+/* ── Search Results ── */
 .search-results-section {
   max-width: 900px;
   margin: 2rem auto;

@@ -18,11 +18,14 @@ function Navbar() {
   return (
     <div className="nav">
       <nav className="navbar">
-        <h1>RCA ARCHIVE+</h1>
+        <div className="nav-left">
+          <img src="/rwandacoding.png" alt="Rwanda Coding Logo" className="navbar-logo" />
+          <h1>RCA ARCHIVE+</h1>
+        </div>
         <div className="nav-right">
           {token ? (
             <>
-              <span className="welcome-text">👤 {username}</span>
+              <span className="welcome-text"> {username}</span>
               <button onClick={handleLogout} className="logout-btn">Logout</button>
             </>
           ) : (

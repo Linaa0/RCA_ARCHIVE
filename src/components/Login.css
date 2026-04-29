@@ -47,12 +47,8 @@
 }
 
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(30px);
-  }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(30px); }
 }
 
 .branding-content {
@@ -63,14 +59,8 @@
 }
 
 @keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .logo-container {
@@ -79,34 +69,42 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 240px;
+  height: 240px;
+  background: #ffffff;
+  border: 3px solid #2c3e50;
+  border-radius: 12px;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(107, 185, 240, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  position: relative;
+  overflow: hidden;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .rca-logo {
-  width: 200px;
-  height: 200px;
+  width: 190px;
+  height: 190px;
   object-fit: contain;
-  filter: drop-shadow(0 12px 35px rgba(0, 0, 0, 0.3)) brightness(1.08);
-  transition: transform 0.3s ease;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15)) brightness(1.02);
+  transition: transform 0.3s ease, filter 0.3s ease;
   background: transparent;
 }
 
 .rca-logo:hover {
-  transform: scale(1.05);
+  transform: scale(1.08);
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.25)) brightness(1.05);
 }
 
 .brand-title {
-  font-size: 48px;
+  font-size: 56px;
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 12px 0;
@@ -116,14 +114,8 @@
 }
 
 @keyframes slideInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .brand-subtitle {
@@ -136,57 +128,48 @@
 }
 
 @keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .brand-description {
   font-size: 15px;
   color: #d0dce6;
   margin: 0 0 40px 0;
-  max-width: 300px;
+  max-width: 350px;
   line-height: 1.6;
   animation: fadeIn 1s ease-out 0.3s both;
+  text-align: left;
+  align-self: flex-start;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .brand-features {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  margin-top: 40px;
+  gap: 15px;
+  margin-top: 30px;
+  align-items: flex-start;
+  padding-left: 0;
 }
 
 .feature {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
-  font-size: 14px;
+  font-size: 15px;
   color: #c5d6e8;
   animation: slideInLeft 0.8s ease-out both;
+  font-weight: 500;
 }
 
-.feature:nth-child(2) {
-  animation-delay: 0.4s;
-}
-
-.feature:nth-child(3) {
-  animation-delay: 0.5s;
-}
+.feature:nth-child(2) { animation-delay: 0.4s; }
+.feature:nth-child(3) { animation-delay: 0.5s; }
 
 .feature-icon {
   font-size: 18px;
@@ -215,14 +198,8 @@
 }
 
 @keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .form-title {
@@ -254,21 +231,10 @@
   animation: fadeIn 0.6s ease-out both;
 }
 
-.form-group:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.form-group:nth-child(2) {
-  animation-delay: 0.1s;
-}
-
-.form-group:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.form-group:nth-child(4) {
-  animation-delay: 0.3s;
-}
+.form-group:nth-child(1) { animation-delay: 0s; }
+.form-group:nth-child(2) { animation-delay: 0.1s; }
+.form-group:nth-child(3) { animation-delay: 0.2s; }
+.form-group:nth-child(4) { animation-delay: 0.3s; }
 
 .form-group label {
   font-size: 13px;
@@ -309,6 +275,83 @@
   background-color: white;
 }
 
+/* ── Password Wrapper (eye icon) ── */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 46px; /* space for the eye icon */
+}
+
+.toggle-password {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #95a5a6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s ease;
+  line-height: 1;
+}
+
+.toggle-password:hover {
+  color: #6c9dd5;
+}
+
+/* ── Forgot Password Row ── */
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -10px;
+}
+
+.forgot-link {
+  background: none;
+  border: none;
+  color: #6c9dd5;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Quicksand', sans-serif;
+  padding: 0;
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  color: #5b7c99;
+  text-decoration: underline;
+}
+
+/* ── Back Button (on forgot password screen) ── */
+.back-btn {
+  background: none;
+  border: none;
+  color: #6c9dd5;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Quicksand', sans-serif;
+  padding: 0;
+  margin-bottom: 20px;
+  display: inline-block;
+  transition: color 0.2s ease;
+}
+
+.back-btn:hover {
+  color: #5b7c99;
+  text-decoration: underline;
+}
+
+/* ── Submit Button ── */
 .login-btn {
   padding: 14px 28px;
   background: linear-gradient(135deg, #6c9dd5 0%, #5b7c99 100%);
@@ -342,6 +385,7 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
+/* ── Footer ── */
 .form-footer {
   text-align: center;
   padding-top: 20px;
@@ -402,58 +446,23 @@
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Responsive Design ── */
+/* ── Responsive ── */
 @media (max-width: 1024px) {
-  .login-branding {
-    display: none;
-  }
-
-  .login-form-section {
-    flex: 1;
-  }
-
-  .login-container {
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
-  }
+  .login-branding { display: none; }
+  .login-form-section { flex: 1; }
+  .login-container { background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%); }
 }
 
 @media (max-width: 600px) {
-  .login-form-section {
-    padding: 20px;
-  }
-
-  .login-box {
-    padding: 30px 25px;
-  }
-
-  .form-title {
-    font-size: 24px;
-  }
-
-  .form-subtitle {
-    font-size: 13px;
-  }
-
-  .rca-logo {
-    width: 90px;
-    height: 90px;
-  }
-
-  .brand-title {
-    font-size: 32px;
-  }
-
-  .brand-subtitle {
-    font-size: 18px;
-  }
+  .login-form-section { padding: 20px; }
+  .login-box { padding: 30px 25px; }
+  .form-title { font-size: 24px; }
+  .form-subtitle { font-size: 13px; }
+  .rca-logo { width: 90px; height: 90px; }
+  .brand-title { font-size: 32px; }
+  .brand-subtitle { font-size: 18px; }
 }

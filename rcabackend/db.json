@@ -6,6 +6,20 @@
       "password": "$2b$10$voYrAFfn9ewZLRHk/B5nXOHV8bjatxeI5fMQpxTvYCA/zs/RjNI6.",
       "role": "student",
       "createdAt": "2026-04-25T13:07:43.366Z"
+    },
+    {
+      "id": "1777313828323",
+      "username": "isabelle",
+      "password": "$2b$10$ezZinRwCZrna9f8eM/Fmd.9Y4FGe079A91LNKtQamBQlT09U1Deb2",
+      "role": "student",
+      "createdAt": "2026-04-27T18:17:08.323Z"
+    },
+    {
+      "id": "1777443574978",
+      "username": "testuser123",
+      "password": "$2b$10$roOVlZSaPevJzTS5HLcYYOW9jIt654DybmTomxGO/kEpsTecD2LPC",
+      "role": "student",
+      "createdAt": "2026-04-29T06:19:34.978Z"
     }
   ],
   "papers": [
