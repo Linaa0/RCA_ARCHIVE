@@ -38,7 +38,6 @@ body {
   font-weight: bold;
 }
 
-/* ── Search Section ── */
 .search-section {
   text-align: center;
   margin: 2rem 0;
@@ -82,7 +81,6 @@ body {
   background: #b71c1c;
 }
 
-/* ── Stats Section ── */
 .stats {
   display: flex;
   justify-content: center;
@@ -100,7 +98,6 @@ body {
   color: #0d1117;
 }
 
-/* ── Subjects Section ── */
 .subjects-list {
   margin: 2rem;
 }
@@ -131,7 +128,6 @@ body {
   color: #0d1117;
 }
 
-/* ── Search Results ── */
 .search-results-section {
   max-width: 900px;
   margin: 2rem auto;

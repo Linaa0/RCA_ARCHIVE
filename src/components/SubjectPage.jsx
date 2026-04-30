@@ -32,7 +32,7 @@ function SubjectPage() {
       if (search) params.append("search", search);
 
       params.append("sort", "top");
-      const res = await fetch(`http://localhost:5077/api/papers?${params}`);
+      const res = await fetch(`/api/papers?${params}`);
       const data = await res.json();
       setPapers(data);
     } catch {
@@ -58,7 +58,7 @@ function SubjectPage() {
     formData.append("type", type);
 
     try {
-      const res = await fetch("http://localhost:5077/api/upload", {
+      const res = await fetch("/api/upload", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -88,7 +88,7 @@ function SubjectPage() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this paper?")) return;
 
-    const res = await fetch(`http://localhost:5077/api/papers/${id}`, {
+    const res = await fetch(`/api/papers/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -107,7 +107,7 @@ function SubjectPage() {
     }
 
     try {
-      const res = await fetch(`http://localhost:5077/api/papers/${paperId}/rate`, {
+      const res = await fetch(`/api/papers/${paperId}/rate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -265,7 +265,7 @@ function SubjectPage() {
                 </div>
                 <div className="paper-actions">
                   <a
-                    href={`http://localhost:5077/uploads/${paper.filename}`}
+                    href={`/uploads/${paper.filename}`}
                     target="_blank"
                     rel="noreferrer"
                     className="view-btn"
@@ -273,7 +273,7 @@ function SubjectPage() {
                     View
                   </a>
                   <a
-                    href={`http://localhost:5077/uploads/${paper.filename}`}
+                    href={`/uploads/${paper.filename}`}
                     download={paper.originalName}
                     className="download-btn"
                   >

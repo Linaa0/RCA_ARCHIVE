@@ -42,7 +42,7 @@ function Login() {
       : { username, password };
 
     try {
-      const res = await fetch(`http://localhost:5077${endpoint}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -84,7 +84,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5077/api/forgot-password", {
+      const res = await fetch("/api/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: resetEmail }),

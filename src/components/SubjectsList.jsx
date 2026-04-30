@@ -6,7 +6,7 @@ function SubjectCard({ year, subject }) {
   const [count, setCount] = useState(null);
 
   useEffect(() => {
-    fetch(`http://localhost:5077/api/papers?subject=${encodeURIComponent(subject)}&year=${year}`)
+    fetch(`/api/papers?subject=${encodeURIComponent(subject)}&year=${year}`)
       .then((res) => res.json())
       .then((data) => setCount(data.length))
       .catch(() => setCount(0));

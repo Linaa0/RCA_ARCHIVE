@@ -95,7 +95,6 @@
   transform: translateY(-2px);
 }
 
-/* ── Upload Form ─────────────────────────────────── */
 .upload-form-box {
   background: #ffffff;
   border: 2px solid #d8dee4;
@@ -253,7 +252,6 @@
   transform: translateY(0);
 }
 
-/* ── Results ─────────────────────────────────────── */
 .results {
   margin-top: 16px;
 }

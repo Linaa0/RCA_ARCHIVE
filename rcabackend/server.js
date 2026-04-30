@@ -13,7 +13,6 @@ const app = express();
 const PORT = 5077;
 const JWT_SECRET = "rca_secret_key_2024";
 
-// ─── Setup DB ───────────────────────────────────────────────────────────────
 const dbFile = path.join(__dirname, "db.json");
 const adapter = new JSONFile(dbFile);
 const db = new Low(adapter, { users: [], papers: [] });
@@ -24,11 +23,9 @@ async function initDB() {
   await db.write();
 }
 
-// ─── Setup Uploads Folder ────────────────────────────────────────────────────
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-// ─── Multer Config ───────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
@@ -38,12 +35,23 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ─── Middleware ──────────────────────────────────────────────────────────────
-app.use(cors());
+if (process.env.NODE_ENV !== "production") {
+  app.use(cors());
+}
 app.use(express.json());
 app.use("/uploads", express.static(uploadDir));
 
-// ─── Auth Middleware ─────────────────────────────────────────────────────────
+if (process.env.NODE_ENV === "production") {
+  const buildDir = path.join(__dirname, "../build");
+  app.use(express.static(buildDir));
+  
+  app.get("*", (req, res) => {
+    if (!req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
+      res.sendFile(path.join(buildDir, "index.html"));
+    }
+  });
+}
+
 function requireAuth(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "Not logged in" });
@@ -55,7 +63,6 @@ function requireAuth(req, res, next) {
   }
 }
 
-// ─── Hash file content ───────────────────────────────────────────────────────
 function hashFile(filePath) {
   const buffer = fs.readFileSync(filePath);
   return crypto.createHash("sha256").update(buffer).digest("hex");
@@ -76,11 +83,6 @@ function buildRatingSummary(paper) {
   };
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  ROUTES
-// ════════════════════════════════════════════════════════════════════════════
-
-// SIGNUP
 app.post("/api/signup", async (req, res) => {
   await db.read();
   const { username, password, role } = req.body;
@@ -97,7 +99,7 @@ app.post("/api/signup", async (req, res) => {
     id: Date.now().toString(),
     username,
     password: hashed,
-    role: role || "student", // student or teacher
+    role: role || "student",
     createdAt: new Date().toISOString(),
   };
 
@@ -106,7 +108,6 @@ app.post("/api/signup", async (req, res) => {
   res.json({ message: "Account created successfully!" });
 });
 
-// LOGIN
 app.post("/api/login", async (req, res) => {
   await db.read();
   const { username, password } = req.body;
@@ -125,7 +126,6 @@ app.post("/api/login", async (req, res) => {
   res.json({ token, username: user.username, role: user.role });
 });
 
-// UPLOAD PAPER (requires login, content-based duplicate detection)
 app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => {
   await db.read();
 
@@ -134,15 +134,14 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
 
   const { title, subject, year, type } = req.body;
   if (!title || !subject || !year || !type) {
-    fs.unlinkSync(req.file.path); // delete the temp file
+    fs.unlinkSync(req.file.path);
     return res.status(400).json({ error: "Please fill in all fields" });
   }
 
-  // ── Duplicate detection by content hash ──
   const hash = hashFile(req.file.path);
   const duplicate = db.data.papers.find((p) => p.hash === hash);
   if (duplicate) {
-    fs.unlinkSync(req.file.path); // delete the temp file
+    fs.unlinkSync(req.file.path);
     return res.status(409).json({
       error: "duplicate",
       message: `This paper already exists! It was uploaded as "${duplicate.title}" by ${duplicate.uploadedBy}.`,
@@ -168,7 +167,6 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
   res.json({ message: "Paper uploaded successfully!", paper: buildRatingSummary(paper) });
 });
 
-// GET PAPERS (filtered by subject + year)
 app.get("/api/papers", async (req, res) => {
   await db.read();
   const { subject, year, type, search, sort } = req.query;
@@ -197,7 +195,6 @@ app.get("/api/papers", async (req, res) => {
   res.json(papersWithRatings);
 });
 
-// GET STATS
 app.get("/api/stats", async (req, res) => {
   await db.read();
   res.json({
@@ -206,7 +203,6 @@ app.get("/api/stats", async (req, res) => {
   });
 });
 
-// RATE PAPER
 app.post("/api/papers/:id/rate", requireAuth, async (req, res) => {
   await db.read();
   const { id } = req.params;
@@ -231,7 +227,6 @@ app.post("/api/papers/:id/rate", requireAuth, async (req, res) => {
   res.json({ message: "Rating saved", paper: buildRatingSummary(paper) });
 });
 
-// DELETE PAPER (uploader or teacher can delete)
 app.delete("/api/papers/:id", requireAuth, async (req, res) => {
   await db.read();
   const paper = db.data.papers.find((p) => p.id === req.params.id);
@@ -240,7 +235,6 @@ app.delete("/api/papers/:id", requireAuth, async (req, res) => {
   if (paper.uploadedBy !== req.user.username && req.user.role !== "teacher")
     return res.status(403).json({ error: "Not allowed to delete this paper" });
 
-  // Delete the actual file
   const filePath = path.join(uploadDir, paper.filename);
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
@@ -249,7 +243,6 @@ app.delete("/api/papers/:id", requireAuth, async (req, res) => {
   res.json({ message: "Paper deleted successfully" });
 });
 
-// ─── Start Server ────────────────────────────────────────────────────────────
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`✅ RCA Backend running on http://localhost:${PORT}`);
