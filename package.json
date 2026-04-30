@@ -21,7 +21,7 @@
   },
   "scripts": {
     "start": "concurrently \"npm run react\" \"npm run backend\"",
-    "react": "cross-env PORT=3077 react-scripts start",
+    "react": "cross-env PORT=3074 react-scripts start",
     "backend": "cd rcabackend && node server.js",
     "build": "react-scripts build",
     "start:prod": "cross-env NODE_ENV=production node rcabackend/server.js"
