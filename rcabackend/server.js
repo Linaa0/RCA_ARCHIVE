@@ -61,6 +61,21 @@ function hashFile(filePath) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
+function buildRatingSummary(paper) {
+  const ratings = paper.ratings || [];
+  const ratingCount = ratings.length;
+  const averageRating = ratingCount
+    ? Number((ratings.reduce((sum, r) => sum + r.value, 0) / ratingCount).toFixed(1))
+    : 0;
+
+  return {
+    ...paper,
+    ratings,
+    ratingCount,
+    averageRating,
+  };
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  ROUTES
 // ════════════════════════════════════════════════════════════════════════════
@@ -145,17 +160,18 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
     hash,
     uploadedBy: req.user.username,
     uploadedAt: new Date().toISOString(),
+    ratings: [],
   };
 
   db.data.papers.push(paper);
   await db.write();
-  res.json({ message: "Paper uploaded successfully!", paper });
+  res.json({ message: "Paper uploaded successfully!", paper: buildRatingSummary(paper) });
 });
 
 // GET PAPERS (filtered by subject + year)
 app.get("/api/papers", async (req, res) => {
   await db.read();
-  const { subject, year, type, search } = req.query;
+  const { subject, year, type, search, sort } = req.query;
 
   let papers = db.data.papers;
 
@@ -166,7 +182,19 @@ app.get("/api/papers", async (req, res) => {
     p.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  res.json(papers);
+  const papersWithRatings = papers.map(buildRatingSummary);
+
+  if (sort === "top") {
+    papersWithRatings.sort((a, b) => {
+      if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating;
+      if (b.ratingCount !== a.ratingCount) return b.ratingCount - a.ratingCount;
+      return new Date(b.uploadedAt) - new Date(a.uploadedAt);
+    });
+  } else {
+    papersWithRatings.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+  }
+
+  res.json(papersWithRatings);
 });
 
 // GET STATS
@@ -176,6 +204,31 @@ app.get("/api/stats", async (req, res) => {
     totalPapers: db.data.papers.length,
     totalUsers: db.data.users.length,
   });
+});
+
+// RATE PAPER
+app.post("/api/papers/:id/rate", requireAuth, async (req, res) => {
+  await db.read();
+  const { id } = req.params;
+  const { rating } = req.body;
+
+  if (!rating || typeof rating !== "number" || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: "Rating must be a number between 1 and 5" });
+  }
+
+  const paper = db.data.papers.find((p) => p.id === id);
+  if (!paper) return res.status(404).json({ error: "Paper not found" });
+
+  paper.ratings ||= [];
+  const existing = paper.ratings.find((r) => r.username === req.user.username);
+  if (existing) {
+    existing.value = rating;
+  } else {
+    paper.ratings.push({ username: req.user.username, value: rating });
+  }
+
+  await db.write();
+  res.json({ message: "Rating saved", paper: buildRatingSummary(paper) });
 });
 
 // DELETE PAPER (uploader or teacher can delete)

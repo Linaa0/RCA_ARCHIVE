@@ -6,23 +6,23 @@
 }
 
 .stat-box {
-  background-color: white;
-  border: 1px solid #ddd;
+  background-color: #ffffff;
+  border: 1px solid #d8dee4;
   padding: 25px 40px;
   border-radius: 8px;
   text-align: center;
   min-width: 180px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 .stat-number {
   font-size: 2.5rem;   /* Bigger number */
   font-weight: bold;
-  color: #0f1e2d;      /* Dark blue */
+  color: #004080;
   margin-bottom: 8px;
 }
 
 .stat-label {
   font-size: 1rem;
-  color: gray;
+  color: #6e7681;
 }

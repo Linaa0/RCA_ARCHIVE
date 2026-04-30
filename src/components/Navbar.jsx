@@ -25,11 +25,13 @@ function Navbar() {
         <div className="nav-right">
           {token ? (
             <>
-              <span className="welcome-text"> {username}</span>
+              <span className="welcome-text">{username}</span>
               <button onClick={handleLogout} className="logout-btn">Logout</button>
             </>
           ) : (
-            <Link to="/login" className="login-btn">Login / Sign Up</Link>
+            <>
+              <Link to="/login" className="login-btn">Login / Sign Up</Link>
+            </>
           )}
         </div>
       </nav>

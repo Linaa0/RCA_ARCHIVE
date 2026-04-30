@@ -1,5 +1,5 @@
 .search-banner {
-  background-color: #004080;   /* dark blue background */
+  background-color: #004080;
   padding: 40px 20px;
   text-align: center;
   color: white;
@@ -14,7 +14,7 @@
 .banner-subtitle {
   font-size: 1rem;
   margin: 10px 0 25px;
-  color: #e0e0e0;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .banner-search {
@@ -29,10 +29,12 @@
   padding: 12px;
   border: none;
   border-radius: 5px 0 0 5px;
+  background-color: white;
+  color: #0d1117;
 }
 
 .search-btn {
-  background-color: red;
+  background-color: #004080;
   color: white;
   padding: 12px 20px;
   border: none;
@@ -42,5 +44,5 @@
 }
 
 .search-btn:hover {
-  background-color: darkred;
+  background-color: #003060;
 }

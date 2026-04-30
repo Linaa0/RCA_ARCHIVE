@@ -1,5 +1,5 @@
 .navbar {
-  background-color: #144371;
+  background-color: #0d1b27;
   color: white;
   padding: 15px 20px;
   display: flex;
@@ -15,7 +15,7 @@
 }
 
 .nav {
-  background-color: darkblue;
+  background-color: #0d1b27;
 }
 
 .nav-right {
@@ -31,7 +31,7 @@
 }
 
 .login-btn {
-  background-color: rgb(15, 15, 45);
+  background-color: #004080;
   color: white;
   padding: 8px 15px;
   text-decoration: none;

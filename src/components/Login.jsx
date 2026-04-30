@@ -57,7 +57,7 @@ function Login() {
       }
 
       if (isSignup) {
-        setSuccess("✅ Account created successfully! Now please log in with your credentials.");
+        setSuccess("Account created successfully! Please log in with your credentials.");
         setUsername("");
         setEmail("");
         setPassword("");
@@ -95,7 +95,7 @@ function Login() {
       if (!res.ok) {
         setError(data.error || "Something went wrong");
       } else {
-        setSuccess("✅ Password reset link sent! Please check your email.");
+        setSuccess("Password reset link sent. Please check your email.");
         setResetEmail("");
       }
     } catch (err) {

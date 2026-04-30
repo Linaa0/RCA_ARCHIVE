@@ -50,7 +50,7 @@ function PaperCard({ paper }) {
 
 function HomeContent({ search, setSearch, onSearch, results, loading, clearSearch }) {
   return (
-    <div>
+    <div className="page-layout">
       <Navbar />
       <SearchBar search={search} setSearch={setSearch} onSearch={onSearch} />
 
@@ -80,7 +80,7 @@ function HomeContent({ search, setSearch, onSearch, results, loading, clearSearc
       )}
 
       <footer className="footer">
-        Rwanda Coding Academy Past Papers &amp; Notes System — Years 1-3
+        Rwanda Coding Academy Past Papers & Notes System — Years 1-3
       </footer>
     </div>
   );
@@ -144,7 +144,7 @@ function App() {
           path="/subject/:year/:subject"
           element={
             <PrivateRoute>
-              <div>
+              <div className="page-layout">
                 <Navbar />
                 <SubjectPage />
                 <footer className="footer">

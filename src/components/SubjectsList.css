@@ -8,22 +8,24 @@
 }
 
 .subject-card {
-  background-color: white;
+  background-color: #ffffff;
   padding: 15px;
-  border: 1px solid #ddd;
+  border: 1px solid #d8dee4;
   border-radius: 5px;
   text-decoration: none;
-  color: black;
+  color: #0d1117;
   transition: box-shadow 0.3s ease;
 }
 .subject-card:hover {
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  background-color: #f6f8fa;
 }
 
 .subject-card h3 {
   margin: 0;
+  color: #004080;
 }
 .subject-card p {
-  color: gray;
+  color: #6e7681;
   font-size: 14px;
 }

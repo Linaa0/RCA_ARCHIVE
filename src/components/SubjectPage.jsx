@@ -16,6 +16,7 @@ function SubjectPage() {
   const [type, setType] = useState("Past Paper");
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedRatings, setSelectedRatings] = useState({});
 
   // Popup state
   const [popup, setPopup] = useState(null); // { type: 'success'|'duplicate'|'error', message }
@@ -30,6 +31,7 @@ function SubjectPage() {
       if (typeFilter !== "All Types") params.append("type", typeFilter);
       if (search) params.append("search", search);
 
+      params.append("sort", "top");
       const res = await fetch(`http://localhost:5000/api/papers?${params}`);
       const data = await res.json();
       setPapers(data);
@@ -65,10 +67,9 @@ function SubjectPage() {
       const data = await res.json();
 
       if (res.status === 409) {
-        // Duplicate detected!
         setPopup({ type: "duplicate", message: data.message });
       } else if (res.ok) {
-        setPopup({ type: "success", message: "Paper uploaded successfully! 🎉" });
+        setPopup({ type: "success", message: "Paper uploaded successfully." });
         setTitle("");
         setFile(null);
         setShowUpload(false);
@@ -98,7 +99,35 @@ function SubjectPage() {
       alert(data.error);
     }
   };
+  const handleRate = async (paperId) => {
+    const ratingValue = Number(selectedRatings[paperId]);
+    if (!ratingValue || ratingValue < 1 || ratingValue > 5) {
+      setPopup({ type: "error", message: "Please choose a rating between 1 and 5." });
+      return;
+    }
 
+    try {
+      const res = await fetch(`http://localhost:5000/api/papers/${paperId}/rate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ rating: ratingValue }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setPopup({ type: "error", message: data.error || "Unable to save rating." });
+        return;
+      }
+      setPopup({ type: "success", message: "Thank you for your rating." });
+      setSelectedRatings((prev) => ({ ...prev, [paperId]: "" }));
+      fetchPapers();
+    } catch {
+      setPopup({ type: "error", message: "Cannot connect to server." });
+    }
+  };
   const username = localStorage.getItem("username");
   const role = localStorage.getItem("role");
 
@@ -110,11 +139,11 @@ function SubjectPage() {
         <div className="popup-overlay">
           <div className={`popup-box popup-${popup.type}`}>
             <div className="popup-icon">
-              {popup.type === "duplicate" ? "⚠️" : popup.type === "success" ? "✅" : "❌"}
+              {popup.type === "duplicate" ? "Notice" : popup.type === "success" ? "Success" : "Error"}
             </div>
             <h3>
-              {popup.type === "duplicate" ? "Paper Already Exists!"
-                : popup.type === "success" ? "Upload Successful!"
+              {popup.type === "duplicate" ? "Paper Already Exists"
+                : popup.type === "success" ? "Upload Successful"
                 : "Error"}
             </h3>
             <p>{popup.message}</p>
@@ -131,7 +160,7 @@ function SubjectPage() {
       <div className="subject-header">
         <h2>{subject}: Year {year}</h2>
         <button className="upload-toggle-btn" onClick={() => setShowUpload(!showUpload)}>
-          {showUpload ? "✕ Cancel" : "⬆ Upload Paper / Note"}
+          {showUpload ? "Cancel" : "Upload Paper / Note"}
         </button>
       </div>
 
@@ -209,19 +238,50 @@ function SubjectPage() {
                   <span className="paper-meta">
                     {paper.type} • Uploaded by {paper.uploadedBy} • {new Date(paper.uploadedAt).toLocaleDateString()}
                   </span>
+                  <div className="rating-row">
+                    <span className="rating-summary">
+                      {paper.averageRating.toFixed(1)} / 5 • {paper.ratingCount} rating{paper.ratingCount === 1 ? "" : "s"}
+                    </span>
+                    <div className="rating-input">
+                      <label>Rate:</label>
+                      <select
+                        value={selectedRatings[paper.id] || ""}
+                        onChange={(e) =>
+                          setSelectedRatings((prev) => ({ ...prev, [paper.id]: e.target.value }))
+                        }
+                      >
+                        <option value="">Choose</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                      </select>
+                      <button className="rate-btn" onClick={() => handleRate(paper.id)}>
+                        Rate
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="paper-actions">
                   <a
                     href={`http://localhost:5000/uploads/${paper.filename}`}
                     target="_blank"
                     rel="noreferrer"
+                    className="view-btn"
+                  >
+                    View
+                  </a>
+                  <a
+                    href={`http://localhost:5000/uploads/${paper.filename}`}
+                    download={paper.originalName}
                     className="download-btn"
                   >
-                    ⬇ Download
+                    Download
                   </a>
                   {(paper.uploadedBy === username || role === "teacher") && (
                     <button className="delete-btn" onClick={() => handleDelete(paper.id)}>
-                      🗑 Delete
+                      Delete
                     </button>
                   )}
                 </div>
