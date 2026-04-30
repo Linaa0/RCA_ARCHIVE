@@ -20,7 +20,7 @@
   },
   "scripts": {
     "start": "concurrently \"npm run react\" \"npm run backend\"",
-    "react": "react-scripts start",
+    "react": "PORT=3077 react-scripts start",
     "backend": "cd rcabackend && node server.js"
   },
   "eslintConfig": {

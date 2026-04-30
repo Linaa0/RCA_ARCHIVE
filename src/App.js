@@ -33,7 +33,7 @@ const year3Subjects = [
 function PaperCard({ paper }) {
   const date = new Date(paper.uploadedAt).toLocaleDateString();
   const meta = paper.subject + " • Year " + paper.year + " • " + paper.type + " • Uploaded by " + paper.uploadedBy + " • " + date;
-  const fileUrl = "http://localhost:5000/uploads/" + paper.filename;
+  const fileUrl = "http://localhost:5077/uploads/" + paper.filename;
 
   return (
     <div className="paper-card">
@@ -104,7 +104,7 @@ function App() {
     setLoading(true);
     try {
       const res = await fetch(
-        "http://localhost:5000/api/papers?search=" + encodeURIComponent(search)
+        "http://localhost:5077/api/papers?search=" + encodeURIComponent(search)
       );
       const data = await res.json();
       setResults(data);

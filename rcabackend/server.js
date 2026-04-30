@@ -10,7 +10,7 @@ const { Low } = require("lowdb");
 const { JSONFile } = require("lowdb/node");
 
 const app = express();
-const PORT = 5000;
+const PORT = 5077;
 const JWT_SECRET = "rca_secret_key_2024";
 
 // ─── Setup DB ───────────────────────────────────────────────────────────────
