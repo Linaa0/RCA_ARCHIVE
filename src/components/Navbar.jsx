@@ -10,6 +10,7 @@ function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
+    localStorage.removeItem("email");
     localStorage.removeItem("role");
     navigate("/login");
     window.location.reload();

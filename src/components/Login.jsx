@@ -5,10 +5,8 @@ import "./Login.css";
 function Login() {
   const [isSignup, setIsSignup] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("student");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +19,6 @@ function Login() {
   }, []);
 
   const resetForm = () => {
-    setUsername("");
     setEmail("");
     setPassword("");
     setResetEmail("");
@@ -37,9 +34,7 @@ function Login() {
     setLoading(true);
 
     const endpoint = isSignup ? "/api/signup" : "/api/login";
-    const payload = isSignup
-      ? { username, email, password, role }
-      : { username, password };
+    const payload = { email, password };
 
     try {
       const res = await fetch(endpoint, {
@@ -57,14 +52,19 @@ function Login() {
       }
 
       if (isSignup) {
-        setSuccess("Account created successfully! Please log in with your credentials.");
-        setUsername("");
+        setSuccess(
+          `Account created successfully! Role assigned: ${data.role}. ` +
+          (data.role === "teacher"
+            ? "You have been recognized as a teacher."
+            : "You have been registered as a student.")
+        );
         setEmail("");
         setPassword("");
         setIsSignup(false);
         setShowPassword(false);
       } else {
         localStorage.setItem("token", data.token);
+        localStorage.setItem("email", data.email);
         localStorage.setItem("username", data.username);
         localStorage.setItem("role", data.role);
         navigate("/");
@@ -124,7 +124,6 @@ function Login() {
 
   return (
     <div className="login-container">
-      {/* Left Section - Branding */}
       <div className="login-branding">
         <div className="branding-content">
           <div className="logo-container">
@@ -152,11 +151,9 @@ function Login() {
         </div>
       </div>
 
-      {/* Right Section - Form */}
       <div className="login-form-section">
         <div className="login-box">
 
-          {/* ── FORGOT PASSWORD FORM ── */}
           {isForgotPassword ? (
             <>
               <button className="back-btn" onClick={() => { setIsForgotPassword(false); resetForm(); }}>
@@ -186,7 +183,6 @@ function Login() {
             </>
           ) : (
             <>
-              {/* ── LOGIN / SIGNUP FORM ── */}
               <h2 className="form-title">
                 {isSignup ? "Create Account" : "Welcome Back"}
               </h2>
@@ -201,28 +197,15 @@ function Login() {
 
               <form onSubmit={handleSubmit} className="login-form">
                 <div className="form-group">
-                  <label>Username</label>
+                  <label>Email Address</label>
                   <input
-                    type="text"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    type="email"
+                    placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
-
-                {isSignup && (
-                  <div className="form-group">
-                    <label>Email Address</label>
-                    <input
-                      type="email"
-                      placeholder="Enter your email address"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
 
                 <div className="form-group">
                   <label>Password</label>
@@ -246,7 +229,6 @@ function Login() {
                   </div>
                 </div>
 
-                {/* Forgot password — only on login */}
                 {!isSignup && (
                   <div className="forgot-password-row">
                     <button
@@ -260,12 +242,12 @@ function Login() {
                 )}
 
                 {isSignup && (
-                  <div className="form-group">
-                    <label>I am a</label>
-                    <select value={role} onChange={(e) => setRole(e.target.value)}>
-                      <option value="student">Student</option>
-                      <option value="teacher">Teacher</option>
-                    </select>
+                  <div className="form-info-box">
+                    <p>
+                      <strong>Teacher Role:</strong> If you sign up with a recognized teacher email,
+                      you will automatically be assigned the teacher role with full administrative privileges.
+                      Your role cannot be changed manually.
+                    </p>
                   </div>
                 )}
 

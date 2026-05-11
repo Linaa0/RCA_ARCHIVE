@@ -193,7 +193,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* ── Filters ─────────────────────────────────────── */
 .filters {
   display: flex;
   gap: 12px;
@@ -396,7 +395,6 @@
   transform: translateY(0);
 }
 
-/* ── Popup ───────────────────────────────────────── */
 .popup-overlay {
   position: fixed;
   top: 0; left: 0;

@@ -274,7 +274,6 @@
   background-color: #ffffff;
 }
 
-/* ── Password Wrapper (eye icon) ── */
 .password-wrapper {
   position: relative;
   display: flex;
@@ -305,7 +304,6 @@
   color: #004080;
 }
 
-/* ── Forgot Password Row ── */
 .forgot-password-row {
   display: flex;
   justify-content: flex-end;
@@ -330,7 +328,6 @@
   text-decoration: underline;
 }
 
-/* ── Back Button (on forgot password screen) ── */
 .back-btn {
   background: none;
   border: none;
@@ -350,7 +347,6 @@
   text-decoration: underline;
 }
 
-/* ── Submit Button ── */
 .login-btn {
   padding: 14px 28px;
   background: linear-gradient(135deg, #004080 0%, #003060 100%);
@@ -384,7 +380,6 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* ── Footer ── */
 .form-footer {
   text-align: center;
   padding-top: 20px;
@@ -415,7 +410,6 @@
   text-decoration: underline;
 }
 
-/* ── Messages ── */
 .error-msg {
   background: rgba(220, 53, 69, 0.1);
   color: #dc3545;
@@ -444,12 +438,33 @@
   animation: slideDown 0.4s ease-out;
 }
 
+.form-info-box {
+  background: rgba(13, 110, 253, 0.08);
+  color: #004085;
+  border: 1.5px solid #0d6efd33;
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 4px solid #0d6efd;
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.08);
+  line-height: 1.5;
+}
+
+.form-info-box p {
+  margin: 0;
+}
+
+.form-info-box strong {
+  color: #0d6efd;
+}
+
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Responsive ── */
 @media (max-width: 1024px) {
   .login-branding { display: none; }
   .login-form-section { flex: 1; }

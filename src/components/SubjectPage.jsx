@@ -10,7 +10,6 @@ function SubjectPage() {
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [loading, setLoading] = useState(false);
 
-  // Upload form state
   const [showUpload, setShowUpload] = useState(false);
   const [title, setTitle] = useState("");
   const [type, setType] = useState("Past Paper");
@@ -18,12 +17,10 @@ function SubjectPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedRatings, setSelectedRatings] = useState({});
 
-  // Popup state
-  const [popup, setPopup] = useState(null); // { type: 'success'|'duplicate'|'error', message }
+  const [popup, setPopup] = useState(null);
 
   const token = localStorage.getItem("token");
 
-  // ── Fetch papers ──────────────────────────────────────────────────────────
   const fetchPapers = async () => {
     setLoading(true);
     try {
@@ -43,7 +40,6 @@ function SubjectPage() {
 
   useEffect(() => { fetchPapers(); }, [subject, year, typeFilter]);
 
-  // ── Upload ────────────────────────────────────────────────────────────────
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) { alert("Please select a file"); return; }
@@ -84,7 +80,6 @@ function SubjectPage() {
     setUploading(false);
   };
 
-  // ── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this paper?")) return;
 
@@ -134,7 +129,6 @@ function SubjectPage() {
   return (
     <div className="subject-page">
 
-      {/* ── Popup ── */}
       {popup && (
         <div className="popup-overlay">
           <div className={`popup-box popup-${popup.type}`}>
@@ -152,7 +146,6 @@ function SubjectPage() {
         </div>
       )}
 
-      {/* ── Nav ── */}
       <nav className="subject-nav">
         <Link to="/" className="back-link">← Back to Home</Link>
       </nav>
@@ -164,7 +157,6 @@ function SubjectPage() {
         </button>
       </div>
 
-      {/* ── Upload Form ── */}
       {showUpload && (
         <div className="upload-form-box">
           <h3>Upload a New Paper or Note</h3>
@@ -201,7 +193,6 @@ function SubjectPage() {
         </div>
       )}
 
-      {/* ── Filters ── */}
       <div className="filters">
         <input
           type="text"
@@ -219,7 +210,6 @@ function SubjectPage() {
         <button className="search-btn" onClick={fetchPapers}>Search</button>
       </div>
 
-      {/* ── Results ── */}
       <div className="results">
         {loading ? (
           <p>Loading...</p>

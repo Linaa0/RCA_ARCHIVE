@@ -8,6 +8,7 @@ const path = require("path");
 const fs = require("fs");
 const { Low } = require("lowdb");
 const { JSONFile } = require("lowdb/node");
+const { TEACHER_EMAILS } = require("./teacherEmails");
 
 const app = express();
 const PORT = 5077;
@@ -44,7 +45,7 @@ app.use("/uploads", express.static(uploadDir));
 if (process.env.NODE_ENV === "production") {
   const buildDir = path.join(__dirname, "../build");
   app.use(express.static(buildDir));
-  
+
   app.get("*", (req, res) => {
     if (!req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
       res.sendFile(path.join(buildDir, "index.html"));
@@ -63,6 +64,23 @@ function requireAuth(req, res, next) {
   }
 }
 
+function requireTeacher(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Not logged in" });
+
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+
+    if (req.user.role !== "teacher") {
+      return res.status(403).json({ error: "Teacher access required" });
+    }
+
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+
 function hashFile(filePath) {
   const buffer = fs.readFileSync(filePath);
   return crypto.createHash("sha256").update(buffer).digest("hex");
@@ -72,7 +90,9 @@ function buildRatingSummary(paper) {
   const ratings = paper.ratings || [];
   const ratingCount = ratings.length;
   const averageRating = ratingCount
-    ? Number((ratings.reduce((sum, r) => sum + r.value, 0) / ratingCount).toFixed(1))
+    ? Number(
+        (ratings.reduce((sum, r) => sum + r.value, 0) / ratingCount).toFixed(1),
+      )
     : 0;
 
   return {
@@ -85,87 +105,129 @@ function buildRatingSummary(paper) {
 
 app.post("/api/signup", async (req, res) => {
   await db.read();
-  const { username, password, role } = req.body;
+  const { email, password } = req.body;
 
-  if (!username || !password)
-    return res.status(400).json({ error: "Username and password are required" });
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
 
-  const exists = db.data.users.find((u) => u.username === username);
-  if (exists)
-    return res.status(400).json({ error: "Username already taken" });
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  const exists = db.data.users.find((u) => u.email === email);
+  if (exists) {
+    return res.status(400).json({ error: "Email already registered" });
+  }
+
+  const isTeacherEmail = TEACHER_EMAILS.some(
+    (teacherEmail) => teacherEmail.toLowerCase() === email.toLowerCase(),
+  );
+  const role = isTeacherEmail ? "teacher" : "student";
 
   const hashed = await bcrypt.hash(password, 10);
+
   const user = {
     id: Date.now().toString(),
-    username,
+    email,
+    username: email.split("@")[0],
     password: hashed,
-    role: role || "student",
+    role,
     createdAt: new Date().toISOString(),
   };
 
   db.data.users.push(user);
   await db.write();
-  res.json({ message: "Account created successfully!" });
+
+  res.json({
+    message: "Account created successfully!",
+    role,
+    email,
+    username: user.username,
+  });
 });
 
 app.post("/api/login", async (req, res) => {
   await db.read();
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
-  const user = db.data.users.find((u) => u.username === username);
-  if (!user) return res.status(400).json({ error: "User not found" });
+  const user = db.data.users.find((u) => u.email === email);
+  if (!user) {
+    return res.status(400).json({ error: "User not found" });
+  }
 
   const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(400).json({ error: "Wrong password" });
+  if (!match) {
+    return res.status(400).json({ error: "Wrong password" });
+  }
 
   const token = jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+    },
     JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "7d" },
   );
-  res.json({ token, username: user.username, role: user.role });
+
+  res.json({
+    token,
+    email: user.email,
+    username: user.username,
+    role: user.role,
+  });
 });
 
-app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => {
-  await db.read();
+app.post(
+  "/api/upload",
+  requireAuth,
+  upload.single("file"),
+  async (req, res) => {
+    await db.read();
 
-  if (!req.file)
-    return res.status(400).json({ error: "No file uploaded" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-  const { title, subject, year, type } = req.body;
-  if (!title || !subject || !year || !type) {
-    fs.unlinkSync(req.file.path);
-    return res.status(400).json({ error: "Please fill in all fields" });
-  }
+    const { title, subject, year, type } = req.body;
+    if (!title || !subject || !year || !type) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Please fill in all fields" });
+    }
 
-  const hash = hashFile(req.file.path);
-  const duplicate = db.data.papers.find((p) => p.hash === hash);
-  if (duplicate) {
-    fs.unlinkSync(req.file.path);
-    return res.status(409).json({
-      error: "duplicate",
-      message: `This paper already exists! It was uploaded as "${duplicate.title}" by ${duplicate.uploadedBy}.`,
+    const hash = hashFile(req.file.path);
+    const duplicate = db.data.papers.find((p) => p.hash === hash);
+    if (duplicate) {
+      fs.unlinkSync(req.file.path);
+      return res.status(409).json({
+        error: "duplicate",
+        message: `This paper already exists! It was uploaded as "${duplicate.title}" by ${duplicate.uploadedBy}.`,
+      });
+    }
+
+    const paper = {
+      id: Date.now().toString(),
+      title,
+      subject,
+      year,
+      type,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      hash,
+      uploadedBy: req.user.username,
+      uploadedAt: new Date().toISOString(),
+      ratings: [],
+    };
+
+    db.data.papers.push(paper);
+    await db.write();
+    res.json({
+      message: "Paper uploaded successfully!",
+      paper: buildRatingSummary(paper),
     });
-  }
-
-  const paper = {
-    id: Date.now().toString(),
-    title,
-    subject,
-    year,
-    type,
-    filename: req.file.filename,
-    originalName: req.file.originalname,
-    hash,
-    uploadedBy: req.user.username,
-    uploadedAt: new Date().toISOString(),
-    ratings: [],
-  };
-
-  db.data.papers.push(paper);
-  await db.write();
-  res.json({ message: "Paper uploaded successfully!", paper: buildRatingSummary(paper) });
-});
+  },
+);
 
 app.get("/api/papers", async (req, res) => {
   await db.read();
@@ -175,21 +237,26 @@ app.get("/api/papers", async (req, res) => {
 
   if (subject) papers = papers.filter((p) => p.subject === subject);
   if (year) papers = papers.filter((p) => p.year === year);
-  if (type && type !== "All Types") papers = papers.filter((p) => p.type === type);
-  if (search) papers = papers.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase())
-  );
+  if (type && type !== "All Types")
+    papers = papers.filter((p) => p.type === type);
+  if (search)
+    papers = papers.filter((p) =>
+      p.title.toLowerCase().includes(search.toLowerCase()),
+    );
 
   const papersWithRatings = papers.map(buildRatingSummary);
 
   if (sort === "top") {
     papersWithRatings.sort((a, b) => {
-      if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating;
+      if (b.averageRating !== a.averageRating)
+        return b.averageRating - a.averageRating;
       if (b.ratingCount !== a.ratingCount) return b.ratingCount - a.ratingCount;
       return new Date(b.uploadedAt) - new Date(a.uploadedAt);
     });
   } else {
-    papersWithRatings.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+    papersWithRatings.sort(
+      (a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt),
+    );
   }
 
   res.json(papersWithRatings);
@@ -209,7 +276,9 @@ app.post("/api/papers/:id/rate", requireAuth, async (req, res) => {
   const { rating } = req.body;
 
   if (!rating || typeof rating !== "number" || rating < 1 || rating > 5) {
-    return res.status(400).json({ error: "Rating must be a number between 1 and 5" });
+    return res
+      .status(400)
+      .json({ error: "Rating must be a number between 1 and 5" });
   }
 
   const paper = db.data.papers.find((p) => p.id === id);
