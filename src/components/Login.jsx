@@ -5,8 +5,13 @@ import "./Login.css";
 function Login() {
   const [isSignup, setIsSignup] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [role, setRole] = useState("student");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [teacherVerificationSent, setTeacherVerificationSent] = useState(false);
+  const [teacherOtpSending, setTeacherOtpSending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,12 +24,50 @@ function Login() {
   }, []);
 
   const resetForm = () => {
+    setRole("student");
     setEmail("");
     setPassword("");
+    setOtp("");
+    setTeacherVerificationSent(false);
     setResetEmail("");
     setError("");
     setSuccess("");
     setShowPassword(false);
+  };
+
+  const handleSendTeacherOtp = async () => {
+    setError("");
+    setSuccess("");
+
+    if (role !== "teacher") {
+      setError("Select Teacher before requesting an OTP.");
+      return;
+    }
+
+    if (!email) {
+      setError("Enter your teacher email before requesting an OTP.");
+      return;
+    }
+
+    setTeacherOtpSending(true);
+    try {
+      const res = await fetch("/api/send-teacher-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to send OTP. Use a recognized teacher email.");
+      } else {
+        setSuccess(data.message);
+        setTeacherVerificationSent(true);
+      }
+    } catch (err) {
+      setError("Cannot connect to server. Make sure backend is running.");
+    }
+    setTeacherOtpSending(false);
   };
 
   const handleSubmit = async (e) => {
@@ -34,7 +77,27 @@ function Login() {
     setLoading(true);
 
     const endpoint = isSignup ? "/api/signup" : "/api/login";
-    const payload = { email, password };
+    const payload = { email, password, role, username };
+
+    if (isSignup && !username) {
+      setError("Please enter the username you want to use in the system.");
+      setLoading(false);
+      return;
+    }
+
+    if (isSignup && role === "teacher") {
+      if (!teacherVerificationSent) {
+        setError("Request OTP for your teacher email before signing up.");
+        setLoading(false);
+        return;
+      }
+      if (!otp) {
+        setError("Enter the OTP sent to your teacher email.");
+        setLoading(false);
+        return;
+      }
+      payload.otp = otp;
+    }
 
     try {
       const res = await fetch(endpoint, {
@@ -55,11 +118,14 @@ function Login() {
         setSuccess(
           `Account created successfully! Role assigned: ${data.role}. ` +
           (data.role === "teacher"
-            ? "You have been recognized as a teacher."
+            ? "Teacher verification completed. You can now log in."
             : "You have been registered as a student.")
         );
+        setUsername("");
         setEmail("");
         setPassword("");
+        setOtp("");
+        setTeacherVerificationSent(false);
         setIsSignup(false);
         setShowPassword(false);
       } else {
@@ -196,13 +262,68 @@ function Login() {
               {success && <div className="success-msg">{success}</div>}
 
               <form onSubmit={handleSubmit} className="login-form">
+                {isSignup && (
+                  <div className="form-group">
+                    <label>Account Type</label>
+                    <div className="role-select-row">
+                      <label className={`role-option ${role === "student" ? "active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="role"
+                          value="student"
+                          checked={role === "student"}
+                          onChange={() => {
+                            setRole("student");
+                            setTeacherVerificationSent(false);
+                            setOtp("");
+                          }}
+                        />
+                        Student
+                      </label>
+                      <label className={`role-option ${role === "teacher" ? "active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="role"
+                          value="teacher"
+                          checked={role === "teacher"}
+                          onChange={() => {
+                            setRole("teacher");
+                            setTeacherVerificationSent(false);
+                            setOtp("");
+                          }}
+                        />
+                        Teacher
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {isSignup && (
+                  <div className="form-group">
+                    <label>Username</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your display name"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
                 <div className="form-group">
                   <label>Email Address</label>
                   <input
                     type="email"
                     placeholder="Enter your email address"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (role === "teacher") {
+                        setTeacherVerificationSent(false);
+                        setOtp("");
+                      }
+                    }}
                     required
                   />
                 </div>
@@ -229,6 +350,34 @@ function Login() {
                   </div>
                 </div>
 
+                {isSignup && role === "teacher" && (
+                  <div className={`teacher-otp-block ${teacherVerificationSent ? "open" : "closed"}`}>
+                    <div className="teacher-otp-section">
+                      <button
+                        type="button"
+                        className="login-btn"
+                        onClick={handleSendTeacherOtp}
+                        disabled={loading || teacherOtpSending}
+                      >
+                        {teacherOtpSending ? "Sending OTP..." : "Request Teacher OTP"}
+                      </button>
+                    </div>
+
+                    {teacherVerificationSent && (
+                      <div className="form-group">
+                        <label>Teacher OTP</label>
+                        <input
+                          type="text"
+                          placeholder="Enter OTP from email"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value)}
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {!isSignup && (
                   <div className="forgot-password-row">
                     <button
@@ -241,13 +390,9 @@ function Login() {
                   </div>
                 )}
 
-                {isSignup && (
+                {isSignup && role === "teacher" && (
                   <div className="form-info-box">
-                    <p>
-                      <strong>Teacher Role:</strong> If you sign up with a recognized teacher email,
-                      you will automatically be assigned the teacher role with full administrative privileges.
-                      Your role cannot be changed manually.
-                    </p>
+                    <p>Teacher signups require an OTP sent to your teacher email.</p>
                   </div>
                 )}
 

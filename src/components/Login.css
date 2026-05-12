@@ -226,7 +226,7 @@
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   animation: fadeIn 0.6s ease-out both;
 }
 
@@ -234,6 +234,99 @@
 .form-group:nth-child(2) { animation-delay: 0.1s; }
 .form-group:nth-child(3) { animation-delay: 0.2s; }
 .form-group:nth-child(4) { animation-delay: 0.3s; }
+
+.role-select-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 0 0 0;
+}
+
+.role-select-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid #d8dee4;
+  background: #f9fbff;
+  font-weight: 600;
+  color: #192a3d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-select-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 0 0 0;
+}
+
+.role-select-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 18px;
+  border: 1px solid #d8dee4;
+  background: #f9fbff;
+  font-weight: 600;
+  color: #192a3d;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.role-select-row label:hover {
+  border-color: #aac6ff;
+  background: #eef4ff;
+  transform: translateY(-1px);
+}
+
+.role-option.active {
+  border-color: #004080;
+  background: #e9f0ff;
+  box-shadow: 0 10px 30px rgba(0, 64, 128, 0.12);
+  transform: translateY(-1px);
+}
+
+.role-select-row input {
+  accent-color: #004080;
+  width: 18px;
+  height: 18px;
+}
+
+.teacher-otp-block {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: max-height 0.35s ease, opacity 0.35s ease, transform 0.35s ease;
+}
+
+.teacher-otp-block.open {
+  max-height: 220px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.teacher-otp-block.closed {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.teacher-otp-section {
+  margin-top: 8px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fadeIn 0.6s ease-out both;
+  transition: all 0.25s ease;
+}
 
 .form-group label {
   font-size: 13px;

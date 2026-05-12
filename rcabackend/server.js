@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
 const { Low } = require("lowdb");
@@ -20,8 +21,65 @@ const db = new Low(adapter, { users: [], papers: [] });
 
 async function initDB() {
   await db.read();
-  db.data ||= { users: [], papers: [] };
+  db.data ||= { users: [], papers: [], pendingTeacherOtps: [] };
+  db.data.pendingTeacherOtps ||= [];
   await db.write();
+}
+
+function generateOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function createMailTransporter() {
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === "true",
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+
+  const testAccount = await nodemailer.createTestAccount();
+  return nodemailer.createTransport({
+    host: testAccount.smtp.host,
+    port: testAccount.smtp.port,
+    secure: testAccount.smtp.secure,
+    auth: {
+      user: testAccount.user,
+      pass: testAccount.pass,
+    },
+  });
+}
+
+async function sendVerificationEmail(email, otp) {
+  const transporter = await createMailTransporter();
+  const info = await transporter.sendMail({
+    from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
+    to: email,
+    subject: "RCA Archive Teacher Verification Code",
+    text: `Your RCA teacher verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
+    html: `
+      <p>Your RCA teacher verification code is: <strong>${otp}</strong></p>
+      <p>This code expires in 10 minutes.</p>
+    `,
+  });
+
+  if (!process.env.SMTP_HOST) {
+    console.log(
+      `📧 OTP email preview URL for ${email}: ${nodemailer.getTestMessageUrl(info)}`,
+    );
+  }
+}
+
+function cleanExpiredOtps() {
+  const now = Date.now();
+  db.data.pendingTeacherOtps = (db.data.pendingTeacherOtps || []).filter(
+    (record) => record.expiresAt > now,
+  );
 }
 
 const uploadDir = path.join(__dirname, "uploads");
@@ -103,12 +161,12 @@ function buildRatingSummary(paper) {
   };
 }
 
-app.post("/api/signup", async (req, res) => {
+app.post("/api/send-teacher-otp", async (req, res) => {
   await db.read();
-  const { email, password } = req.body;
+  const { email } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -124,16 +182,100 @@ app.post("/api/signup", async (req, res) => {
   const isTeacherEmail = TEACHER_EMAILS.some(
     (teacherEmail) => teacherEmail.toLowerCase() === email.toLowerCase(),
   );
-  const role = isTeacherEmail ? "teacher" : "student";
+
+  if (!isTeacherEmail) {
+    return res
+      .status(400)
+      .json({ error: "This email is not a recognized teacher email" });
+  }
+
+  cleanExpiredOtps();
+  const otp = generateOtp();
+  const expiresAt = Date.now() + 10 * 60 * 1000;
+  db.data.pendingTeacherOtps = db.data.pendingTeacherOtps.filter(
+    (record) => record.email !== email.toLowerCase(),
+  );
+  db.data.pendingTeacherOtps.push({
+    email: email.toLowerCase(),
+    code: otp,
+    expiresAt,
+  });
+  await db.write();
+
+  try {
+    await sendVerificationEmail(email, otp);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      error: "Failed to send OTP email. Please try again later.",
+    });
+  }
+
+  res.json({
+    message:
+      "OTP sent successfully. Enter the code to complete teacher signup.",
+  });
+});
+
+app.post("/api/signup", async (req, res) => {
+  await db.read();
+  const { email, password, otp, role, username } = req.body;
+
+  if (!email || !password || !username) {
+    return res
+      .status(400)
+      .json({ error: "Email, password, and username are required" });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  const exists = db.data.users.find((u) => u.email === email);
+  if (exists) {
+    return res.status(400).json({ error: "Email already registered" });
+  }
+
+  let finalRole = "student";
+  if (role === "teacher") {
+    const isTeacherEmail = TEACHER_EMAILS.some(
+      (teacherEmail) => teacherEmail.toLowerCase() === email.toLowerCase(),
+    );
+
+    if (!isTeacherEmail) {
+      return res
+        .status(400)
+        .json({ error: "This email is not a recognized teacher email" });
+    }
+
+    cleanExpiredOtps();
+    const otpRecord = db.data.pendingTeacherOtps.find(
+      (record) => record.email === email.toLowerCase(),
+    );
+
+    if (!otpRecord || !otp || otpRecord.code !== otp) {
+      return res.status(400).json({
+        error:
+          "Invalid or expired OTP. Please request a new verification code.",
+        requiresOtp: true,
+      });
+    }
+
+    db.data.pendingTeacherOtps = db.data.pendingTeacherOtps.filter(
+      (record) => record.email !== email.toLowerCase(),
+    );
+    finalRole = "teacher";
+  }
 
   const hashed = await bcrypt.hash(password, 10);
 
   const user = {
     id: Date.now().toString(),
     email,
-    username: email.split("@")[0],
+    username: username.trim() || email.split("@")[0],
     password: hashed,
-    role,
+    role: finalRole,
     createdAt: new Date().toISOString(),
   };
 
@@ -142,7 +284,7 @@ app.post("/api/signup", async (req, res) => {
 
   res.json({
     message: "Account created successfully!",
-    role,
+    role: finalRole,
     email,
     username: user.username,
   });
