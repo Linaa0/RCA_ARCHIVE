@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
@@ -12,8 +13,13 @@ const { JSONFile } = require("lowdb/node");
 const { TEACHER_EMAILS } = require("./teacherEmails");
 
 const app = express();
-const PORT = 5077;
-const JWT_SECRET = "rca_secret_key_2024";
+const PORT = process.env.PORT || 5077;
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!process.env.JWT_SECRET) {
+  console.warn(
+    "Warning: JWT_SECRET is not set. Using insecure fallback for development. Set `JWT_SECRET` in the environment for production.",
+  );
+}
 
 const dbFile = path.join(__dirname, "db.json");
 const adapter = new JSONFile(dbFile);

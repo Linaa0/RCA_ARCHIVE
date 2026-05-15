@@ -23,3 +23,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 IMPLEMENTATION_SUMMARY.md
+
+# Environment files
+.env.example
+
+# Backend uploads
+/rcabackend/uploads
