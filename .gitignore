@@ -26,6 +26,7 @@ IMPLEMENTATION_SUMMARY.md
 
 # Environment files
 .env.example
+.env
 
 # Backend uploads
 /rcabackend/uploads
