@@ -4,7 +4,7 @@ const { connectToMongo, getUsersCollection } = require("./db");
 const { TEACHER_EMAILS } = require("./teacherEmails");
 
 const DEFAULT_SEED_PASSWORD =
-  process.env.SEED_DEFAULT_PASSWORD || "changeme123";
+  process.env.SEED_DEFAULT_PASSWORD;
 
 async function seedDatabase() {
   try {
