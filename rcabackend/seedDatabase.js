@@ -1,19 +1,15 @@
 require("dotenv").config();
-const { Low } = require("lowdb");
-const { JSONFile } = require("lowdb/node");
-const path = require("path");
 const bcrypt = require("bcryptjs");
+const { connectToMongo, getUsersCollection } = require("./db");
 const { TEACHER_EMAILS } = require("./teacherEmails");
 
-const dbFile = path.join(__dirname, "db.json");
-const adapter = new JSONFile(dbFile);
-const db = new Low(adapter, { users: [], papers: [] });
 const DEFAULT_SEED_PASSWORD =
   process.env.SEED_DEFAULT_PASSWORD || "changeme123";
 
 async function seedDatabase() {
   try {
-    await db.read();
+    await connectToMongo();
+    const users = getUsersCollection();
 
     console.log("Seeding Database...\n");
 
@@ -29,11 +25,11 @@ async function seedDatabase() {
     ];
 
     for (const student of students) {
-      const exists = db.data.users.find((u) => u.email === student.email);
+      const exists = await users.findOne({ email: student.email });
       if (!exists) {
         const hashed = await bcrypt.hash(DEFAULT_SEED_PASSWORD, 10);
-        db.data.users.push({
-          id: Date.now().toString() + Math.random(),
+        await users.insertOne({
+          id: `${Date.now().toString()}-${Math.random().toString(36).slice(2)}`,
           email: student.email,
           username: student.email.split("@")[0],
           password: hashed,
@@ -47,11 +43,11 @@ async function seedDatabase() {
     }
 
     for (const teacher of teachers) {
-      const exists = db.data.users.find((u) => u.email === teacher.email);
+      const exists = await users.findOne({ email: teacher.email });
       if (!exists) {
         const hashed = await bcrypt.hash(DEFAULT_SEED_PASSWORD, 10);
-        db.data.users.push({
-          id: Date.now().toString() + Math.random(),
+        await users.insertOne({
+          id: `${Date.now().toString()}-${Math.random().toString(36).slice(2)}`,
           email: teacher.email,
           username: teacher.email.split("@")[0],
           password: hashed,
@@ -64,16 +60,14 @@ async function seedDatabase() {
       }
     }
 
-    await db.write();
+    const totalUsers = await users.countDocuments();
+    const totalStudents = await users.countDocuments({ role: "student" });
+    const totalTeachers = await users.countDocuments({ role: "teacher" });
 
     console.log("\n Database Status:");
-    console.log(`   Total users: ${db.data.users.length}`);
-    console.log(
-      `   Students: ${db.data.users.filter((u) => u.role === "student").length}`,
-    );
-    console.log(
-      `   Teachers: ${db.data.users.filter((u) => u.role === "teacher").length}`,
-    );
+    console.log(`   Total users: ${totalUsers}`);
+    console.log(`   Students: ${totalStudents}`);
+    console.log(`   Teachers: ${totalTeachers}`);
 
     console.log("\n Recognized Teacher Emails:");
     TEACHER_EMAILS.forEach((email) => {

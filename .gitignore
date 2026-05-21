@@ -30,3 +30,6 @@ IMPLEMENTATION_SUMMARY.md
 
 # Backend uploads
 /rcabackend/uploads
+
+# Old lowdb file no longer used
+/rcabackend/db.json

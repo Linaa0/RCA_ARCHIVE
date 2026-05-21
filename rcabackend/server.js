@@ -8,28 +8,25 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
-const { Low } = require("lowdb");
-const { JSONFile } = require("lowdb/node");
 const { TEACHER_EMAILS } = require("./teacherEmails");
+const {
+  connectToMongo,
+  getUsersCollection,
+  getPapersCollection,
+  getOtpCollection,
+} = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 5077;
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
 if (!process.env.JWT_SECRET) {
   console.warn(
     "Warning: JWT_SECRET is not set. Using insecure fallback for development. Set `JWT_SECRET` in the environment for production.",
   );
 }
 
-const dbFile = path.join(__dirname, "db.json");
-const adapter = new JSONFile(dbFile);
-const db = new Low(adapter, { users: [], papers: [] });
-
 async function initDB() {
-  await db.read();
-  db.data ||= { users: [], papers: [], pendingTeacherOtps: [] };
-  db.data.pendingTeacherOtps ||= [];
-  await db.write();
+  await connectToMongo();
 }
 
 function generateOtp() {
@@ -81,11 +78,10 @@ async function sendVerificationEmail(email, otp) {
   }
 }
 
-function cleanExpiredOtps() {
+async function cleanExpiredOtps() {
+  const otpCollection = getOtpCollection();
   const now = Date.now();
-  db.data.pendingTeacherOtps = (db.data.pendingTeacherOtps || []).filter(
-    (record) => record.expiresAt > now,
-  );
+  await otpCollection.deleteMany({ expiresAt: { $lte: now } });
 }
 
 const uploadDir = path.join(__dirname, "uploads");
@@ -168,7 +164,6 @@ function buildRatingSummary(paper) {
 }
 
 app.post("/api/send-teacher-otp", async (req, res) => {
-  await db.read();
   const { email } = req.body;
 
   if (!email) {
@@ -180,7 +175,10 @@ app.post("/api/send-teacher-otp", async (req, res) => {
     return res.status(400).json({ error: "Invalid email format" });
   }
 
-  const exists = db.data.users.find((u) => u.email === email);
+  const users = getUsersCollection();
+  const otpCollection = getOtpCollection();
+
+  const exists = await users.findOne({ email });
   if (exists) {
     return res.status(400).json({ error: "Email already registered" });
   }
@@ -195,18 +193,16 @@ app.post("/api/send-teacher-otp", async (req, res) => {
       .json({ error: "This email is not a recognized teacher email" });
   }
 
-  cleanExpiredOtps();
+  await cleanExpiredOtps();
   const otp = generateOtp();
   const expiresAt = Date.now() + 10 * 60 * 1000;
-  db.data.pendingTeacherOtps = db.data.pendingTeacherOtps.filter(
-    (record) => record.email !== email.toLowerCase(),
-  );
-  db.data.pendingTeacherOtps.push({
+
+  await otpCollection.deleteMany({ email: email.toLowerCase() });
+  await otpCollection.insertOne({
     email: email.toLowerCase(),
     code: otp,
     expiresAt,
   });
-  await db.write();
 
   try {
     await sendVerificationEmail(email, otp);
@@ -224,7 +220,6 @@ app.post("/api/send-teacher-otp", async (req, res) => {
 });
 
 app.post("/api/signup", async (req, res) => {
-  await db.read();
   const { email, password, otp, role, username } = req.body;
 
   if (!email || !password || !username) {
@@ -238,7 +233,10 @@ app.post("/api/signup", async (req, res) => {
     return res.status(400).json({ error: "Invalid email format" });
   }
 
-  const exists = db.data.users.find((u) => u.email === email);
+  const users = getUsersCollection();
+  const otpCollection = getOtpCollection();
+
+  const exists = await users.findOne({ email });
   if (exists) {
     return res.status(400).json({ error: "Email already registered" });
   }
@@ -255,10 +253,10 @@ app.post("/api/signup", async (req, res) => {
         .json({ error: "This email is not a recognized teacher email" });
     }
 
-    cleanExpiredOtps();
-    const otpRecord = db.data.pendingTeacherOtps.find(
-      (record) => record.email === email.toLowerCase(),
-    );
+    await cleanExpiredOtps();
+    const otpRecord = await otpCollection.findOne({
+      email: email.toLowerCase(),
+    });
 
     if (!otpRecord || !otp || otpRecord.code !== otp) {
       return res.status(400).json({
@@ -268,9 +266,7 @@ app.post("/api/signup", async (req, res) => {
       });
     }
 
-    db.data.pendingTeacherOtps = db.data.pendingTeacherOtps.filter(
-      (record) => record.email !== email.toLowerCase(),
-    );
+    await otpCollection.deleteMany({ email: email.toLowerCase() });
     finalRole = "teacher";
   }
 
@@ -285,8 +281,7 @@ app.post("/api/signup", async (req, res) => {
     createdAt: new Date().toISOString(),
   };
 
-  db.data.users.push(user);
-  await db.write();
+  await users.insertOne(user);
 
   res.json({
     message: "Account created successfully!",
@@ -297,10 +292,10 @@ app.post("/api/signup", async (req, res) => {
 });
 
 app.post("/api/login", async (req, res) => {
-  await db.read();
   const { email, password } = req.body;
 
-  const user = db.data.users.find((u) => u.email === email);
+  const users = getUsersCollection();
+  const user = await users.findOne({ email });
   if (!user) {
     return res.status(400).json({ error: "User not found" });
   }
@@ -334,8 +329,6 @@ app.post(
   requireAuth,
   upload.single("file"),
   async (req, res) => {
-    await db.read();
-
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const { title, subject, year, type } = req.body;
@@ -344,8 +337,9 @@ app.post(
       return res.status(400).json({ error: "Please fill in all fields" });
     }
 
+    const papers = getPapersCollection();
     const hash = hashFile(req.file.path);
-    const duplicate = db.data.papers.find((p) => p.hash === hash);
+    const duplicate = await papers.findOne({ hash });
     if (duplicate) {
       fs.unlinkSync(req.file.path);
       return res.status(409).json({
@@ -368,8 +362,7 @@ app.post(
       ratings: [],
     };
 
-    db.data.papers.push(paper);
-    await db.write();
+    await papers.insertOne(paper);
     res.json({
       message: "Paper uploaded successfully!",
       paper: buildRatingSummary(paper),
@@ -378,21 +371,17 @@ app.post(
 );
 
 app.get("/api/papers", async (req, res) => {
-  await db.read();
   const { subject, year, type, search, sort } = req.query;
+  const papers = getPapersCollection();
 
-  let papers = db.data.papers;
+  const query = {};
+  if (subject) query.subject = subject;
+  if (year) query.year = year;
+  if (type && type !== "All Types") query.type = type;
+  if (search) query.title = { $regex: search, $options: "i" };
 
-  if (subject) papers = papers.filter((p) => p.subject === subject);
-  if (year) papers = papers.filter((p) => p.year === year);
-  if (type && type !== "All Types")
-    papers = papers.filter((p) => p.type === type);
-  if (search)
-    papers = papers.filter((p) =>
-      p.title.toLowerCase().includes(search.toLowerCase()),
-    );
-
-  const papersWithRatings = papers.map(buildRatingSummary);
+  const paperList = await papers.find(query).toArray();
+  const papersWithRatings = paperList.map(buildRatingSummary);
 
   if (sort === "top") {
     papersWithRatings.sort((a, b) => {
@@ -411,15 +400,17 @@ app.get("/api/papers", async (req, res) => {
 });
 
 app.get("/api/stats", async (req, res) => {
-  await db.read();
+  const users = getUsersCollection();
+  const papers = getPapersCollection();
+  const totalPapers = await papers.countDocuments();
+  const totalUsers = await users.countDocuments();
   res.json({
-    totalPapers: db.data.papers.length,
-    totalUsers: db.data.users.length,
+    totalPapers,
+    totalUsers,
   });
 });
 
 app.post("/api/papers/:id/rate", requireAuth, async (req, res) => {
-  await db.read();
   const { id } = req.params;
   const { rating } = req.body;
 
@@ -429,24 +420,28 @@ app.post("/api/papers/:id/rate", requireAuth, async (req, res) => {
       .json({ error: "Rating must be a number between 1 and 5" });
   }
 
-  const paper = db.data.papers.find((p) => p.id === id);
+  const papers = getPapersCollection();
+  const paper = await papers.findOne({ id });
   if (!paper) return res.status(404).json({ error: "Paper not found" });
 
-  paper.ratings ||= [];
-  const existing = paper.ratings.find((r) => r.username === req.user.username);
+  const ratings = paper.ratings || [];
+  const existing = ratings.find((r) => r.username === req.user.username);
   if (existing) {
     existing.value = rating;
   } else {
-    paper.ratings.push({ username: req.user.username, value: rating });
+    ratings.push({ username: req.user.username, value: rating });
   }
 
-  await db.write();
-  res.json({ message: "Rating saved", paper: buildRatingSummary(paper) });
+  await papers.updateOne({ id }, { $set: { ratings } });
+  res.json({
+    message: "Rating saved",
+    paper: buildRatingSummary({ ...paper, ratings }),
+  });
 });
 
 app.delete("/api/papers/:id", requireAuth, async (req, res) => {
-  await db.read();
-  const paper = db.data.papers.find((p) => p.id === req.params.id);
+  const papers = getPapersCollection();
+  const paper = await papers.findOne({ id: req.params.id });
   if (!paper) return res.status(404).json({ error: "Paper not found" });
 
   if (paper.uploadedBy !== req.user.username && req.user.role !== "teacher")
@@ -455,8 +450,7 @@ app.delete("/api/papers/:id", requireAuth, async (req, res) => {
   const filePath = path.join(uploadDir, paper.filename);
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
-  db.data.papers = db.data.papers.filter((p) => p.id !== req.params.id);
-  await db.write();
+  await papers.deleteOne({ id: req.params.id });
   res.json({ message: "Paper deleted successfully" });
 });
 
