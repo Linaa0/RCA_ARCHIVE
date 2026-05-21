@@ -73,7 +73,7 @@ async function sendVerificationEmail(email, otp) {
 
   if (!process.env.SMTP_HOST) {
     console.log(
-      `📧 OTP email preview URL for ${email}: ${nodemailer.getTestMessageUrl(info)}`,
+      `OTP email preview URL for ${email}: ${nodemailer.getTestMessageUrl(info)}`,
     );
   }
 }
