@@ -63,7 +63,7 @@ async function sendVerificationEmail(email, otp) {
   const info = await transporter.sendMail({
     from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
     to: email,
-    subject: "RCA Archive Teacher Verification Code",
+    subject: "RCA Archive Teacher Verification Code: ",
     text: `Your RCA teacher verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
     html: `
       <p>Your RCA teacher verification code is: <strong>${otp}</strong></p>
@@ -78,7 +78,7 @@ async function sendVerificationEmail(email, otp) {
   }
 }
 
-async function cleanExpiredOtps() {
+async  function cleanExpiredOtps() {
   const otpCollection = getOtpCollection();
   const now = Date.now();
   await otpCollection.deleteMany({ expiresAt: { $lte: now } });
@@ -110,6 +110,7 @@ app.get("/uploads/:filename", async (req, res) => {
     return res.sendFile(filePath);
   }
 
+  
   try {
     const papers = getPapersCollection();
     const paper = await papers.findOne({ filename });
