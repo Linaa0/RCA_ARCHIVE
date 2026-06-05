@@ -102,6 +102,30 @@ if (process.env.NODE_ENV !== "production") {
 app.use(express.json());
 app.use("/uploads", express.static(uploadDir));
 
+app.get("/uploads/:filename", async (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(uploadDir, filename);
+
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath);
+  }
+
+  try {
+    const papers = getPapersCollection();
+    const paper = await papers.findOne({ filename });
+    if (paper) {
+      const paperPath = path.join(uploadDir, paper.filename);
+      if (fs.existsSync(paperPath)) {
+        return res.sendFile(paperPath);
+      }
+    }
+  } catch (err) {
+    console.error("Error resolving upload file:", err);
+  }
+
+  return res.status(404).json({ error: "File not found" });
+});
+
 if (process.env.NODE_ENV === "production") {
   const buildDir = path.join(__dirname, "../build");
   app.use(express.static(buildDir));
