@@ -1,8 +1,8 @@
 require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const express =  require("express");
+const cors =  require("cors");
+const bcrypt =  require("bcryptjs");
+const jwt =  require("jsonwebtoken");
 const multer = require("multer");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
@@ -14,7 +14,7 @@ const {
   getUsersCollection,
   getPapersCollection,
   getOtpCollection,
-} = require("./db");
+} = require( "./db" );
 
 const app = express();
 const PORT = process.env.PORT || 5077;
