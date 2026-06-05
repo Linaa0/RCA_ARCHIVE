@@ -399,6 +399,23 @@ app.get("/api/papers", async (req, res) => {
   res.json(papersWithRatings);
 });
 
+app.get("/api/papers/:id/file", async (req, res) => {
+  const papers = getPapersCollection();
+  const paper = await papers.findOne({ id: req.params.id });
+  if (!paper) return res.status(404).json({ error: "Paper not found" });
+
+  const filePath = path.join(uploadDir, paper.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
+
+  if (req.query.download === "1") {
+    return res.download(filePath, paper.originalName);
+  }
+
+  return res.sendFile(filePath);
+});
+
 app.get("/api/stats", async (req, res) => {
   const users = getUsersCollection();
   const papers = getPapersCollection();

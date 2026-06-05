@@ -10,30 +10,62 @@ import PrivateRoute from "./components/PrivateRoute";
 import "./App.css";
 
 const year1Subjects = [
-  "Mathematics", "Physics", "Fundamentals of Programming", "Database",
-  "English", "Networking", "PHP", "JavaScript", "Embedded Systems",
-  "Web User Interface", "Graphical User Interface",
-  "Computer Basics", "Short Courses",
+  "Mathematics",
+  "Physics",
+  "Fundamentals of Programming",
+  "Database",
+  "English",
+  "Networking",
+  "PHP",
+  "JavaScript",
+  "Embedded Systems",
+  "Web User Interface",
+  "Graphical User Interface",
+  "Computer Basics",
+  "Short Courses",
 ];
 
 const year2Subjects = [
-  "Mathematics", "Physics", "Data Structures with C++", "Advanced Networking",
-  "OOP and Web Development with Java", "Software Engineering", "Advanced Database",
-  "English", "Embedded Systems (Integrate Hardware with Software)",
-  "Web 3 with Solidity", "3D Modelling with Blender","Short Courses",
+  "Mathematics",
+  "Physics",
+  "Data Structures with C++",
+  "Advanced Networking",
+  "OOP and Web Development with Java",
+  "Software Engineering",
+  "Advanced Database",
+  "English",
+  "Embedded Systems (Integrate Hardware with Software)",
+  "Web 3 with Solidity",
+  "3D Modelling with Blender",
+  "Short Courses",
 ];
 
 const year3Subjects = [
-  "Mathematics", "Physics", "Machine Learning with Python", "Cybersecurity",
-  "DevOps", "English", "Intelligent Robotics and Some Embedded Systems",
+  "Mathematics",
+  "Physics",
+  "Machine Learning with Python",
+  "Cybersecurity",
+  "DevOps",
+  "English",
+  "Intelligent Robotics and Some Embedded Systems",
   "Mobile Apps Development with React Native",
-  "Information Technology with Project Management","Short Courses",
+  "Information Technology with Project Management",
+  "Short Courses",
 ];
 
 function PaperCard({ paper }) {
   const date = new Date(paper.uploadedAt).toLocaleDateString();
-  const meta = paper.subject + " • Year " + paper.year + " • " + paper.type + " • Uploaded by " + paper.uploadedBy + " • " + date;
-  const fileUrl = "/uploads/" + paper.filename;
+  const meta =
+    paper.subject +
+    " • Year " +
+    paper.year +
+    " • " +
+    paper.type +
+    " • Uploaded by " +
+    paper.uploadedBy +
+    " • " +
+    date;
+  const downloadUrl = `/api/papers/${paper.id}/file?download=1`;
 
   return (
     <div className="paper-card">
@@ -41,14 +73,27 @@ function PaperCard({ paper }) {
         <strong>{paper.title}</strong>
         <span className="paper-meta">{meta}</span>
       </div>
-      <a href={fileUrl} target="_blank" rel="noreferrer" className="download-btn">
+      <a
+        href={downloadUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="download-btn"
+        download={paper.originalName}
+      >
         Download
       </a>
     </div>
   );
 }
 
-function HomeContent({ search, setSearch, onSearch, results, loading, clearSearch }) {
+function HomeContent({
+  search,
+  setSearch,
+  onSearch,
+  results,
+  loading,
+  clearSearch,
+}) {
   return (
     <div className="page-layout">
       <Navbar />
@@ -57,14 +102,20 @@ function HomeContent({ search, setSearch, onSearch, results, loading, clearSearc
       {results !== null ? (
         <div className="search-results-section">
           <div className="search-results-header">
-            <h3>{loading ? "Searching..." : results.length + " result(s) for \"" + search + "\""}</h3>
-            <button className="clear-search-btn" onClick={clearSearch}>Clear search</button>
+            <h3>
+              {loading
+                ? "Searching..."
+                : results.length + ' result(s) for "' + search + '"'}
+            </h3>
+            <button className="clear-search-btn" onClick={clearSearch}>
+              Clear search
+            </button>
           </div>
           {results.length === 0 ? (
             <p className="no-results">No papers found for "{search}".</p>
           ) : (
             <div>
-              {results.map(function(paper) {
+              {results.map(function (paper) {
                 return <PaperCard key={paper.id} paper={paper} />;
               })}
             </div>
@@ -104,7 +155,7 @@ function App() {
     setLoading(true);
     try {
       const res = await fetch(
-        "/api/papers?search=" + encodeURIComponent(search)
+        "/api/papers?search=" + encodeURIComponent(search),
       );
       const data = await res.json();
       setResults(data);
@@ -148,7 +199,8 @@ function App() {
                 <Navbar />
                 <SubjectPage />
                 <footer className="footer">
-                  Rwanda Coding Academy Past Papers &amp; Notes System — Years 1-3
+                  Rwanda Coding Academy Past Papers &amp; Notes System — Years
+                  1-3
                 </footer>
               </div>
             </PrivateRoute>
