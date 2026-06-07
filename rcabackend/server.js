@@ -399,33 +399,33 @@ app.post(
   },
 );
 
-app.get("/api/papers", async (req, res) => {
-  const { subject, year, type, search, sort } = req.query;
+app.get("/api/papers/:id/view", async (req, res) => {
   const papers = getPapersCollection();
+  const paper = await papers.findOne({ id: req.params.id });
+  if (!paper) return res.status(404).json({ error: "Paper not found" });
 
-  const query = {};
-  if (subject) query.subject = subject;
-  if (year) query.year = year;
-  if (type && type !== "All Types") query.type = type;
-  if (search) query.title = { $regex: search, $options: "i" };
-
-  const paperList = await papers.find(query).toArray();
-  const papersWithRatings = paperList.map(buildRatingSummary);
-
-  if (sort === "top") {
-    papersWithRatings.sort((a, b) => {
-      if (b.averageRating !== a.averageRating)
-        return b.averageRating - a.averageRating;
-      if (b.ratingCount !== a.ratingCount) return b.ratingCount - a.ratingCount;
-      return new Date(b.uploadedAt) - new Date(a.uploadedAt);
-    });
-  } else {
-    papersWithRatings.sort(
-      (a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt),
-    );
+  const filePath = path.join(uploadDir, paper.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
   }
 
-  res.json(papersWithRatings);
+  const ext = path.extname(paper.originalName).toLowerCase();
+  const mimeTypes = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".docx":
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  };
+  const contentType = mimeTypes[ext] || "application/octet-stream";
+
+  res.setHeader("Content-Type", contentType);
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${paper.originalName}"`,
+  );
+  return res.sendFile(filePath);
 });
 
 app.get("/api/papers/:id/file", async (req, res) => {
@@ -459,6 +459,19 @@ app.get("/api/papers/:id/view", async (req, res) => {
     return res.status(404).json({ error: "File not found" });
   }
 
+  const ext = path.extname(paper.originalName).toLowerCase();
+  const mimeTypes = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".docx":
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".doc": "application/msword",
+  };
+  const contentType = mimeTypes[ext] || "application/octet-stream";
+
+  res.setHeader("Content-Type", contentType);
   res.setHeader(
     "Content-Disposition",
     `inline; filename="${paper.originalName}"`,

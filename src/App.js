@@ -7,6 +7,7 @@ import SubjectsList from "./components/SubjectsList";
 import Login from "./components/Login";
 import SubjectPage from "./components/SubjectPage";
 import PrivateRoute from "./components/PrivateRoute";
+import FileViewer from "./components/FileViewer";
 import "./App.css";
 
 const year1Subjects = [
@@ -65,11 +66,6 @@ function PaperCard({ paper }) {
     paper.uploadedBy +
     " • " +
     date;
-  const viewUrl =
-    paper.viewUrl || `http://localhost:5077/api/papers/${paper.id}/view`;
-  const downloadUrl =
-    paper.downloadUrl ||
-    `http://localhost:5077/api/papers/${paper.id}/download`;
 
   return (
     <div className="paper-card">
@@ -79,7 +75,7 @@ function PaperCard({ paper }) {
       </div>
       <div className="paper-actions">
         <a
-          href={viewUrl}
+          href={`/view/${paper.id}`}
           target="_blank"
           rel="noopener noreferrer"
           className="view-btn"
@@ -87,7 +83,7 @@ function PaperCard({ paper }) {
           View
         </a>
         <a
-          href={downloadUrl}
+          href={`http://localhost:5077/api/papers/${paper.id}/download`}
           className="download-btn"
           download={paper.originalName}
         >
@@ -186,6 +182,14 @@ function App() {
     <div className="app-container">
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route
+          path="/view/:id"
+          element={
+            <PrivateRoute>
+              <FileViewer />
+            </PrivateRoute>
+          }
+        />
 
         <Route
           path="/"

@@ -254,14 +254,24 @@ function SubjectPage() {
                   </div>
                 </div>
                 <div className="paper-actions">
-                  <a
-                    href={paper.viewUrl || `http://localhost:5077/api/papers/${paper.id}/view`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="view-btn"
-                  >
-                    View
-                  </a>
+                  {(() => {
+                    const baseUrl = paper.viewUrl || `http://localhost:5077/api/papers/${paper.id}/view`;
+                    const ext = paper.originalName?.split(".").pop().toLowerCase();
+                    const viewableInBrowser = ["pdf", "png", "jpg", "jpeg"].includes(ext);
+                    const viewUrl = viewableInBrowser
+                      ? baseUrl
+                      : `https://docs.google.com/viewer?url=${encodeURIComponent(baseUrl)}&embedded=false`;
+                    return (
+                      <a
+                        href={viewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="view-btn"
+                      >
+                        View
+                      </a>
+                    );
+                  })()}
                   <a
                     href={paper.downloadUrl || `http://localhost:5077/api/papers/${paper.id}/download`}
                     download={paper.originalName}
