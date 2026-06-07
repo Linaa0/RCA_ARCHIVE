@@ -255,15 +255,15 @@ function SubjectPage() {
                 </div>
                 <div className="paper-actions">
                   <a
-                    href={`/api/papers/${paper.id}/file`}
+                    href={paper.viewUrl || `/api/papers/${paper.id}/view`}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="view-btn"
                   >
                     View
                   </a>
                   <a
-                    href={`/api/papers/${paper.id}/file?download=1`}
+                    href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
                     download={paper.originalName}
                     className="download-btn"
                   >

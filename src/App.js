@@ -65,7 +65,8 @@ function PaperCard({ paper }) {
     paper.uploadedBy +
     " • " +
     date;
-  const downloadUrl = `/api/papers/${paper.id}/file?download=1`;
+  const viewUrl = paper.viewUrl || `/api/papers/${paper.id}/view`;
+  const downloadUrl = paper.downloadUrl || `/api/papers/${paper.id}/download`;
 
   return (
     <div className="paper-card">
@@ -73,15 +74,23 @@ function PaperCard({ paper }) {
         <strong>{paper.title}</strong>
         <span className="paper-meta">{meta}</span>
       </div>
-      <a
-        href={downloadUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="download-btn"
-        download={paper.originalName}
-      >
-        Download
-      </a>
+      <div className="paper-actions">
+        <a
+          href={viewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="view-btn"
+        >
+          View
+        </a>
+        <a
+          href={downloadUrl}
+          className="download-btn"
+          download={paper.originalName}
+        >
+          Download
+        </a>
+      </div>
     </div>
   );
 }

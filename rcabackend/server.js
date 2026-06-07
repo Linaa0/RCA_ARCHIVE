@@ -1,8 +1,8 @@
 require("dotenv").config();
-const express =  require("express");
-const cors =  require("cors");
-const bcrypt =  require("bcryptjs");
-const jwt =  require("jsonwebtoken");
+const express = require("express");
+const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
@@ -14,7 +14,7 @@ const {
   getUsersCollection,
   getPapersCollection,
   getOtpCollection,
-} = require( "./db" );
+} = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 5077;
@@ -78,7 +78,7 @@ async function sendVerificationEmail(email, otp) {
   }
 }
 
-async  function cleanExpiredOtps() {
+async function cleanExpiredOtps() {
   const otpCollection = getOtpCollection();
   const now = Date.now();
   await otpCollection.deleteMany({ expiresAt: { $lte: now } });
@@ -110,7 +110,6 @@ app.get("/uploads/:filename", async (req, res) => {
     return res.sendFile(filePath);
   }
 
-  
   try {
     const papers = getPapersCollection();
     const paper = await papers.findOne({ filename });
@@ -131,10 +130,12 @@ if (process.env.NODE_ENV === "production") {
   const buildDir = path.join(__dirname, "../build");
   app.use(express.static(buildDir));
 
-  app.get("*", (req, res) => {
-    if (!req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
-      res.sendFile(path.join(buildDir, "index.html"));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) {
+      return next();
     }
+
+    res.sendFile(path.join(buildDir, "index.html"));
   });
 }
 
@@ -185,6 +186,8 @@ function buildRatingSummary(paper) {
     ratings,
     ratingCount,
     averageRating,
+    viewUrl: `/api/papers/${paper.id}/view`,
+    downloadUrl: `/api/papers/${paper.id}/download`,
   };
 }
 
@@ -438,7 +441,41 @@ app.get("/api/papers/:id/file", async (req, res) => {
     return res.download(filePath, paper.originalName);
   }
 
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${paper.originalName}"`,
+  );
   return res.sendFile(filePath);
+});
+
+app.get("/api/papers/:id/view", async (req, res) => {
+  const papers = getPapersCollection();
+  const paper = await papers.findOne({ id: req.params.id });
+  if (!paper) return res.status(404).json({ error: "Paper not found" });
+
+  const filePath = path.join(uploadDir, paper.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
+
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${paper.originalName}"`,
+  );
+  return res.sendFile(filePath);
+});
+
+app.get("/api/papers/:id/download", async (req, res) => {
+  const papers = getPapersCollection();
+  const paper = await papers.findOne({ id: req.params.id });
+  if (!paper) return res.status(404).json({ error: "Paper not found" });
+
+  const filePath = path.join(uploadDir, paper.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
+
+  return res.download(filePath, paper.originalName);
 });
 
 app.get("/api/stats", async (req, res) => {
