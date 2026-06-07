@@ -255,7 +255,7 @@ function SubjectPage() {
                 </div>
                 <div className="paper-actions">
                   <a
-                    href={paper.viewUrl || `/api/papers/${paper.id}/view`}
+                    href={paper.viewUrl || `http://localhost:5077/api/papers/${paper.id}/view`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="view-btn"
@@ -263,7 +263,7 @@ function SubjectPage() {
                     View
                   </a>
                   <a
-                    href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
+                    href={paper.downloadUrl || `http://localhost:5077/api/papers/${paper.id}/download`}
                     download={paper.originalName}
                     className="download-btn"
                   >

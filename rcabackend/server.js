@@ -18,6 +18,7 @@ const {
 
 const app = express();
 const PORT = process.env.PORT || 5077;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
 if (!process.env.JWT_SECRET) {
   console.warn(
@@ -186,8 +187,8 @@ function buildRatingSummary(paper) {
     ratings,
     ratingCount,
     averageRating,
-    viewUrl: `/api/papers/${paper.id}/view`,
-    downloadUrl: `/api/papers/${paper.id}/download`,
+    viewUrl: `${BASE_URL}/api/papers/${paper.id}/view`,
+    downloadUrl: `${BASE_URL}/api/papers/${paper.id}/download`,
   };
 }
 

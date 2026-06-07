@@ -65,8 +65,11 @@ function PaperCard({ paper }) {
     paper.uploadedBy +
     " • " +
     date;
-  const viewUrl = paper.viewUrl || `/api/papers/${paper.id}/view`;
-  const downloadUrl = paper.downloadUrl || `/api/papers/${paper.id}/download`;
+  const viewUrl =
+    paper.viewUrl || `http://localhost:5077/api/papers/${paper.id}/view`;
+  const downloadUrl =
+    paper.downloadUrl ||
+    `http://localhost:5077/api/papers/${paper.id}/download`;
 
   return (
     <div className="paper-card">
