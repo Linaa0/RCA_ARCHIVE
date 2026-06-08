@@ -49,7 +49,7 @@ export default function FileViewer() {
       </div>
     )
 
-  const fileUrl = `http://localhost:5077/api/papers/${paper.id}/view`
+  const fileUrl = `/api/papers/${paper.id}/view`
   const ext = paper.originalName?.split(".").pop().toLowerCase()
   const canEmbed = ["pdf", "png", "jpg", "jpeg"].includes(ext)
 
@@ -135,7 +135,7 @@ export default function FileViewer() {
               This file type can't be previewed in the browser.
             </p>
             <a
-              href={`http://localhost:5077/api/papers/${paper.id}/download`}
+              href={`/api/papers/${paper.id}/download`}
               download={paper.originalName}
               style={{
                 background: "#2563eb",

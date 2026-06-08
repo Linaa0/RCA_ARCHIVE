@@ -255,12 +255,12 @@ function SubjectPage() {
                 </div>
                 <div className="paper-actions">
                   {(() => {
-                    const baseUrl = paper.viewUrl || `http://localhost:5077/api/papers/${paper.id}/view`;
+                    const baseUrl = paper.viewUrl || `/api/papers/${paper.id}/view`;
                     const ext = paper.originalName?.split(".").pop().toLowerCase();
                     const viewableInBrowser = ["pdf", "png", "jpg", "jpeg"].includes(ext);
                     const viewUrl = viewableInBrowser
                       ? baseUrl
-                      : `https://docs.google.com/viewer?url=${encodeURIComponent(baseUrl)}&embedded=false`;
+                      : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + baseUrl)}&embedded=false`;
                     return (
                       <a
                         href={viewUrl}
@@ -273,8 +273,7 @@ function SubjectPage() {
                     );
                   })()}
                   <a
-                    href={paper.downloadUrl || `http://localhost:5077/api/papers/${paper.id}/download`}
-                    download={paper.originalName}
+                    href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
                     className="download-btn"
                   >
                     Download

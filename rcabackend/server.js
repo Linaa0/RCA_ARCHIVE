@@ -127,6 +127,42 @@ app.get("/uploads/:filename", async (req, res) => {
   return res.status(404).json({ error: "File not found" });
 });
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+app.get("/api/papers", async (req, res) => {
+  const papers = getPapersCollection();
+  const { subject, year, type, search, sort } = req.query;
+  const filter = {};
+
+  if (subject) filter.subject = subject;
+  if (year) filter.year = year;
+  if (type && type !== "All Types") filter.type = type;
+  if (search) {
+    const regex = new RegExp(escapeRegExp(search), "i");
+    filter.$or = [
+      { title: regex },
+      { subject: regex },
+      { type: regex },
+    ];
+  }
+
+  const paperDocs = await papers.find(filter).toArray();
+  const result = paperDocs.map(buildRatingSummary);
+
+  if (sort === "top") {
+    result.sort((a, b) => {
+      if (b.averageRating !== a.averageRating) {
+        return b.averageRating - a.averageRating;
+      }
+      return new Date(b.uploadedAt) - new Date(a.uploadedAt);
+    });
+  }
+
+  res.json(result);
+});
+
 if (process.env.NODE_ENV === "production") {
   const buildDir = path.join(__dirname, "../build");
   app.use(express.static(buildDir));
@@ -398,35 +434,6 @@ app.post(
     });
   },
 );
-
-app.get("/api/papers/:id/view", async (req, res) => {
-  const papers = getPapersCollection();
-  const paper = await papers.findOne({ id: req.params.id });
-  if (!paper) return res.status(404).json({ error: "Paper not found" });
-
-  const filePath = path.join(uploadDir, paper.filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "File not found" });
-  }
-
-  const ext = path.extname(paper.originalName).toLowerCase();
-  const mimeTypes = {
-    ".pdf": "application/pdf",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".docx":
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  };
-  const contentType = mimeTypes[ext] || "application/octet-stream";
-
-  res.setHeader("Content-Type", contentType);
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename="${paper.originalName}"`,
-  );
-  return res.sendFile(filePath);
-});
 
 app.get("/api/papers/:id/file", async (req, res) => {
   const papers = getPapersCollection();

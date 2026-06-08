@@ -83,9 +83,8 @@ function PaperCard({ paper }) {
           View
         </a>
         <a
-          href={`http://localhost:5077/api/papers/${paper.id}/download`}
+          href={`/api/papers/${paper.id}/download`}
           className="download-btn"
-          download={paper.originalName}
         >
           Download
         </a>
