@@ -178,10 +178,10 @@ function SubjectPage() {
               <option>Quiz</option>
             </select>
 
-            <label>File (PDF, Word, Image, etc.)</label>
+            <label>File (any type supported)</label>
             <input
               type="file"
-              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.ppt,.pptx"
+              accept="*/*"
               onChange={(e) => setFile(e.target.files[0])}
               required
             />

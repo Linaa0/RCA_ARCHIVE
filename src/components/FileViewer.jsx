@@ -5,6 +5,7 @@ export default function FileViewer() {
   const { id } = useParams()
   const [paper, setPaper] = useState(null)
   const [error, setError] = useState(null)
+  const [fileText, setFileText] = useState(null)
 
   useEffect(() => {
     fetch(`/api/papers`)
@@ -16,6 +17,20 @@ export default function FileViewer() {
       })
       .catch(() => setError("Failed to load paper"))
   }, [id])
+
+  useEffect(() => {
+    if (!paper) return
+
+    const ext = paper.originalName?.split(".").pop().toLowerCase()
+    const textTypes = ["txt", "md", "csv", "json", "html", "htm"]
+
+    if (textTypes.includes(ext)) {
+      fetch(`/api/papers/${paper.id}/view`)
+        .then((r) => (r.ok ? r.text() : Promise.reject()))
+        .then(setFileText)
+        .catch(() => setFileText("Unable to load file preview."))
+    }
+  }, [paper])
 
   if (error)
     return (
@@ -50,8 +65,10 @@ export default function FileViewer() {
     )
 
   const fileUrl = `/api/papers/${paper.id}/view`
+  const downloadUrl = `/api/papers/${paper.id}/download`
   const ext = paper.originalName?.split(".").pop().toLowerCase()
   const canEmbed = ["pdf", "png", "jpg", "jpeg"].includes(ext)
+  const canPreviewText = ["txt", "md", "csv", "json", "html", "htm"].includes(ext)
 
   return (
     <div
@@ -101,7 +118,7 @@ export default function FileViewer() {
         </div>
 
         <a
-          href={`http://localhost:5077/api/papers/${paper.id}/download`}
+          href={downloadUrl}
           download={paper.originalName}
           style={{
             background: "#2563eb",
@@ -120,6 +137,12 @@ export default function FileViewer() {
       <div style={{ flex: 1, overflow: "hidden" }}>
         {canEmbed ? (
           <iframe src={fileUrl} title={paper.title} style={{ width: "100%", height: "100%", border: "none" }} />
+        ) : canPreviewText ? (
+          <div style={{ width: "100%", height: "100%", overflow: "auto", background: "#0d1117", padding: "24px" }}>
+            <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", color: "#d7dde8", fontSize: "14px", lineHeight: 1.6 }}>
+              {fileText ?? "Loading preview..."}
+            </pre>
+          </div>
         ) : (
           <div
             style={{
@@ -131,23 +154,40 @@ export default function FileViewer() {
               gap: "16px",
             }}
           >
-            <p style={{ color: "#ccc", fontSize: "16px" }}>
-              This file type can't be previewed in the browser.
+            <p style={{ color: "#ccc", fontSize: "16px", maxWidth: "520px", textAlign: "center" }}>
+              This file type may not display directly in the browser. You can still download it or open it in a supported viewer.
             </p>
-            <a
-              href={`/api/papers/${paper.id}/download`}
-              download={paper.originalName}
-              style={{
-                background: "#2563eb",
-                color: "#fff",
-                padding: "10px 24px",
-                borderRadius: "8px",
-                textDecoration: "none",
-                fontSize: "15px",
-              }}
-            >
-              Download to open
-            </a>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <a
+                href={downloadUrl}
+                download={paper.originalName}
+                style={{
+                  background: "#2563eb",
+                  color: "#fff",
+                  padding: "10px 24px",
+                  borderRadius: "8px",
+                  textDecoration: "none",
+                  fontSize: "15px",
+                }}
+              >
+                Download
+              </a>
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: "#10b981",
+                  color: "#fff",
+                  padding: "10px 24px",
+                  borderRadius: "8px",
+                  textDecoration: "none",
+                  fontSize: "15px",
+                }}
+              >
+                Open in new tab
+              </a>
+            </div>
           </div>
         )}
       </div>

@@ -472,9 +472,19 @@ app.get("/api/papers/:id/view", async (req, res) => {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
-    ".docx":
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".gif": "image/gif",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".csv": "text/csv",
+    ".json": "application/json",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".doc": "application/msword",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls": "application/vnd.ms-excel",
   };
   const contentType = mimeTypes[ext] || "application/octet-stream";
 
@@ -483,7 +493,7 @@ app.get("/api/papers/:id/view", async (req, res) => {
     "Content-Disposition",
     `inline; filename="${paper.originalName}"`,
   );
-  return res.sendFile(filePath);
+  return res.sendFile(filePath, { headers: { "Content-Type": contentType } });
 });
 
 app.get("/api/papers/:id/download", async (req, res) => {
