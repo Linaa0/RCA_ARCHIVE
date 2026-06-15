@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./SubjectsList.css";
+import api from '../api';
 
 function SubjectCard({ year, subject }) {
   const [count, setCount] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/papers?subject=${encodeURIComponent(subject)}&year=${year}`)
-      .then((res) => res.json())
-      .then((data) => setCount(data.length))
-      .catch(() => setCount(0));
+    api.get(`/papers?subject=${encodeURIComponent(subject)}&year=${year}`)
+  .then(({ data }) => setCount(data.length))
+  .catch(() => setCount(0));
   }, [subject, year]);
 
   return (
