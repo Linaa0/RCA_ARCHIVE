@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import "./SubjectPage.css";
+import api from '../api';
 
 function SubjectPage() {
   const { year, subject } = useParams();
@@ -29,8 +30,7 @@ function SubjectPage() {
       if (search) params.append("search", search);
 
       params.append("sort", "top");
-      const res = await fetch(`/api/papers?${params}`);
-      const data = await res.json();
+      const { data } = await api.get(`/papers?${params}`);
       setPapers(data);
     } catch {
       console.error("Could not load papers");
@@ -53,28 +53,23 @@ function SubjectPage() {
     formData.append("year", year);
     formData.append("type", type);
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+     try {
+      const { data } = await api.post("/upload", formData);
 
-      const data = await res.json();
-
-      if (res.status === 409) {
-        setPopup({ type: "duplicate", message: data.message });
-      } else if (res.ok) {
-        setPopup({ type: "success", message: "Paper uploaded successfully." });
-        setTitle("");
-        setFile(null);
-        setShowUpload(false);
-        fetchPapers();
+      // api.js interceptor handles Authorization automatically
+      // Check for duplicate via status — axios throws on non-2xx,
+      // so we handle 409 in the catch block
+      setPopup({ type: "success", message: "Paper uploaded successfully." });
+      setTitle("");
+      setFile(null);
+      setShowUpload(false);
+      fetchPapers();
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setPopup({ type: "duplicate", message: err.response.data.message });
       } else {
-        setPopup({ type: "error", message: data.error || "Upload failed" });
+        setPopup({ type: "error", message: err.response?.data?.error || "Upload failed" });
       }
-    } catch {
-      setPopup({ type: "error", message: "Cannot connect to server." });
     }
 
     setUploading(false);
@@ -83,15 +78,12 @@ function SubjectPage() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this paper?")) return;
 
-    const res = await fetch(`/api/papers/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) fetchPapers();
-    else {
-      const data = await res.json();
-      alert(data.error);
+   
+    try {
+      await api.delete(`/papers/${id}`);
+      fetchPapers();
+    } catch (err) {
+      alert(err.response?.data?.error || "Delete failed");
     }
   };
   const handleRate = async (paperId) => {
@@ -101,26 +93,13 @@ function SubjectPage() {
       return;
     }
 
-    try {
-      const res = await fetch(`/api/papers/${paperId}/rate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ rating: ratingValue }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setPopup({ type: "error", message: data.error || "Unable to save rating." });
-        return;
-      }
+     try {
+      await api.post(`/papers/${paperId}/rate`, { rating: ratingValue });
       setPopup({ type: "success", message: "Thank you for your rating." });
       setSelectedRatings((prev) => ({ ...prev, [paperId]: "" }));
       fetchPapers();
-    } catch {
-      setPopup({ type: "error", message: "Cannot connect to server." });
+    } catch (err) {
+      setPopup({ type: "error", message: err.response?.data?.error || "Unable to save rating." });
     }
   };
   const username = localStorage.getItem("username");
