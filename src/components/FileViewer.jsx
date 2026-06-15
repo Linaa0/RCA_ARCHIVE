@@ -1,74 +1,41 @@
-import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import api from "../api";
 
 export default function FileViewer() {
-  const { id } = useParams()
-  const [paper, setPaper] = useState(null)
-  const [error, setError] = useState(null)
-  const [fileText, setFileText] = useState(null)
+  const { id } = useParams();
+  const [paper, setPaper] = useState(null);
+  const [error, setError] = useState(null);
+
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.archive.innov.rw";
 
   useEffect(() => {
-    fetch(`/api/papers`)
-      .then((r) => r.json())
-      .then((papers) => {
-        const found = papers.find((p) => p.id === id)
-        if (found) setPaper(found)
-        else setError("Paper not found")
+    api.get("/papers")
+      .then(({ data: papers }) => {
+        const found = papers.find((p) => p.id === id);
+        if (found) setPaper(found);
+        else setError("Paper not found");
       })
-      .catch(() => setError("Failed to load paper"))
-  }, [id])
-
-  useEffect(() => {
-    if (!paper) return
-
-    const ext = paper.originalName?.split(".").pop().toLowerCase()
-    const textTypes = ["txt", "md", "csv", "json", "html", "htm"]
-
-    if (textTypes.includes(ext)) {
-      fetch(`/api/papers/${paper.id}/view`)
-        .then((r) => (r.ok ? r.text() : Promise.reject()))
-        .then(setFileText)
-        .catch(() => setFileText("Unable to load file preview."))
-    }
-  }, [paper])
+      .catch(() => setError("Failed to load paper"));
+  }, [id]);
 
   if (error)
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontFamily: "sans-serif",
-          background: "#1a1a1a",
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", background: "#1a1a1a" }}>
         <p style={{ color: "#ccc" }}>{error}</p>
       </div>
-    )
+    );
 
   if (!paper)
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontFamily: "sans-serif",
-          background: "#1a1a1a",
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", background: "#1a1a1a" }}>
         <p style={{ color: "#ccc" }}>Loading...</p>
       </div>
-    )
+    );
 
-  const fileUrl = `/api/papers/${paper.id}/view`
-  const downloadUrl = `/api/papers/${paper.id}/download`
-  const ext = paper.originalName?.split(".").pop().toLowerCase()
-  const canEmbed = ["pdf", "png", "jpg", "jpeg"].includes(ext)
-  const canPreviewText = ["txt", "md", "csv", "json", "html", "htm"].includes(ext)
+  const fileUrl = `${BASE_URL}/papers/${paper.id}/view`;
+  const ext = paper.originalName?.split(".").pop().toLowerCase();
+  const canEmbed = ["pdf", "png", "jpg", "jpeg"].includes(ext);
 
   return (
     <div
