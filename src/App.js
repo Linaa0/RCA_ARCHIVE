@@ -9,7 +9,7 @@ import SubjectPage from "./components/SubjectPage";
 import PrivateRoute from "./components/PrivateRoute";
 import FileViewer from "./components/FileViewer";
 import "./App.css";
-import api from '../api';
+import api from './api';
 
 const year1Subjects = [
   "Mathematics",
