@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
+import api from '../api';
 
 function Login() {
   const [isSignup, setIsSignup] = useState(false);
@@ -50,23 +51,13 @@ function Login() {
     }
 
     setTeacherOtpSending(true);
-    try {
-      const res = await fetch("/api/send-teacher-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Failed to send OTP. Use a recognized teacher email.");
-      } else {
-        setSuccess(data.message);
-        setTeacherVerificationSent(true);
-      }
-    } catch (err) {
-      setError("Cannot connect to server. Make sure backend is running.");
-    }
+   try {
+  const { data } = await api.post('/send-teacher-otp', { email });
+  setSuccess(data.message);
+  setTeacherVerificationSent(true);
+} catch (err) {
+  setError(err.response?.data?.error || 'Failed to send OTP. Use a recognized teacher email.');
+  }
     setTeacherOtpSending(false);
   };
 
@@ -100,45 +91,29 @@ function Login() {
     }
 
     try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  const endpoint = isSignup ? '/signup' : '/login';
+  const { data } = await api.post(endpoint, payload);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Something went wrong");
-        setLoading(false);
-        return;
-      }
-
-      if (isSignup) {
-        setSuccess(
-          `Account created successfully! Role assigned: ${data.role}. ` +
-          (data.role === "teacher"
-            ? "Teacher verification completed. You can now log in."
-            : "You have been registered as a student.")
-        );
-        setUsername("");
-        setEmail("");
-        setPassword("");
-        setOtp("");
-        setTeacherVerificationSent(false);
-        setIsSignup(false);
-        setShowPassword(false);
-      } else {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("email", data.email);
-        localStorage.setItem("username", data.username);
-        localStorage.setItem("role", data.role);
-        navigate("/");
-        window.location.reload();
-      }
-    } catch (err) {
-      setError("Cannot connect to server. Make sure backend is running.");
-    }
+  if (isSignup) {
+    setSuccess(`Account created successfully! Role assigned: ${data.role}. ` +
+      (data.role === 'teacher'
+        ? 'Teacher verification completed. You can now log in.'
+        : 'You have been registered as a student.')
+    );
+    setUsername(''); setEmail(''); setPassword('');
+    setOtp(''); setTeacherVerificationSent(false);
+    setIsSignup(false); setShowPassword(false);
+  } else {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('email', data.email);
+    localStorage.setItem('username', data.username);
+    localStorage.setItem('role', data.role);
+    navigate('/');
+    window.location.reload();
+  }
+} catch (err) {
+  setError(err.response?.data?.error || 'Something went wrong');
+}
 
     setLoading(false);
   };
@@ -149,24 +124,13 @@ function Login() {
     setSuccess("");
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Something went wrong");
-      } else {
-        setSuccess("Password reset link sent. Please check your email.");
-        setResetEmail("");
-      }
-    } catch (err) {
-      setError("Cannot connect to server. Make sure backend is running.");
-    }
+   try {
+  await api.post('/forgot-password', { email: resetEmail });
+  setSuccess('Password reset link sent. Please check your email.');
+  setResetEmail('');
+} catch (err) {
+  setError(err.response?.data?.error || 'Something went wrong');
+}
 
     setLoading(false);
   };
