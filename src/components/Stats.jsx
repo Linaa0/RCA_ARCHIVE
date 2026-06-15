@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./Stats.css";
+import api from '../api';
 
 function Stats() {
   const [totalPapers, setTotalPapers] = useState(null);
@@ -7,8 +8,7 @@ function Stats() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/stats");
-        const data = await res.json();
+        const { data } = await api.get('/stats');
         setTotalPapers(data.totalPapers ?? 0);
       } catch (err) {
         console.error("Failed to load stats", err);
