@@ -2,7 +2,7 @@ name: Deployment CI/CD OF  RCA Archive Backend
 
 on:
   push:
-    branches: [prod]
+    branches: [main]
     paths:
       - "rcabackend/**"
       - "scripts/deploy-backend.sh"
