@@ -17,7 +17,7 @@ const {
 } = require("./db");
 
 const app = express();
-const PORT = process.env.PORT || 5077;
+const PORT = process.env.PORT || 5009;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
 if (!process.env.JWT_SECRET) {
@@ -102,6 +102,17 @@ if (process.env.NODE_ENV !== "production") {
 }
 app.use(express.json());
 app.use("/uploads", express.static(uploadDir));
+
+app.get("/api/health", async (_req, res) => {
+  try {
+    const papers = getPapersCollection();
+    await papers.findOne({}, { projection: { _id: 1 } });
+    res.json({ status: "ok", service: "rca-archive-backend" });
+  } catch (err) {
+    console.error("Health check failed:", err);
+    res.status(503).json({ status: "error", message: "Database unavailable" });
+  }
+});
 
 app.get("/uploads/:filename", async (req, res) => {
   const { filename } = req.params;
