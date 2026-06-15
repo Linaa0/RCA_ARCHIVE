@@ -1,0 +1,70 @@
+name: Deployment CI/CD OF  RCA Archive Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rcabackend/**"
+      - "scripts/deploy-backend.sh"
+      - "ecosystem.config.cjs"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: rca-archive-backend-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    env:
+      NPM_CONFIG_FETCH_RETRIES: 5
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: 20000
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
+      NPM_CONFIG_MAXSOCKETS: 3
+      RCA_ARCHIVE_APP_DIR: /opt/apps/rca_archive
+      RCA_ARCHIVE_CONFIG_ENV: /opt/configs/rca_archive/.env
+      RCA_ARCHIVE_PM2_NAME: rca-archive-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Deploy backend to /opt/apps/rca_archive
+        run: chmod +x scripts/deploy-backend.sh && bash scripts/deploy-backend.sh
+
+      - name: Health check
+        run: |
+          ENV_FILE="/opt/configs/rca_archive/.env"
+          PORT=$(grep -E '^PORT=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//')
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+            PORT=5009
+          fi
+
+          URL="http://127.0.0.1:${PORT}/api/health"
+          echo "Checking ${URL} (up to 180s)..."
+
+          for i in $(seq 1 60); do
+            if curl -fsS \
+              --connect-timeout 5 \
+              --max-time 20 \
+              --retry 2 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              "$URL"; then
+              echo ""
+              echo "Health check OK on port ${PORT}"
+              exit 0
+            fi
+            echo "Waiting for API... (${i}/60)"
+            sleep 3
+          done
+
+          echo "Health check failed after 180s"
+          pm2 logs rca-archive-backend --lines 30 --nostream || true
+          exit 1

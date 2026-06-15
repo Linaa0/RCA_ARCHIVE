@@ -17,7 +17,7 @@ const {
 } = require("./db");
 
 const app = express();
-const PORT = process.env.PORT || 5077;
+const PORT = process.env.PORT || 5009;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
 if (!process.env.JWT_SECRET) {
@@ -102,6 +102,17 @@ if (process.env.NODE_ENV !== "production") {
 }
 app.use(express.json());
 app.use("/uploads", express.static(uploadDir));
+
+app.get("/api/health", async (_req, res) => {
+  try {
+    const papers = getPapersCollection();
+    await papers.findOne({}, { projection: { _id: 1 } });
+    res.json({ status: "ok", service: "rca-archive-backend" });
+  } catch (err) {
+    console.error("Health check failed:", err);
+    res.status(503).json({ status: "error", message: "Database unavailable" });
+  }
+});
 
 app.get("/uploads/:filename", async (req, res) => {
   const { filename } = req.params;
@@ -472,9 +483,19 @@ app.get("/api/papers/:id/view", async (req, res) => {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
-    ".docx":
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".gif": "image/gif",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".csv": "text/csv",
+    ".json": "application/json",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".doc": "application/msword",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls": "application/vnd.ms-excel",
   };
   const contentType = mimeTypes[ext] || "application/octet-stream";
 
@@ -483,7 +504,7 @@ app.get("/api/papers/:id/view", async (req, res) => {
     "Content-Disposition",
     `inline; filename="${paper.originalName}"`,
   );
-  return res.sendFile(filePath);
+  return res.sendFile(filePath, { headers: { "Content-Type": contentType } });
 });
 
 app.get("/api/papers/:id/download", async (req, res) => {
