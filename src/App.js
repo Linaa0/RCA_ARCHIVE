@@ -9,6 +9,7 @@ import SubjectPage from "./components/SubjectPage";
 import PrivateRoute from "./components/PrivateRoute";
 import FileViewer from "./components/FileViewer";
 import "./App.css";
+import api from '../api';
 
 const year1Subjects = [
   "Mathematics",
@@ -161,10 +162,7 @@ function App() {
     if (!search.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        "/api/papers?search=" + encodeURIComponent(search),
-      );
-      const data = await res.json();
+      const { data } = await api.get('/papers?search=' + encodeURIComponent(search));
       setResults(data);
     } catch (err) {
       console.error("Search failed", err);
