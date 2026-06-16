@@ -97,9 +97,35 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-if (process.env.NODE_ENV !== "production") {
-  app.use(cors());
-}
+const defaultCorsOrigins = [
+  "https://rca-archive.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3074",
+];
+
+const corsOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins =
+  corsOrigins.length > 0 ? corsOrigins : defaultCorsOrigins;
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use("/uploads", express.static(uploadDir));
 

@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+export const API_ROOT =
+  import.meta.env.VITE_API_BASE_URL || 'https://api.archive.innov.rw';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api.archive.innov.rw',
+  baseURL: `${API_ROOT.replace(/\/$/, '')}/api`,
 });
 
 // Automatically attach token to every request

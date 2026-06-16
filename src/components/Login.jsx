@@ -67,7 +67,7 @@ function Login() {
     setSuccess("");
     setLoading(true);
 
-    const endpoint = isSignup ? "/api/signup" : "/api/login";
+    const endpoint = isSignup ? '/signup' : '/login';
     const payload = { email, password, role, username };
 
     if (isSignup && !username) {
@@ -91,7 +91,6 @@ function Login() {
     }
 
     try {
-  const endpoint = isSignup ? '/signup' : '/login';
   const { data } = await api.post(endpoint, payload);
 
   if (isSignup) {

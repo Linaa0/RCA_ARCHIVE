@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import api from "../api";
+import api, { API_ROOT } from "../api";
 
 export default function FileViewer() {
   const { id } = useParams();
   const [paper, setPaper] = useState(null);
   const [error, setError] = useState(null);
-
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.archive.innov.rw";
 
   useEffect(() => {
     api.get("/papers")
@@ -33,8 +31,8 @@ export default function FileViewer() {
       </div>
     );
 
-  const fileUrl = `${BASE_URL}/papers/${paper.id}/view`;
-  const downloadUrl = `${BASE_URL}/papers/${paper.id}/download`;
+  const fileUrl = `${API_ROOT}/api/papers/${paper.id}/view`;
+  const downloadUrl = `${API_ROOT}/api/papers/${paper.id}/download`;
   const ext = paper.originalName?.split(".").pop().toLowerCase();
   const canEmbed = ["pdf", "png", "jpg", "jpeg"].includes(ext);
 
