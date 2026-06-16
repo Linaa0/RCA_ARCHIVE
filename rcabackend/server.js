@@ -98,6 +98,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 const defaultCorsOrigins = [
+  "https://rcaarchive.innov.rw",
   "https://rca-archive.vercel.app",
   "http://localhost:3000",
   "http://localhost:3074",
@@ -108,8 +109,7 @@ const corsOrigins = (process.env.CORS_ORIGINS || "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const allowedOrigins =
-  corsOrigins.length > 0 ? corsOrigins : defaultCorsOrigins;
+const allowedOrigins = [...new Set([...defaultCorsOrigins, ...corsOrigins])];
 
 const corsOptions = {
   origin(origin, callback) {
