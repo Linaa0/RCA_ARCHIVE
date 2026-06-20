@@ -309,23 +309,6 @@ function requireAuth(req, res, next) {
   }
 }
 
-function requireTeacher(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Not logged in" });
-
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-
-    if (req.user.role !== "teacher") {
-      return res.status(403).json({ error: "Teacher access required" });
-    }
-
-    next();
-  } catch {
-    res.status(401).json({ error: "Invalid or expired token" });
-  }
-}
-
 function hashFile(filePath) {
   const buffer = fs.readFileSync(filePath);
   return crypto.createHash("sha256").update(buffer).digest("hex");
