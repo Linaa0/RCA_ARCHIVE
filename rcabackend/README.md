@@ -68,3 +68,20 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Real password reset email setup
+
+To send real password reset emails instead of development preview links, configure SMTP settings before starting the backend.
+
+1. Copy `.env.example` to `.env` in `rcabackend`.
+2. Set the values below using your SMTP provider:
+   - `SMTP_HOST`
+   - `SMTP_PORT`
+   - `SMTP_SECURE` (`true` or `false`)
+   - `SMTP_USER`
+   - `SMTP_PASS`
+   - `EMAIL_FROM`
+3. Make sure `FRONTEND_BASE_URL` matches the URL where the React app is hosted.
+4. Start the backend with the environment variables loaded.
+
+If SMTP is configured correctly, the backend will send a real reset email and the frontend will no longer show the development preview reset link.

@@ -20,6 +20,7 @@ async function connectToMongo() {
       .collection("papers")
       .createIndex({ hash: 1 }, { unique: true, sparse: true }),
     db.collection("pendingTeacherOtps").createIndex({ email: 1 }),
+    db.collection("pendingPasswordResets").createIndex({ email: 1 }),
   ]);
 
   return db;
@@ -40,9 +41,15 @@ function getOtpCollection() {
   return db.collection("pendingTeacherOtps");
 }
 
+function getPasswordResetCollection() {
+  if (!db) throw new Error("MongoDB is not connected yet");
+  return db.collection("pendingPasswordResets");
+}
+
 module.exports = {
   connectToMongo,
   getUsersCollection,
   getPapersCollection,
   getOtpCollection,
+  getPasswordResetCollection,
 };

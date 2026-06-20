@@ -16,23 +16,27 @@ function Navbar() {
     window.location.reload();
   };
 
+  const initial = username ? username.charAt(0).toUpperCase() : "U";
+
   return (
     <div className="nav">
       <nav className="navbar">
         <div className="nav-left">
           <img src="/rwandacoding.png" alt="Rwanda Coding Logo" className="navbar-logo" />
-          <h1>RCA ARCHIVE+</h1>
+          <span className="nav-brand">RCA ARCHIVE+</span>
         </div>
+
+
+
         <div className="nav-right">
           {token ? (
             <>
               <span className="welcome-text">{username}</span>
+              <div className="user-avatar">{initial}</div>
               <button onClick={handleLogout} className="logout-btn">Logout</button>
             </>
           ) : (
-            <>
-              <Link to="/login" className="login-btn">Login / Sign Up</Link>
-            </>
+            <Link to="/login" className="login-btn">Login / Sign Up</Link>
           )}
         </div>
       </nav>

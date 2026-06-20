@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const defaultApiRoot = window?.location?.hostname === 'localhost'
+  ? 'http://localhost:5009'
+  : 'https://api.archive.innov.rw';
+
 export const API_ROOT =
-  import.meta.env.VITE_API_BASE_URL || 'https://api.archive.innov.rw';
+  process.env.REACT_APP_API_BASE_URL || defaultApiRoot;
 
 const api = axios.create({
   baseURL: `${API_ROOT.replace(/\/$/, '')}/api`,

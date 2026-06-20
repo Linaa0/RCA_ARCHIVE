@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
-import api from '../api';
+import api from "../api";
+import rcaLogo from "../rca.png";
 
 function Login() {
   const [isSignup, setIsSignup] = useState(false);
@@ -18,23 +19,46 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [focusedField, setFocusedField] = useState("");
+  const [ripples, setRipples] = useState([]);
+  const [forgotPasswordPreviewUrl, setForgotPasswordPreviewUrl] = useState("");
   const navigate = useNavigate();
-
-  useEffect(() => {
-    resetForm();
-  }, []);
 
   const resetForm = () => {
     setRole("student");
+    setUsername("");
     setEmail("");
     setPassword("");
     setOtp("");
     setTeacherVerificationSent(false);
     setResetEmail("");
+    setForgotPasswordPreviewUrl("");
     setError("");
     setSuccess("");
     setShowPassword(false);
+    setFocusedField("");
   };
+
+  useEffect(() => {
+    resetForm();
+  }, []);
+
+  const passwordStrength = useMemo(() => {
+    if (!password) return { width: 0, color: "", label: "" };
+
+    let score = 0;
+    if (password.length >= 6) score += 1;
+    if (password.length >= 10) score += 1;
+    if (/[A-Z]/.test(password) && /[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    const index = Math.min(score, 3);
+    return {
+      width: [25, 50, 75, 100][index],
+      color: ["#ef4444", "#f59e0b", "#3b82f6", "#22c55e"][index],
+      label: ["Weak", "Fair", "Good", "Strong"][index],
+    };
+  }, [password]);
 
   const handleSendTeacherOtp = async () => {
     setError("");
@@ -51,237 +75,268 @@ function Login() {
     }
 
     setTeacherOtpSending(true);
-   try {
-  const { data } = await api.post('/send-teacher-otp', { email });
-  setSuccess(data.message);
-  setTeacherVerificationSent(true);
-} catch (err) {
-  setError(err.response?.data?.error || 'Failed to send OTP. Use a recognized teacher email.');
-  }
-    setTeacherOtpSending(false);
+    try {
+      const { data } = await api.post("/send-teacher-otp", { email });
+      setSuccess(data.message);
+      setTeacherVerificationSent(true);
+      if (data.otp) {
+        setOtp(data.otp);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to send OTP. Use a recognized teacher email.");
+    } finally {
+      setTeacherOtpSending(false);
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const addRipple = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const ripple = {
+      id: Date.now(),
+      size,
+      left: event.clientX - rect.left - size / 2,
+      top: event.clientY - rect.top - size / 2,
+    };
+
+    setRipples((items) => [...items, ripple]);
+    setTimeout(() => {
+      setRipples((items) => items.filter((item) => item.id !== ripple.id));
+    }, 520);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError("");
     setSuccess("");
-    setLoading(true);
 
-    const endpoint = isSignup ? '/signup' : '/login';
-    const payload = { email, password, role, username };
-
-    if (isSignup && !username) {
+    if (isSignup && !username.trim()) {
       setError("Please enter the username you want to use in the system.");
-      setLoading(false);
       return;
     }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    const endpoint = isSignup ? "/signup" : "/login";
+    const payload = { email, password, role, username };
 
     if (isSignup && role === "teacher") {
       if (!teacherVerificationSent) {
         setError("Request OTP for your teacher email before signing up.");
-        setLoading(false);
         return;
       }
       if (!otp) {
         setError("Enter the OTP sent to your teacher email.");
-        setLoading(false);
         return;
       }
       payload.otp = otp;
     }
 
+    setLoading(true);
     try {
-  const { data } = await api.post(endpoint, payload);
+      const { data } = await api.post(endpoint, payload);
 
-  if (isSignup) {
-    setSuccess(`Account created successfully! Role assigned: ${data.role}. ` +
-      (data.role === 'teacher'
-        ? 'Teacher verification completed. You can now log in.'
-        : 'You have been registered as a student.')
-    );
-    setUsername(''); setEmail(''); setPassword('');
-    setOtp(''); setTeacherVerificationSent(false);
-    setIsSignup(false); setShowPassword(false);
-  } else {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('email', data.email);
-    localStorage.setItem('username', data.username);
-    localStorage.setItem('role', data.role);
-    navigate('/');
-    window.location.reload();
-  }
-} catch (err) {
-  setError(err.response?.data?.error || 'Something went wrong');
-}
-
-    setLoading(false);
+      if (isSignup) {
+        setSuccess(
+          `Account created successfully! Role assigned: ${data.role}. ` +
+            (data.role === "teacher"
+              ? "Teacher verification completed. You can now log in."
+              : "You have been registered as a student.")
+        );
+        setIsSignup(false);
+        setUsername("");
+        setEmail("");
+        setPassword("");
+        setOtp("");
+        setTeacherVerificationSent(false);
+        setShowPassword(false);
+      } else {
+        setSuccess("Logged in! Redirecting...");
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("email", data.email);
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("role", data.role);
+        setTimeout(() => {
+          navigate("/");
+          window.location.reload();
+        }, 650);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
+  const handleForgotPassword = async (event) => {
+    event.preventDefault();
     setError("");
     setSuccess("");
+    setForgotPasswordPreviewUrl("");
     setLoading(true);
 
-   try {
-  await api.post('/forgot-password', { email: resetEmail });
-  setSuccess('Password reset link sent. Please check your email.');
-  setResetEmail('');
-} catch (err) {
-  setError(err.response?.data?.error || 'Something went wrong');
-}
-
-    setLoading(false);
+    try {
+      const { data } = await api.post("/forgot-password", { email: resetEmail });
+      let message = data.message || "Password reset link sent. Please check your email.";
+      if (data.previewUrl) {
+        setForgotPasswordPreviewUrl(data.previewUrl);
+      }
+      setSuccess(message);
+      setResetEmail("");
+    } catch (err) {
+      setError(err.response?.data?.error || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const EyeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-
-  const EyeOffIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  );
+  const switchMode = () => {
+    setIsSignup((value) => !value);
+    setIsForgotPassword(false);
+    resetForm();
+  };
 
   return (
-    <div className="login-container">
-      <div className="login-branding">
-        <div className="branding-content">
-          <div className="logo-container">
-            <img src="/rwandacoding.png" alt="Rwanda Coding Logo" className="rca-logo" />
-          </div>
-          <h1 className="brand-title">RCA ARCHIVE+</h1>
-          <p className="brand-subtitle">Rwanda Coding Academy</p>
-          <p className="brand-description">
-            Access comprehensive past papers, notes, and study materials for all years
-          </p>
-          <div className="brand-features">
-            <div className="feature">
-              <span className="feature-icon">•</span>
-              <span>Complete Study Materials</span>
-            </div>
-            <div className="feature">
-              <span className="feature-icon">•</span>
-              <span>Past Exam Papers</span>
-            </div>
-            <div className="feature">
-              <span className="feature-icon">•</span>
-              <span>Quality Resources</span>
-            </div>
-          </div>
+    <main className="login-page">
+      <div className="archive-auth-shell">
+        <ParticleCanvas />
+
+        <div className={`auth-toast ${success ? "visible" : ""}`}>
+          <CheckIcon />
+          {success || "Logged in! Redirecting..."}
         </div>
-      </div>
 
-      <div className="login-form-section">
-        <div className="login-box">
+        <BrandPanel />
 
-          {isForgotPassword ? (
-            <>
-              <button className="back-btn" onClick={() => { setIsForgotPassword(false); resetForm(); }}>
-                ← Back to Login
-              </button>
-              <h2 className="form-title">Reset Password</h2>
-              <p className="form-subtitle">Enter your email and we'll send you a reset link</p>
+        <section className="auth-panel" aria-label={isSignup ? "Sign up form" : "Login form"}>
+          <div className="auth-card">
+            {isForgotPassword ? (
+              <>
+                <button className="back-btn" type="button" onClick={() => { setIsForgotPassword(false); resetForm(); }}>
+                  Back to Login
+                </button>
+                <h1 className="form-title">Reset password</h1>
+                <p className="form-subtitle">Enter your email and we will send you a reset link.</p>
 
-              {error && <div className="error-msg">{error}</div>}
-              {success && <div className="success-msg">{success}</div>}
+                <Message error={error} success={success} />
 
-              <form onSubmit={handleForgotPassword} className="login-form">
-                <div className="form-group">
-                  <label>Email Address</label>
-                  <input
+                {forgotPasswordPreviewUrl && (
+                   <div className="preview-link-box" style={{ 
+                     marginTop: "4px", 
+                     marginBottom: "16px", 
+                     padding: "14px", 
+                     background: "rgba(37, 99, 235, 0.08)", 
+                     borderRadius: "8px", 
+                     border: "1px solid rgba(37, 99, 235, 0.22)", 
+                     textAlign: "center" 
+                   }}>
+                     <p style={{ margin: "0 0 10px 0", fontSize: "0.88rem", color: "#1e3a8a", fontWeight: "500", lineHeight: "1.4" }}>
+                       Development Mode: Click below to reset your password immediately:
+                     </p>
+                     <a 
+                       href={forgotPasswordPreviewUrl} 
+                       className="preview-reset-btn" 
+                       style={{ 
+                         display: "inline-block", 
+                         background: "#2563eb", 
+                         color: "#fff", 
+                         padding: "8px 18px", 
+                         borderRadius: "6px", 
+                         textDecoration: "none", 
+                         fontWeight: "600", 
+                         fontSize: "0.85rem",
+                         boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
+                       }}
+                     >
+                       Reset Password Now →
+                     </a>
+                   </div>
+                 )}
+
+                <form className="login-form" onSubmit={handleForgotPassword}>
+                  <Field
+                    id="reset-email"
+                    label="Email address"
                     type="email"
-                    placeholder="Enter your email address"
+                    placeholder="you@example.com"
                     value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
+                    focusedField={focusedField}
+                    icon={<MailIcon />}
+                    onFocus={() => setFocusedField("reset-email")}
+                    onBlur={() => setFocusedField("")}
+                    onChange={(event) => setResetEmail(event.target.value)}
                     required
                   />
-                </div>
-                <button type="submit" className="login-btn" disabled={loading}>
-                  {loading ? "Sending..." : "Send Reset Link"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <h2 className="form-title">
-                {isSignup ? "Create Account" : "Welcome Back"}
-              </h2>
-              <p className="form-subtitle">
-                {isSignup
-                  ? "Sign up to get access to all materials"
-                  : "Log in to your account"}
-              </p>
+                  <SubmitButton loading={loading} onClick={addRipple} ripples={ripples}>
+                    Send Reset Link
+                  </SubmitButton>
+                </form>
+              </>
+            ) : (
+              <>
+                <h1 className="form-title">{isSignup ? "Create account" : "Welcome back"}</h1>
+                <p className="form-subtitle">
+                  {isSignup ? "Sign up to get access to all materials" : "Log in to your account"}
+                </p>
 
-              {error && <div className="error-msg">{error}</div>}
-              {success && <div className="success-msg">{success}</div>}
+                <Message error={error} success={success && !loading ? success : ""} />
 
-              <form onSubmit={handleSubmit} className="login-form">
-                {isSignup && (
-                  <div className="form-group">
-                    <label>Account Type</label>
-                    <div className="role-select-row">
-                      <label className={`role-option ${role === "student" ? "active" : ""}`}>
-                        <input
-                          type="radio"
-                          name="role"
-                          value="student"
-                          checked={role === "student"}
-                          onChange={() => {
-                            setRole("student");
-                            setTeacherVerificationSent(false);
-                            setOtp("");
-                          }}
-                        />
-                        Student
-                      </label>
-                      <label className={`role-option ${role === "teacher" ? "active" : ""}`}>
-                        <input
-                          type="radio"
-                          name="role"
-                          value="teacher"
-                          checked={role === "teacher"}
-                          onChange={() => {
-                            setRole("teacher");
-                            setTeacherVerificationSent(false);
-                            setOtp("");
-                          }}
-                        />
-                        Teacher
-                      </label>
+                <form className="login-form" onSubmit={handleSubmit}>
+                  {isSignup && (
+                    <div className="form-group">
+                      <label className="auth-label">Account type</label>
+                      <div className="role-select-row">
+                        {["student", "teacher"].map((item) => (
+                          <label key={item} className={`role-option ${role === item ? "active" : ""}`}>
+                            <input
+                              type="radio"
+                              name="role"
+                              value={item}
+                              checked={role === item}
+                              onChange={() => {
+                                setRole(item);
+                                setTeacherVerificationSent(false);
+                                setOtp("");
+                              }}
+                            />
+                            {item}
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {isSignup && (
-                  <div className="form-group">
-                    <label>Username</label>
-                    <input
+                  {isSignup && (
+                    <Field
+                      id="username"
+                      label="Username"
                       type="text"
                       placeholder="Enter your display name"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      focusedField={focusedField}
+                      icon={<UserIcon />}
+                      onFocus={() => setFocusedField("username")}
+                      onBlur={() => setFocusedField("")}
+                      onChange={(event) => setUsername(event.target.value)}
                       required
                     />
-                  </div>
-                )}
+                  )}
 
-                <div className="form-group">
-                  <label>Email Address</label>
-                  <input
+                  <Field
+                    id="email"
+                    label="Email address"
                     type="email"
-                    placeholder="Enter your email address"
+                    placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
+                    focusedField={focusedField}
+                    icon={<MailIcon />}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField("")}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
                       if (role === "teacher") {
                         setTeacherVerificationSent(false);
                         setOtp("");
@@ -289,101 +344,398 @@ function Login() {
                     }}
                     required
                   />
-                </div>
 
-                <div className="form-group">
-                  <label>Password</label>
-                  <div className="password-wrapper">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="toggle-password"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                    </button>
+                  <div className="form-group">
+                    <label className={focusedField === "password" ? "auth-label active" : "auth-label"} htmlFor="password">
+                      Password
+                    </label>
+                    <div className="input-shell">
+                      <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onFocus={() => setFocusedField("password")}
+                        onBlur={() => setFocusedField("")}
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                      />
+                      <button
+                        className="toggle-password"
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    </div>
+                    <div className="strength-track">
+                      <span
+                        className="strength-fill"
+                        style={{
+                          width: `${passwordStrength.width}%`,
+                          backgroundColor: passwordStrength.color,
+                        }}
+                      />
+                    </div>
+                    <div className="strength-label" style={{ color: passwordStrength.color }}>
+                      {passwordStrength.label}
+                    </div>
                   </div>
-                </div>
 
-                {isSignup && role === "teacher" && (
-                  <div className={`teacher-otp-block ${teacherVerificationSent ? "open" : "closed"}`}>
-                    <div className="teacher-otp-section">
+                  {isSignup && role === "teacher" && (
+                    <div className="teacher-otp-block open">
                       <button
                         type="button"
-                        className="login-btn"
+                        className="otp-btn"
                         onClick={handleSendTeacherOtp}
                         disabled={loading || teacherOtpSending}
                       >
                         {teacherOtpSending ? "Sending OTP..." : "Request Teacher OTP"}
                       </button>
-                    </div>
 
-                    {teacherVerificationSent && (
-                      <div className="form-group">
-                        <label>Teacher OTP</label>
-                        <input
+                      {teacherVerificationSent && (
+                        <Field
+                          id="teacher-otp"
+                          label="Teacher OTP"
                           type="text"
                           placeholder="Enter OTP from email"
                           value={otp}
-                          onChange={(e) => setOtp(e.target.value)}
+                          focusedField={focusedField}
+                          icon={<KeyIcon />}
+                          onFocus={() => setFocusedField("teacher-otp")}
+                          onBlur={() => setFocusedField("")}
+                          onChange={(event) => setOtp(event.target.value)}
                           required
                         />
+                      )}
+
+                      <div className="form-info-box">
+                        Teacher signups require an OTP sent to your teacher email.
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
 
-                {!isSignup && (
-                  <div className="forgot-password-row">
-                    <button
-                      type="button"
-                      className="forgot-link"
-                      onClick={() => { setIsForgotPassword(true); resetForm(); }}
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                )}
+                  {!isSignup && (
+                    <div className="forgot-password-row">
+                      <button
+                        type="button"
+                        className="forgot-link"
+                        onClick={() => {
+                          setIsForgotPassword(true);
+                          resetForm();
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  )}
 
-                {isSignup && role === "teacher" && (
-                  <div className="form-info-box">
-                    <p>Teacher signups require an OTP sent to your teacher email.</p>
-                  </div>
-                )}
+                  <SubmitButton loading={loading} onClick={addRipple} ripples={ripples}>
+                    {isSignup ? "Create Account" : "Log In"}
+                  </SubmitButton>
+                </form>
 
-                <button type="submit" className="login-btn" disabled={loading}>
-                  {loading ? "Please wait..." : isSignup ? "Create Account" : "Log In"}
-                </button>
-              </form>
+                <div className="auth-divider">
+                  <span />
+                  <small>or</small>
+                  <span />
+                </div>
 
-              <div className="form-footer">
-                <p>
+                <div className="form-footer">
                   {isSignup ? "Already have an account? " : "Don't have an account? "}
-                  <button
-                    className="toggle-link"
-                    onClick={() => {
-                      setIsSignup(!isSignup);
-                      resetForm();
-                    }}
-                  >
-                    {isSignup ? "Log In" : "Sign Up"}
+                  <button type="button" className="toggle-link" onClick={switchMode}>
+                    {isSignup ? "Log in" : "Sign up"}
                   </button>
-                </p>
-              </div>
-            </>
-          )}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
 
-        </div>
+function ParticleCanvas() {
+  const canvasRef = useRef(null);
+  const shellRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const shell = shellRef.current?.parentElement;
+    if (!canvas || !shell) return undefined;
+
+    const ctx = canvas.getContext("2d");
+    let width = 0;
+    let height = 0;
+    let animationId = 0;
+    let points = [];
+
+    const resize = () => {
+      width = canvas.width = shell.offsetWidth;
+      height = canvas.height = shell.offsetHeight;
+      points = Array.from({ length: 50 }, () => ({
+        x: Math.random() * width * 0.45,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.28,
+        vy: (Math.random() - 0.5) * 0.28,
+        r: Math.random() * 1.4 + 0.4,
+      }));
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      points.forEach((point) => {
+        point.x += point.vx;
+        point.y += point.vy;
+
+        if (point.x < 0 || point.x > width * 0.45) point.vx *= -1;
+        if (point.y < 0 || point.y > height) point.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, point.r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(96,165,250,.3)";
+        ctx.fill();
+      });
+
+      points.forEach((a, index) => {
+        points.slice(index + 1).forEach((b) => {
+          const distance = Math.hypot(a.x - b.x, a.y - b.y);
+          if (distance < 75) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = `rgba(96,165,250,${0.1 * (1 - distance / 75)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+      });
+
+      animationId = requestAnimationFrame(draw);
+    };
+
+    resize();
+    draw();
+    window.addEventListener("resize", resize);
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
+  return (
+    <span ref={shellRef} className="particle-anchor" aria-hidden="true">
+      <canvas ref={canvasRef} className="particle-canvas" />
+    </span>
+  );
+}
+
+function BrandPanel() {
+  return (
+    <section className="brand-panel" aria-label="RCA Archive">
+      <div className="brand-logo">
+        <img src={rcaLogo} alt="RCA Logo" />
+      </div>
+
+      <div className="brand-name">RCA ARCHIVE+</div>
+      <div className="brand-school">RWANDA CODING ACADEMY</div>
+      <TypingText />
+
+      <div className="feature-list">
+        <Feature icon={<DocumentIcon />} text="Complete study materials" />
+        <Feature icon={<ClockIcon />} text="Past exam papers" />
+        <Feature icon={<StarIcon />} text="Quality resources" />
+      </div>
+
+      <div className="stat-row">
+        <StatCard value="1200k+" label="Students" />
+        <StatCard value="340+" label="Papers" />
+        <StatCard value="24+" label="Subjects" />
+      </div>
+    </section>
+  );
+}
+
+function TypingText() {
+  const phrases = useMemo(
+    () => ["Access past papers & study materials", "Built for RCA students", "Your archive, anytime, anywhere"],
+    []
+  );
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const current = phrases[phraseIndex];
+    let delay = deleting ? 38 : 58;
+
+    if (!deleting && charIndex === current.length) {
+      delay = 1800;
+    }
+
+    const timeout = setTimeout(() => {
+      if (!deleting && charIndex === current.length) {
+        setDeleting(true);
+        return;
+      }
+
+      if (deleting && charIndex === 0) {
+        setDeleting(false);
+        setPhraseIndex((value) => (value + 1) % phrases.length);
+        return;
+      }
+
+      setCharIndex((value) => value + (deleting ? -1 : 1));
+    }, delay);
+
+    return () => clearTimeout(timeout);
+  }, [charIndex, deleting, phraseIndex, phrases]);
+
+  return <div className="typing-text">{phrases[phraseIndex].slice(0, charIndex)}</div>;
+}
+
+function Field({ id, label, icon, focusedField, ...props }) {
+  return (
+    <div className="form-group">
+      <label className={focusedField === id ? "auth-label active" : "auth-label"} htmlFor={id}>
+        {label}
+      </label>
+      <div className="input-shell">
+        <input id={id} autoComplete="off" {...props} />
+        <span className="input-icon">{icon}</span>
       </div>
     </div>
+  );
+}
+
+function SubmitButton({ children, loading, onClick, ripples }) {
+  return (
+    <button className="login-btn" type="submit" disabled={loading} onClick={onClick}>
+      <span className={loading ? "button-text hidden" : "button-text"}>{children}</span>
+      {loading && <span className="button-spinner" />}
+      {ripples.map((ripple) => (
+        <span
+          key={ripple.id}
+          className="ripple-el"
+          style={{
+            width: ripple.size,
+            height: ripple.size,
+            left: ripple.left,
+            top: ripple.top,
+          }}
+        />
+      ))}
+    </button>
+  );
+}
+
+function Message({ error, success }) {
+  if (error) return <div className="error-msg">{error}</div>;
+  if (success) return <div className="success-msg">{success}</div>;
+  return null;
+}
+
+function Feature({ icon, text }) {
+  return (
+    <div className="feature">
+      <span>{icon}</span>
+      {text}
+    </div>
+  );
+}
+
+function StatCard({ value, label }) {
+  return (
+    <div className="stat-card">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M2 7l3.5 3.5L11 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22,6 12,13 2,6" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M20 21a8 8 0 0 0-16 0" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function KeyIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="7.5" cy="15.5" r="5.5" />
+      <path d="M12 12l9-9" />
+      <path d="M16 7l2 2" />
+      <path d="M19 4l2 2" />
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+function DocumentIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
   );
 }
 

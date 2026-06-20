@@ -38,6 +38,7 @@ function SubjectPage() {
     setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchPapers(); }, [subject, year, typeFilter]);
 
   const handleUpload = async (e) => {
@@ -54,7 +55,7 @@ function SubjectPage() {
     formData.append("type", type);
 
      try {
-      const { data } = await api.post("/upload", formData);
+      await api.post("/upload", formData);
 
       // api.js interceptor handles Authorization automatically
       // Check for duplicate via status — axios throws on non-2xx,
@@ -233,24 +234,14 @@ function SubjectPage() {
                   </div>
                 </div>
                 <div className="paper-actions">
-                  {(() => {
-                    const baseUrl = paper.viewUrl || `/api/papers/${paper.id}/view`;
-                    const ext = paper.originalName?.split(".").pop().toLowerCase();
-                    const viewableInBrowser = ["pdf", "png", "jpg", "jpeg"].includes(ext);
-                    const viewUrl = viewableInBrowser
-                      ? baseUrl
-                      : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + baseUrl)}&embedded=false`;
-                    return (
-                      <a
-                        href={viewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="view-btn"
-                      >
-                        View
-                      </a>
-                    );
-                  })()}
+                  <a
+                    href={`/view/${paper.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="view-btn"
+                  >
+                    View
+                  </a>
                   <a
                     href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
                     className="download-btn"

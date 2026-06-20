@@ -1,4 +1,5 @@
 .subject-page {
+  flex: 1;
   margin: 0;
   background: #f8f9fa;
   padding: 20px 30px;
