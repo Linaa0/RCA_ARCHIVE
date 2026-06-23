@@ -38,9 +38,31 @@ function generateOtp() {
 }
 
 function isRealSmtpConfigured() {
-  return Boolean(
-    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
-  );
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    return false;
+  }
+
+  // Treat typical placeholders and examples as unconfigured
+  const lowerHost = host.toLowerCase();
+  const lowerUser = user.toLowerCase();
+  const lowerPass = pass.toLowerCase();
+
+  if (
+    lowerHost.includes("example.com") ||
+    lowerPass.includes("your-sendgrid-api-key") ||
+    lowerPass.includes("your-smtp-password") ||
+    lowerPass.includes("your-app-password") ||
+    lowerUser.includes("your-smtp-user") ||
+    lowerUser.includes("your-email@gmail.com")
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 async function createMailTransporter() {
@@ -170,7 +192,11 @@ const storage = multer.diskStorage({
     cb(null, unique + path.extname(file.originalname));
   },
 });
-const upload = multer({ storage });
+
+const upload = multer({
+  storage,
+  fileFilter: (_req, _file, cb) => cb(null, true),
+});
 
 const defaultCorsOrigins = [
   "https://rcaarchive.innov.rw",
@@ -306,12 +332,29 @@ if (process.env.NODE_ENV === "production") {
 }
 
 function requireAuth(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Not logged in" });
+  const authHeader = req.headers.authorization;
+  const tokenMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
+  const token = tokenMatch?.[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "Not logged in" });
+  }
+
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (
+      !payload ||
+      typeof payload.id !== "string" ||
+      typeof payload.email !== "string" ||
+      typeof payload.username !== "string" ||
+      typeof payload.role !== "string"
+    ) {
+      throw new Error("Invalid token payload");
+    }
+    req.user = payload;
     next();
-  } catch {
+  } catch (err) {
+    console.error("Auth failed:", err.message || err);
     res.status(401).json({ error: "Invalid or expired token" });
   }
 }
@@ -507,7 +550,11 @@ app.post("/api/forgot-password", async (req, res) => {
       previewUrl,
     });
   } catch (err) {
-    console.error("Password reset email failed:", err);
+    console.error("❌ Password reset email failed:", err);
+    console.error(
+      "👉 Troubleshooting: If you intended to send real emails, verify your SMTP credentials in `rcabackend/.env`. " +
+        "If you are developing locally, you can clear the placeholder values (SMTP_HOST, SMTP_USER, SMTP_PASS) to enable the instant development fallback reset link.",
+    );
     if (!isRealSmtpConfigured()) {
       const resetUrl = `${getFrontendBaseUrl(req)}/reset-password?token=${encodeURIComponent(token)}`;
       return res.json({
@@ -517,7 +564,8 @@ app.post("/api/forgot-password", async (req, res) => {
       });
     }
     return res.status(500).json({
-      error: "Failed to send password reset email. Please try again later.",
+      error:
+        "Failed to send password reset email. Please try again later. Verify server SMTP logs for details.",
     });
   }
 });
@@ -685,6 +733,10 @@ app.post("/api/signup", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
   const user = await findUserByEmail(email);
   if (!user) {
     return res.status(400).json({ error: "User not found" });
@@ -813,6 +865,14 @@ app.get("/api/papers/:id/view", async (req, res) => {
     ".xlsx":
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ".xls": "application/vnd.ms-excel",
+    ".zip": "application/zip",
+    ".rar": "application/vnd.rar",
+    ".7z": "application/x-7z-compressed",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".mp4": "video/mp4",
+    ".mov": "video/quicktime",
+    ".avi": "video/x-msvideo",
   };
   const contentType = mimeTypes[ext] || "application/octet-stream";
 
