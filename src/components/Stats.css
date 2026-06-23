@@ -3,26 +3,26 @@
   justify-content: center;
   gap: 20px;
   padding: 36px 40px;
-  background: #fdfaf5;
+  background: transparent;
   flex-wrap: wrap;
 }
 
 .stat-box {
-  background: #ffffff;
-  border: 1px solid #f0e6d3;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 22px 32px;
   display: flex;
   align-items: center;
   gap: 16px;
   min-width: 200px;
-  box-shadow: 0 2px 12px rgba(186, 141, 64, 0.05);
+  box-shadow: var(--shadow);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stat-box:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(186, 141, 64, 0.09);
+  box-shadow: var(--shadow-hover);
 }
 
 .stat-icon {
@@ -36,10 +36,7 @@
   flex-shrink: 0;
 }
 
-.stat-icon.blue   { background: #f0e6d3; color: #9c6c3c; }
-.stat-icon.green  { background: #f0e6d3; color: #9c6c3c; }
-.stat-icon.purple { background: #f0e6d3; color: #9c6c3c; }
-.stat-icon.orange { background: #f0e6d3; color: #9c6c3c; }
+.stat-icon { background: #1e3a8a; color: #60a5fa; }
 .stat-text {
   display: flex;
   flex-direction: column;
@@ -51,23 +48,19 @@
   font-weight: 800;
   line-height: 1;
   margin-bottom: 4px;
+  color: var(--text-primary);
 }
-
-.stat-number.blue   { color: #b68d40; }
-.stat-number.green  { color: #b68d40; }
-.stat-number.purple { color: #b68d40; }
-.stat-number.orange { color: #b68d40; }
 
 .stat-label {
   font-family: 'Quicksand', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #4a4139;
+  color: var(--text-secondary);
   margin-bottom: 2px;
 }
 
 .stat-sublabel {
   font-family: 'Quicksand', sans-serif;
   font-size: 0.75rem;
-  color: #82776d;
+  color: var(--text-muted);
 }

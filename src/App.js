@@ -12,7 +12,7 @@ import FileViewer from "./components/FileViewer";
 import Footer from "./components/Footer";
 import ReportIssue from "./components/ReportIssue";
 import "./App.css";
-import api from './api';
+import api from "./api";
 
 const year1Subjects = [
   "Mathematics",
@@ -58,14 +58,18 @@ const year3Subjects = [
   "Short Courses",
 ];
 
-const allSubjectsByYear = { 1: year1Subjects, 2: year2Subjects, 3: year3Subjects };
+const allSubjectsByYear = {
+  1: year1Subjects,
+  2: year2Subjects,
+  3: year3Subjects,
+};
 
 // File type → coloured label
 const typeColors = {
-  pdf:  { bg: "#2563eb", label: "PDF" },
+  pdf: { bg: "#2563eb", label: "PDF" },
   docx: { bg: "#2563eb", label: "DOCX" },
   pptx: { bg: "#f97316", label: "PPTX" },
-  doc:  { bg: "#2563eb", label: "DOC" },
+  doc: { bg: "#2563eb", label: "DOC" },
 };
 
 function getTypeInfo(filename = "") {
@@ -87,8 +91,11 @@ function RecentlyAdded() {
   const [papers, setPapers] = useState([]);
 
   useEffect(() => {
-    api.get("/papers?sort=recent&limit=5")
-      .then(({ data }) => setPapers(Array.isArray(data) ? data.slice(0, 5) : []))
+    api
+      .get("/papers?sort=recent&limit=5")
+      .then(({ data }) =>
+        setPapers(Array.isArray(data) ? data.slice(0, 5) : []),
+      )
       .catch(() => setPapers([]));
   }, []);
 
@@ -99,15 +106,44 @@ function RecentlyAdded() {
       <div className="recently-added-inner">
         <div className="recently-added-header">
           <div>
-            <div className="recently-added-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div
+              className="recently-added-title-row"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "4px",
+              }}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
               </svg>
               <h2 className="recently-added-title">Recently Added</h2>
             </div>
-            <p className="recently-added-sub">Latest materials uploaded by RCA</p>
+            <p className="recently-added-sub">
+              Latest materials uploaded by RCA
+            </p>
           </div>
-          <a href="#subjects" className="view-all-link" style={{ color: "#2563eb", textDecoration: "none", fontSize: "0.85rem", fontWeight: 500, fontFamily: "Inter, sans-serif" }}>
+          <a
+            href="#subjects"
+            className="view-all-link"
+            style={{
+              color: "#2563eb",
+              textDecoration: "none",
+              fontSize: "0.85rem",
+              fontWeight: 500,
+              fontFamily: "Inter, sans-serif",
+            }}
+          >
             View all →
           </a>
         </div>
@@ -116,15 +152,24 @@ function RecentlyAdded() {
           {papers.map((paper) => {
             const typeInfo = getTypeInfo(paper.filename || paper.title || "");
             return (
-              <a key={paper.id} href={`/view/${paper.id}`} className="recent-card">
-                <div className="recent-card-icon" style={{ background: typeInfo.bg }}>
+              <a
+                key={paper.id}
+                href={`/view/${paper.id}`}
+                className="recent-card"
+              >
+                <div
+                  className="recent-card-icon"
+                  style={{ background: typeInfo.bg }}
+                >
                   {typeInfo.label}
                 </div>
                 <div className="recent-card-title">{paper.title}</div>
                 <div className="recent-card-meta">
                   {typeInfo.label} · Year {paper.year}
                 </div>
-                <div className="recent-card-age">{timeAgo(paper.uploadedAt)}</div>
+                <div className="recent-card-age">
+                  {timeAgo(paper.uploadedAt)}
+                </div>
               </a>
             );
           })}
@@ -154,7 +199,12 @@ function PaperCard({ paper }) {
         <span className="paper-meta">{meta}</span>
       </div>
       <div className="paper-actions">
-        <a href={`/view/${paper.id}`} target="_blank" rel="noopener noreferrer" className="view-btn">
+        <a
+          href={`/view/${paper.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="view-btn"
+        >
           View
         </a>
         <a href={`/api/papers/${paper.id}/download`} className="download-btn">
@@ -165,24 +215,36 @@ function PaperCard({ paper }) {
   );
 }
 
-function HomeContent({ 
-  search, 
-  setSearch, 
-  onSearch, 
-  results, 
-  loading, 
-  clearSearch, 
-  activeYear, 
-  setActiveYear 
+function HomeContent({
+  search,
+  setSearch,
+  onSearch,
+  results,
+  loading,
+  clearSearch,
+  activeYear,
+  setActiveYear,
+  isDarkMode,
+  toggleDarkMode,
 }) {
   return (
     <div className="page-layout-with-sidebar" id="years">
-      <Sidebar activeYear={activeYear} onYearChange={setActiveYear} allYears={[1, 2, 3]} />
-      
+      <Sidebar
+        activeYear={activeYear}
+        onYearChange={setActiveYear}
+        allYears={[1, 2, 3]}
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+      />
+
       <div className="main-content-panel">
         {results !== null ? (
           <>
-            <SearchBar search={search} setSearch={setSearch} onSearch={onSearch} />
+            <SearchBar
+              search={search}
+              setSearch={setSearch}
+              onSearch={onSearch}
+            />
             <div className="search-results-section">
               <div className="search-results-header">
                 <h3>
@@ -208,7 +270,11 @@ function HomeContent({
         ) : (
           <>
             <div className="home-hero">
-              <SearchBar search={search} setSearch={setSearch} onSearch={onSearch} />
+              <SearchBar
+                search={search}
+                setSearch={setSearch}
+                onSearch={onSearch}
+              />
               <Stats />
             </div>
 
@@ -233,8 +299,24 @@ function App() {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeYear, setActiveYear] = useState(2);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Get saved mode from localStorage, default to dark
+    const saved = localStorage.getItem("darkMode");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Apply dark/light mode class to body
+  useEffect(() => {
+    document.body.classList.toggle("light-mode", !isDarkMode);
+    // Save to localStorage
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -268,7 +350,9 @@ function App() {
     if (!search.trim()) return;
     setLoading(true);
     try {
-      const { data } = await api.get('/papers?search=' + encodeURIComponent(search));
+      const { data } = await api.get(
+        "/papers?search=" + encodeURIComponent(search),
+      );
       setResults(data);
     } catch (err) {
       console.error("Search failed", err);
@@ -306,6 +390,8 @@ function App() {
                 clearSearch={clearSearch}
                 activeYear={activeYear}
                 setActiveYear={setActiveYear}
+                isDarkMode={isDarkMode}
+                toggleDarkMode={toggleDarkMode}
               />
             </PrivateRoute>
           }
@@ -315,7 +401,13 @@ function App() {
           element={
             <PrivateRoute>
               <div className="page-layout-with-sidebar">
-                <Sidebar activeYear={activeYear} onYearChange={setActiveYear} allYears={[1, 2, 3]} />
+                <Sidebar
+                  activeYear={activeYear}
+                  onYearChange={setActiveYear}
+                  allYears={[1, 2, 3]}
+                  isDarkMode={isDarkMode}
+                  toggleDarkMode={toggleDarkMode}
+                />
                 <div className="main-content-panel">
                   <SubjectPage />
                   <Footer />
@@ -330,7 +422,13 @@ function App() {
           element={
             <PrivateRoute>
               <div className="page-layout-with-sidebar">
-                <Sidebar activeYear={activeYear} onYearChange={setActiveYear} allYears={[1, 2, 3]} />
+                <Sidebar
+                  activeYear={activeYear}
+                  onYearChange={setActiveYear}
+                  allYears={[1, 2, 3]}
+                  isDarkMode={isDarkMode}
+                  toggleDarkMode={toggleDarkMode}
+                />
                 <div className="main-content-panel">
                   <ReportIssue />
                   <Footer />

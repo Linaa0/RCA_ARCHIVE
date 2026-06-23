@@ -12,13 +12,16 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [teacherVerificationSent, setTeacherVerificationSent] = useState(false);
-  const [teacherOtpSending, setTeacherOtpSending] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [resetOtp, setResetOtp] = useState("");
+  const [resetOtpSent, setResetOtpSent] = useState(false);
+  const [resetOtpSending, setResetOtpSending] = useState(false);
   const [focusedField, setFocusedField] = useState("");
   const [ripples, setRipples] = useState([]);
   const [forgotPasswordPreviewUrl, setForgotPasswordPreviewUrl] = useState("");
@@ -30,8 +33,10 @@ function Login() {
     setEmail("");
     setPassword("");
     setOtp("");
-    setTeacherVerificationSent(false);
+    setOtpSent(false);
     setResetEmail("");
+    setResetOtp("");
+    setResetOtpSent(false);
     setForgotPasswordPreviewUrl("");
     setError("");
     setSuccess("");
@@ -60,32 +65,29 @@ function Login() {
     };
   }, [password]);
 
-  const handleSendTeacherOtp = async () => {
+  const handleSendOtp = async (operation) => {
     setError("");
     setSuccess("");
 
-    if (role !== "teacher") {
-      setError("Select Teacher before requesting an OTP.");
+    const targetEmail = operation === "reset-password" ? resetEmail : email;
+    
+    if (!targetEmail) {
+      setError(`Enter your email before requesting an OTP.`);
       return;
     }
 
-    if (!email) {
-      setError("Enter your teacher email before requesting an OTP.");
-      return;
-    }
-
-    setTeacherOtpSending(true);
+    const sendingState = operation === "reset-password" ? setResetOtpSending : setOtpSending;
+    const sentState = operation === "reset-password" ? setResetOtpSent : setOtpSent;
+    
+    sendingState(true);
     try {
-      const { data } = await api.post("/send-teacher-otp", { email });
+      const { data } = await api.post("/send-otp", { email: targetEmail, operation });
       setSuccess(data.message);
-      setTeacherVerificationSent(true);
-      if (data.otp) {
-        setOtp(data.otp);
-      }
+      sentState(true);
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to send OTP. Use a recognized teacher email.");
+      setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
     } finally {
-      setTeacherOtpSending(false);
+      sendingState(false);
     }
   };
 
@@ -120,20 +122,23 @@ function Login() {
       return;
     }
 
-    const endpoint = isSignup ? "/signup" : "/login";
-    const payload = { email, password, role, username };
-
-    if (isSignup && role === "teacher") {
-      if (!teacherVerificationSent) {
-        setError("Request OTP for your teacher email before signing up.");
+    // Only require OTP for signup
+    if (isSignup) {
+      if (!otpSent) {
+        setError(`Request OTP for your email before proceeding.`);
         return;
       }
+      
       if (!otp) {
-        setError("Enter the OTP sent to your teacher email.");
+        setError("Enter the OTP sent to your email.");
         return;
       }
-      payload.otp = otp;
     }
+
+    const endpoint = isSignup ? "/signup" : "/login";
+    const payload = isSignup 
+      ? { email, password, role, username, otp }
+      : { email, password };
 
     setLoading(true);
     try {
@@ -141,17 +146,14 @@ function Login() {
 
       if (isSignup) {
         setSuccess(
-          `Account created successfully! Role assigned: ${data.role}. ` +
-            (data.role === "teacher"
-              ? "Teacher verification completed. You can now log in."
-              : "You have been registered as a student.")
+          `Account created successfully! Role assigned: ${data.role}. You can now log in.`
         );
         setIsSignup(false);
         setUsername("");
         setEmail("");
         setPassword("");
         setOtp("");
-        setTeacherVerificationSent(false);
+        setOtpSent(false);
         setShowPassword(false);
       } else {
         setSuccess("Logged in! Redirecting...");
@@ -175,17 +177,39 @@ function Login() {
     event.preventDefault();
     setError("");
     setSuccess("");
-    setForgotPasswordPreviewUrl("");
+    
+    if (!resetOtpSent) {
+      setError("Request OTP first before setting new password.");
+      return;
+    }
+    
+    if (!resetOtp) {
+      setError("Enter the OTP sent to your email.");
+      return;
+    }
+    
+    if (!password) {
+      setError("Enter your new password.");
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      const { data } = await api.post("/forgot-password", { email: resetEmail });
-      let message = data.message || "Password reset link sent. Please check your email.";
-      if (data.previewUrl) {
-        setForgotPasswordPreviewUrl(data.previewUrl);
-      }
-      setSuccess(message);
+      const { data } = await api.post("/reset-password", { 
+        email: resetEmail, 
+        otp: resetOtp, 
+        newPassword: password 
+      });
+      setSuccess(data.message || "Password reset successfully! You can now log in.");
       setResetEmail("");
+      setResetOtp("");
+      setResetOtpSent(false);
+      setPassword("");
+      setTimeout(() => {
+        setIsForgotPassword(false);
+        resetForm();
+      }, 2000);
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
     } finally {
@@ -219,42 +243,9 @@ function Login() {
                   Back to Login
                 </button>
                 <h1 className="form-title">Reset password</h1>
-                <p className="form-subtitle">Enter your email and we will send you a reset link.</p>
+                <p className="form-subtitle">Enter your email, verify with OTP, and set a new password.</p>
 
                 <Message error={error} success={success} />
-
-                {forgotPasswordPreviewUrl && (
-                   <div className="preview-link-box" style={{ 
-                     marginTop: "4px", 
-                     marginBottom: "16px", 
-                     padding: "14px", 
-                     background: "rgba(37, 99, 235, 0.08)", 
-                     borderRadius: "8px", 
-                     border: "1px solid rgba(37, 99, 235, 0.22)", 
-                     textAlign: "center" 
-                   }}>
-                     <p style={{ margin: "0 0 10px 0", fontSize: "0.88rem", color: "#1e3a8a", fontWeight: "500", lineHeight: "1.4" }}>
-                       Development Mode: Click below to reset your password immediately:
-                     </p>
-                     <a 
-                       href={forgotPasswordPreviewUrl} 
-                       className="preview-reset-btn" 
-                       style={{ 
-                         display: "inline-block", 
-                         background: "#2563eb", 
-                         color: "#fff", 
-                         padding: "8px 18px", 
-                         borderRadius: "6px", 
-                         textDecoration: "none", 
-                         fontWeight: "600", 
-                         fontSize: "0.85rem",
-                         boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
-                       }}
-                     >
-                       Reset Password Now →
-                     </a>
-                   </div>
-                 )}
 
                 <form className="login-form" onSubmit={handleForgotPassword}>
                   <Field
@@ -267,12 +258,69 @@ function Login() {
                     icon={<MailIcon />}
                     onFocus={() => setFocusedField("reset-email")}
                     onBlur={() => setFocusedField("")}
-                    onChange={(event) => setResetEmail(event.target.value)}
+                    onChange={(event) => {
+                      setResetEmail(event.target.value);
+                      setResetOtpSent(false);
+                      setResetOtp("");
+                    }}
                     required
                   />
-                  <SubmitButton loading={loading} onClick={addRipple} ripples={ripples}>
-                    Send Reset Link
-                  </SubmitButton>
+                  
+                  {!resetOtpSent ? (
+                    <button
+                      type="button"
+                      className="otp-btn"
+                      onClick={() => handleSendOtp("reset-password")}
+                      disabled={loading || resetOtpSending}
+                      style={{ marginBottom: "16px" }}
+                    >
+                      {resetOtpSending ? "Sending OTP..." : "Send OTP"}
+                    </button>
+                  ) : (
+                    <>
+                      <Field
+                        id="reset-otp"
+                        label="OTP Code"
+                        type="text"
+                        placeholder="Enter OTP from email"
+                        value={resetOtp}
+                        focusedField={focusedField}
+                        icon={<KeyIcon />}
+                        onFocus={() => setFocusedField("reset-otp")}
+                        onBlur={() => setFocusedField("")}
+                        onChange={(event) => setResetOtp(event.target.value)}
+                        required
+                      />
+                      <div className="form-group">
+                        <label className={focusedField === "reset-password" ? "auth-label active" : "auth-label"} htmlFor="reset-password">
+                          New Password
+                        </label>
+                        <div className="input-shell">
+                          <input
+                            id="reset-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Enter new password"
+                            value={password}
+                            onFocus={() => setFocusedField("reset-password")}
+                            onBlur={() => setFocusedField("")}
+                            onChange={(event) => setPassword(event.target.value)}
+                            required
+                          />
+                          <button
+                            className="toggle-password"
+                            type="button"
+                            onClick={() => setShowPassword((value) => !value)}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                          >
+                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                          </button>
+                        </div>
+                      </div>
+                      <SubmitButton loading={loading} onClick={addRipple} ripples={ripples}>
+                        Reset Password
+                      </SubmitButton>
+                    </>
+                  )}
                 </form>
               </>
             ) : (
@@ -298,7 +346,7 @@ function Login() {
                               checked={role === item}
                               onChange={() => {
                                 setRole(item);
-                                setTeacherVerificationSent(false);
+                                setOtpSent(false);
                                 setOtp("");
                               }}
                             />
@@ -337,10 +385,8 @@ function Login() {
                     onBlur={() => setFocusedField("")}
                     onChange={(event) => {
                       setEmail(event.target.value);
-                      if (role === "teacher") {
-                        setTeacherVerificationSent(false);
-                        setOtp("");
-                      }
+                      setOtpSent(false);
+                      setOtp("");
                     }}
                     required
                   />
@@ -369,41 +415,45 @@ function Login() {
                         {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                       </button>
                     </div>
-                    <div className="strength-track">
-                      <span
-                        className="strength-fill"
-                        style={{
-                          width: `${passwordStrength.width}%`,
-                          backgroundColor: passwordStrength.color,
-                        }}
-                      />
-                    </div>
-                    <div className="strength-label" style={{ color: passwordStrength.color }}>
-                      {passwordStrength.label}
-                    </div>
+                    {isSignup && (
+                      <>
+                        <div className="strength-track">
+                          <span
+                            className="strength-fill"
+                            style={{
+                              width: `${passwordStrength.width}%`,
+                              backgroundColor: passwordStrength.color,
+                            }}
+                          />
+                        </div>
+                        <div className="strength-label" style={{ color: passwordStrength.color }}>
+                          {passwordStrength.label}
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  {isSignup && role === "teacher" && (
+                  {isSignup && (
                     <div className="teacher-otp-block open">
-                      <button
-                        type="button"
-                        className="otp-btn"
-                        onClick={handleSendTeacherOtp}
-                        disabled={loading || teacherOtpSending}
-                      >
-                        {teacherOtpSending ? "Sending OTP..." : "Request Teacher OTP"}
-                      </button>
-
-                      {teacherVerificationSent && (
+                      {!otpSent ? (
+                        <button
+                          type="button"
+                          className="otp-btn"
+                          onClick={() => handleSendOtp("signup")}
+                          disabled={loading || otpSending}
+                        >
+                          {otpSending ? "Sending OTP..." : "Request OTP"}
+                        </button>
+                      ) : (
                         <Field
-                          id="teacher-otp"
-                          label="Teacher OTP"
+                          id="otp"
+                          label="OTP Code"
                           type="text"
                           placeholder="Enter OTP from email"
                           value={otp}
                           focusedField={focusedField}
                           icon={<KeyIcon />}
-                          onFocus={() => setFocusedField("teacher-otp")}
+                          onFocus={() => setFocusedField("otp")}
                           onBlur={() => setFocusedField("")}
                           onChange={(event) => setOtp(event.target.value)}
                           required
@@ -411,7 +461,7 @@ function Login() {
                       )}
 
                       <div className="form-info-box">
-                        Teacher signups require an OTP sent to your teacher email.
+                        All signups require OTP verification via email for security.
                       </div>
                     </div>
                   )}
@@ -552,8 +602,8 @@ function BrandPanel() {
       </div>
 
       <div className="stat-row">
-        <StatCard value="1200k+" label="Students" />
-        <StatCard value="340+" label="Papers" />
+        <StatCard value="200+" label="Students" />
+        <StatCard value="300+" label="Papers" />
         <StatCard value="24+" label="Subjects" />
       </div>
     </section>

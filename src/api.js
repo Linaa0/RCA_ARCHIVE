@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const defaultApiRoot = window?.location?.hostname === 'localhost'
-  ? 'http://localhost:5009'
+  ? 'http://localhost:5077'
   : 'https://api.archive.innov.rw';
 
 export const API_ROOT =

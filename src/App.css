@@ -6,12 +6,6 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #fdfaf5;
-  color: #2d3436;
-}
-
 .app-container {
   display: flex;
   flex-direction: column;
@@ -41,45 +35,45 @@ body {
   align-items: center;
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid #f0e6d3;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .search-results-header h3 {
   margin: 0;
   font-size: 1rem;
-  color: #2d3436;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .clear-search-btn {
   background: none;
-  border: 1.5px solid #d8c7a8;
+  border: 1.5px solid var(--border-color);
   border-radius: 8px;
   padding: 6px 16px;
   cursor: pointer;
   font-size: 13px;
-  color: #82776d;
+  color: var(--text-muted);
   font-family: 'Quicksand', sans-serif;
   transition: all 0.2s;
 }
 
 .clear-search-btn:hover {
-  background: #f8f0e3;
-  border-color: #82776d;
-  color: #2d3436;
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .no-results {
   text-align: center;
-  color: #82776d;
+  color: var(--text-muted);
   font-size: 15px;
   padding: 3rem 0;
 }
 
 /* ─── Paper Cards (search results) ─── */
 .paper-card {
-  background: #ffffff;
-  border: 1.5px solid #f0e6d3;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
   border-radius: 12px;
   padding: 1rem 1.25rem;
   margin-bottom: 0.75rem;
@@ -90,8 +84,8 @@ body {
 }
 
 .paper-card:hover {
-  box-shadow: 0 6px 20px rgba(180, 140, 90, 0.12);
-  border-color: #e8d4b8;
+  box-shadow: var(--shadow-hover);
+  border-color: var(--accent-primary);
   transform: translateY(-1px);
 }
 
@@ -103,13 +97,13 @@ body {
 
 .paper-info strong {
   font-size: 15px;
-  color: #9c6c3c;
+  color: var(--accent-light);
   font-family: 'Quicksand', sans-serif;
 }
 
 .paper-meta {
   font-size: 12.5px;
-  color: #82776d;
+  color: var(--text-muted);
   font-family: 'Quicksand', sans-serif;
 }
 
@@ -120,8 +114,8 @@ body {
 }
 
 .view-btn {
-  background: #f8f0e3;
-  color: #4a4139;
+  background: var(--accent-secondary);
+  color: #bfdbfe;
   padding: 8px 16px;
   border-radius: 8px;
   text-decoration: none;
@@ -132,11 +126,12 @@ body {
 }
 
 .view-btn:hover {
-  background: #f0e6d3;
+  background: var(--accent-primary);
+  color: #ffffff;
 }
 
 .download-btn {
-  background: #b68d40;
+  background: var(--accent-primary);
   color: #ffffff;
   padding: 8px 18px;
   border-radius: 8px;
@@ -149,14 +144,14 @@ body {
 }
 
 .download-btn:hover {
-  background: #9c6c3c;
+  background: var(--accent-secondary);
 }
 
 /* ─── Recently Added ─── */
 .recently-added-section {
-  background: #ffffff;
+  background: var(--bg-secondary);
   padding: 32px 40px 40px;
-  border-top: 1px solid #f0e6d3;
+  border-top: 1px solid var(--border-color);
 }
 
 .recently-added-inner {
@@ -182,14 +177,14 @@ body {
   font-family: 'Quicksand', sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #2d3436;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .recently-added-sub {
   font-family: 'Quicksand', sans-serif;
   font-size: 0.82rem;
-  color: #82776d;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -200,12 +195,12 @@ body {
 }
 
 .recent-card {
-  background: #fdfaf5;
-  border: 1.5px solid #f0e6d3;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
   text-decoration: none;
-  color: #2d3436;
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -213,8 +208,8 @@ body {
 }
 
 .recent-card:hover {
-  border-color: #e8d4b8;
-  box-shadow: 0 4px 16px rgba(180, 140, 90, 0.1);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
 }
 
@@ -236,30 +231,30 @@ body {
 
 .recent-card-title {
   font-family: 'Quicksand', sans-serif;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  color: #2d3436;
+  color: var(--text-primary);
   line-height: 1.35;
 }
 
 .recent-card-meta {
   font-family: 'Quicksand', sans-serif;
   font-size: 0.75rem;
-  color: #82776d;
+  color: var(--text-muted);
 }
 
 .recent-card-age {
   font-family: 'Quicksand', sans-serif;
   font-size: 0.73rem;
-  color: #a1958a;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
 /* ─── old footer (kept for subject page) ─── */
 .footer {
   margin-top: auto;
-  background: linear-gradient(135deg, #4a3728 0%, #6b4d35 100%);
-  color: rgba(255,255,255,0.7);
+  background: linear-gradient(135deg, #020617 0%, #1e3a8a 100%);
+  color: rgba(255,255,255,0.8);
   text-align: center;
   padding: 18px;
   font-family: 'Quicksand', sans-serif;
@@ -283,6 +278,7 @@ body {
   padding-left: 260px;
   overflow-y: auto;
   min-width: 0;
+  background: var(--bg-primary);
 }
 
 @media (max-width: 1024px) {

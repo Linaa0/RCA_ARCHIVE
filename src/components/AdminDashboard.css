@@ -1,6 +1,6 @@
 .dashboard-container {
   padding: 0;
-  background-color: #fdfaf5;
+  background-color: var(--bg-primary);
   min-height: 100vh;
   margin: 0;
 }
@@ -9,7 +9,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #5a3f2e;
+  background-color: #1e3a8a;
   color: white;
   padding: 15px 20px;
   border-radius: 0;
@@ -33,11 +33,11 @@
 
 .dashboard-content h3 {
   margin: 0;
-  color: #5a3f2e;
+  color: var(--text-primary);
 }
 
 .dashboard-content p {
-  color: #82776d;
+  color: var(--text-muted);
   margin-bottom: 25px;
 }
 
@@ -49,24 +49,24 @@
 }
 
 .stat-box {
-  background-color: #ffffff;
-  border: 1px solid #f0e6d3;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   padding: 25px 40px;
   border-radius: 8px;
   text-align: center;
   min-width: 160px;
-  box-shadow: 0 2px 6px rgba(186, 141, 64, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .stat-number {
   font-size: 2.2rem;
   font-weight: bold;
-  color: #b68d40;
+  color: #60a5fa;
 }
 
 .stat-label {
   font-size: 0.9rem;
-  color: #82776d;
+  color: var(--text-muted);
 }
 
 .dashboard-actions {
@@ -76,7 +76,7 @@
 }
 
 .action-btn {
-  background-color: #b68d40;
+  background-color: #2563eb;
   color: white;
   padding: 12px 20px;
   border: none;
@@ -86,5 +86,5 @@
 }
 
 .action-btn:hover {
-  background-color: #9c6c3c;
+  background-color: #1d4ed8;
 }

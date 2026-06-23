@@ -20,7 +20,8 @@ const {
 const app = express();
 const PORT = process.env.PORT || 5009;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
-const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "http://localhost:3074";
+const FRONTEND_BASE_URL =
+  process.env.FRONTEND_BASE_URL || "http://localhost:3074";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
 if (!process.env.JWT_SECRET) {
   console.warn(
@@ -38,15 +39,13 @@ function generateOtp() {
 
 function isRealSmtpConfigured() {
   return Boolean(
-    process.env.SMTP_HOST &&
-      process.env.SMTP_USER &&
-      process.env.SMTP_PASS,
+    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
   );
 }
 
 async function createMailTransporter() {
   if (isRealSmtpConfigured()) {
-    return nodemailer.createTransport({
+    const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === "true",
@@ -54,7 +53,21 @@ async function createMailTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // Add these for Gmail-specific settings
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
+
+    // Verify connection
+    try {
+      await transporter.verify();
+      console.log("✅ SMTP connection verified successfully!");
+    } catch (verifyErr) {
+      console.error("❌ SMTP verification failed:", verifyErr);
+    }
+
+    return transporter;
   }
 
   const testAccount = await nodemailer.createTestAccount();
@@ -113,7 +126,11 @@ function getFrontendBaseUrl(req) {
 
 async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
   const transporter = await createMailTransporter();
-  const baseUrl = (frontendBaseUrl || FRONTEND_BASE_URL || "http://localhost:3074").replace(/\/$/, "");
+  const baseUrl = (
+    frontendBaseUrl ||
+    FRONTEND_BASE_URL ||
+    "http://localhost:3074"
+  ).replace(/\/$/, "");
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
   const info = await transporter.sendMail({
     from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
@@ -128,14 +145,10 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
   });
 
   const realSmtp = isRealSmtpConfigured();
-  const previewUrl = !realSmtp
-    ? nodemailer.getTestMessageUrl(info)
-    : null;
+  const previewUrl = !realSmtp ? nodemailer.getTestMessageUrl(info) : null;
 
   if (previewUrl) {
-    console.log(
-      `Password reset email preview URL for ${email}: ${previewUrl}`,
-    );
+    console.log(`Password reset email preview URL for ${email}: ${previewUrl}`);
   }
 
   return { info, previewUrl, realSmtp };
@@ -254,11 +267,7 @@ app.get("/api/papers", async (req, res) => {
   if (type && type !== "All Types") filter.type = type;
   if (search) {
     const regex = new RegExp(escapeRegExp(search), "i");
-    filter.$or = [
-      { title: regex },
-      { subject: regex },
-      { type: regex },
-    ];
+    filter.$or = [{ title: regex }, { subject: regex }, { type: regex }];
   }
 
   const paperDocs = await papers.find(filter).toArray();
@@ -272,9 +281,7 @@ app.get("/api/papers", async (req, res) => {
       return new Date(b.uploadedAt) - new Date(a.uploadedAt);
     });
   } else if (sort === "recent") {
-    result.sort(
-      (a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt),
-    );
+    result.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
   }
 
   const parsedLimit = Number(limit);
@@ -333,11 +340,12 @@ function buildRatingSummary(paper) {
   };
 }
 
-app.post("/api/send-teacher-otp", async (req, res) => {
-  const { email } = req.body;
+// Send OTP for ANY operation (signup, login, password reset)
+app.post("/api/send-otp", async (req, res) => {
+  const { email, operation } = req.body;
 
-  if (!email) {
-    return res.status(400).json({ error: "Email is required" });
+  if (!email || !operation) {
+    return res.status(400).json({ error: "Email and operation are required" });
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -348,50 +356,108 @@ app.post("/api/send-teacher-otp", async (req, res) => {
   const users = getUsersCollection();
   const otpCollection = getOtpCollection();
 
-  const exists = await users.findOne({ email });
-  if (exists) {
-    return res.status(400).json({ error: "Email already registered" });
-  }
-
-  const isTeacherEmail = TEACHER_EMAILS.some(
-    (teacherEmail) => teacherEmail.toLowerCase() === email.toLowerCase(),
-  );
-
-  if (!isTeacherEmail) {
-    return res
-      .status(400)
-      .json({ error: "This email is not a recognized teacher email" });
+  // Check if email exists for login/password reset, or doesn't exist for signup
+  const userExists = await findUserByEmail(email);
+  if (operation === "signup") {
+    if (userExists) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+  } else if (operation === "login" || operation === "reset-password") {
+    if (!userExists) {
+      return res.json({
+        message: "If this email is registered, you'll receive an OTP shortly.",
+      });
+    }
   }
 
   await cleanExpiredOtps();
   const otp = generateOtp();
-  const expiresAt = Date.now() + 10 * 60 * 1000;
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-  await otpCollection.deleteMany({ email: email.toLowerCase() });
+  await otpCollection.deleteMany({
+    email: email.toLowerCase(),
+    operation,
+  });
   await otpCollection.insertOne({
     email: email.toLowerCase(),
     code: otp,
+    operation,
     expiresAt,
   });
 
   try {
-    await sendVerificationEmail(email, otp);
+    // Send appropriate email based on operation
+    let subject, text, html;
+    if (operation === "signup") {
+      subject = "RCA Archive Verification Code";
+      text = `Your RCA verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
+      html = `<p>Your RCA verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
+    } else if (operation === "login") {
+      subject = "RCA Archive Login Verification Code";
+      text = `Your RCA login verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
+      html = `<p>Your RCA login verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
+    } else if (operation === "reset-password") {
+      subject = "RCA Archive Password Reset Verification Code";
+      text = `Your RCA password reset verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
+      html = `<p>Your RCA password reset verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
+    }
+
+    const transporter = await createMailTransporter();
+    const info = await transporter.sendMail({
+      from:
+        process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
+      to: email,
+      subject,
+      text,
+      html,
+    });
+
+    // Log test email URL for development
+    if (!isRealSmtpConfigured()) {
+      const testUrl = nodemailer.getTestMessageUrl(info);
+      console.log("======================================");
+      console.log("📧 OTP Email Preview URL:");
+      console.log(testUrl);
+      console.log("======================================");
+      // Also return the OTP and preview URL in dev mode for easy testing
+      return res.json({
+        message:
+          "OTP sent successfully! Check the server logs for the preview URL.",
+        otp,
+        previewUrl: testUrl,
+      });
+    }
+
     res.json({
-      message:
-        "OTP sent successfully. Enter the code to complete teacher signup.",
+      message: "OTP sent successfully. Check your email for the code.",
     });
   } catch (err) {
-    console.error("Failed to send OTP email:", err);
+    console.error("❌ Detailed OTP email error:", {
+      message: err.message,
+      code: err.code,
+      stack: err.stack,
+    });
     if (process.env.NODE_ENV !== "production") {
       return res.json({
-        message: `OTP email failed to send, but here is your code for development: ${otp}`,
+        message: `OTP email failed to send, but here's your code for development: ${otp}`,
         otp,
+        error: err.message,
       });
     }
     return res.status(500).json({
       error: "Failed to send OTP email. Please try again later.",
     });
   }
+});
+
+// Keep the old endpoint for backward compatibility
+app.post("/api/send-teacher-otp", async (req, res) => {
+  req.body.operation = "signup";
+  // Call the new send-otp endpoint handler
+  const handler = app._router.stack.find(
+    (layer) => layer.route && layer.route.path === "/api/send-otp",
+  ).handle;
+  return handler(req, res);
 });
 
 app.post("/api/forgot-password", async (req, res) => {
@@ -445,7 +511,8 @@ app.post("/api/forgot-password", async (req, res) => {
     if (!isRealSmtpConfigured()) {
       const resetUrl = `${getFrontendBaseUrl(req)}/reset-password?token=${encodeURIComponent(token)}`;
       return res.json({
-        message: "If this email is registered, you'll receive a password reset link shortly.",
+        message:
+          "If this email is registered, you'll receive a password reset link shortly.",
         previewUrl: resetUrl,
       });
     }
@@ -456,37 +523,84 @@ app.post("/api/forgot-password", async (req, res) => {
 });
 
 app.post("/api/reset-password", async (req, res) => {
-  const { token, newPassword } = req.body;
+  const { token, newPassword, otp } = req.body;
 
-  if (!token || !newPassword) {
-    return res
-      .status(400)
-      .json({ error: "Token and new password are required." });
+  // Allow both token-based and OTP-based reset
+  if ((!token && !otp) || !newPassword) {
+    return res.status(400).json({
+      error:
+        "Either token and new password or OTP, email and new password are required.",
+    });
   }
 
-  const resetCollection = getPasswordResetCollection();
-  const resetRecord = await resetCollection.findOne({ token });
+  if (token) {
+    // Original token-based flow
+    const resetCollection = getPasswordResetCollection();
+    const resetRecord = await resetCollection.findOne({ token });
 
-  if (!resetRecord || resetRecord.expiresAt <= Date.now()) {
-    return res.status(400).json({ error: "Token is invalid or expired." });
+    if (!resetRecord || resetRecord.expiresAt <= Date.now()) {
+      return res.status(400).json({ error: "Token is invalid or expired." });
+    }
+
+    const users = getUsersCollection();
+    const user = await users.findOne({ email: resetRecord.email });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await users.updateOne(
+      { email: resetRecord.email },
+      { $set: { password: hashedPassword } },
+    );
+
+    await resetCollection.deleteMany({ email: resetRecord.email });
+
+    return res.json({ message: "Password has been reset successfully." });
+  } else if (otp) {
+    // New OTP-based flow
+    const { email } = req.body;
+    if (!email) {
+      return res
+        .status(400)
+        .json({ error: "Email is required for OTP-based reset." });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const otpCollection = getOtpCollection();
+    const otpRecord = await otpCollection.findOne({
+      email: normalizedEmail,
+      operation: "reset-password",
+    });
+
+    if (
+      !otpRecord ||
+      otpRecord.code !== otp ||
+      otpRecord.expiresAt <= Date.now()
+    ) {
+      return res.status(400).json({ error: "Invalid or expired OTP." });
+    }
+
+    const users = getUsersCollection();
+    const user = await users.findOne({ email: normalizedEmail });
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await users.updateOne(
+      { email: normalizedEmail },
+      { $set: { password: hashedPassword } },
+    );
+
+    await otpCollection.deleteMany({
+      email: normalizedEmail,
+      operation: "reset-password",
+    });
+
+    return res.json({ message: "Password has been reset successfully." });
   }
-
-  const users = getUsersCollection();
-  const user = await users.findOne({ email: resetRecord.email });
-
-  if (!user) {
-    return res.status(404).json({ error: "User not found." });
-  }
-
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
-  await users.updateOne(
-    { email: resetRecord.email },
-    { $set: { password: hashedPassword } },
-  );
-
-  await resetCollection.deleteMany({ email: resetRecord.email });
-
-  res.json({ message: "Password has been reset successfully." });
 });
 
 app.post("/api/signup", async (req, res) => {
@@ -513,6 +627,27 @@ app.post("/api/signup", async (req, res) => {
   }
 
   let finalRole = "student";
+
+  // Verify OTP for ALL signups
+  await cleanExpiredOtps();
+  const otpRecord = await otpCollection.findOne({
+    email: normalizedEmail,
+    operation: "signup",
+  });
+
+  if (!otpRecord || !otp || otpRecord.code !== otp) {
+    return res.status(400).json({
+      error: "Invalid or expired OTP. Please request a new verification code.",
+      requiresOtp: true,
+    });
+  }
+
+  await otpCollection.deleteMany({
+    email: normalizedEmail,
+    operation: "signup",
+  });
+
+  // Check for teacher role
   if (role === "teacher") {
     const isTeacherEmail = TEACHER_EMAILS.some(
       (teacherEmail) => teacherEmail.toLowerCase() === normalizedEmail,
@@ -523,21 +658,6 @@ app.post("/api/signup", async (req, res) => {
         .status(400)
         .json({ error: "This email is not a recognized teacher email" });
     }
-
-    await cleanExpiredOtps();
-    const otpRecord = await otpCollection.findOne({
-      email: normalizedEmail,
-    });
-
-    if (!otpRecord || !otp || otpRecord.code !== otp) {
-      return res.status(400).json({
-        error:
-          "Invalid or expired OTP. Please request a new verification code.",
-        requiresOtp: true,
-      });
-    }
-
-    await otpCollection.deleteMany({ email: normalizedEmail });
     finalRole = "teacher";
   }
 
@@ -583,7 +703,7 @@ app.post("/api/login", async (req, res) => {
       role: user.role,
     },
     JWT_SECRET,
-    { expiresIn: "7d" },
+    { expiresIn: "30d" },
   );
 
   res.json({
@@ -684,11 +804,14 @@ app.get("/api/papers/:id/view", async (req, res) => {
     ".json": "application/json",
     ".html": "text/html",
     ".htm": "text/html",
-    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".docx":
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".doc": "application/msword",
-    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".pptx":
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ".ppt": "application/vnd.ms-powerpoint",
-    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xlsx":
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ".xls": "application/vnd.ms-excel",
   };
   const contentType = mimeTypes[ext] || "application/octet-stream";
@@ -769,8 +892,33 @@ app.delete("/api/papers/:id", requireAuth, async (req, res) => {
   res.json({ message: "Paper deleted successfully" });
 });
 
-initDB().then(() => {
+initDB().then(async () => {
+  // Print environment status (redacted for security)
+  console.log("📋 Server Configuration:");
+  console.log(`   - PORT: ${PORT}`);
+  console.log(`   - SMTP_HOST: ${process.env.SMTP_HOST}`);
+  console.log(`   - SMTP_PORT: ${process.env.SMTP_PORT}`);
+  console.log(`   - SMTP_USER: ${process.env.SMTP_USER}`);
+  console.log(
+    `   - SMTP_PASS: ${process.env.SMTP_PASS ? "(set)" : "(not set)"}`,
+  );
+  console.log(`   - EMAIL_FROM: ${process.env.EMAIL_FROM}`);
+  console.log(
+    `   - Real SMTP configured: ${isRealSmtpConfigured() ? "✅ Yes" : "❌ No"}`,
+  );
+
+  // Test SMTP connection immediately
+  if (isRealSmtpConfigured()) {
+    try {
+      console.log("🔍 Testing SMTP connection...");
+      const transporter = await createMailTransporter();
+      console.log("✅ SMTP test passed! Server is ready to send emails!");
+    } catch (smtpErr) {
+      console.error("❌ SMTP Test FAILED:", smtpErr);
+    }
+  }
+
   app.listen(PORT, () => {
-    console.log(`✅ RCA Backend running on http://localhost:${PORT}`);
+    console.log(`\n✅ RCA Backend running on http://localhost:${PORT}`);
   });
 });
