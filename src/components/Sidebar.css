@@ -10,9 +10,9 @@
   box-sizing: border-box;
   padding: 24px;
   overflow-y: auto;
-  background: #f5f6fb;
-  border: 1px solid #dfe3ec;
-  color: #111a3a;
+  background: #fdfaf5;
+  border: 1px solid #f0e6d3;
+  color: #2d3436;
 }
 
 @keyframes moveAwayFromLogo {
@@ -66,8 +66,8 @@
 }
 
 .sidebar-brand-name {
-  color: #111827;
-  font-family: 'Inter', sans-serif;
+  color: #2d3436;
+  font-family: 'Quicksand', sans-serif;
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -79,10 +79,10 @@
 
 .menu-section-title {
   display: block;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #8b9099;
+  color: #82776d;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-bottom: 14px;
@@ -103,8 +103,8 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #747985;
-  font-family: 'Inter', sans-serif;
+  color: #82776d;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.92rem;
   font-weight: 500;
   text-decoration: none;
@@ -137,8 +137,8 @@
 
 .sidebar-nav-btn:hover,
 .sidebar-nav-btn.active {
-  background: #c9ced9;
-  color: #101b3f;
+  background: #f0e6d3;
+  color: #2d3436;
 }
 
 .sidebar-nav-btn.active {
@@ -166,7 +166,7 @@
   gap: 4px;
   margin: 2px 0 8px 18px;
   padding-left: 12px;
-  border-left: 1px solid #dfe3ec;
+  border-left: 1px solid #f0e6d3;
 }
 
 .sidebar-submenu-btn {
@@ -190,7 +190,7 @@
 .sidebar-profile-footer {
   margin-top: auto;
   padding: 18px 10px 0;
-  border-top: 1px solid #dfe3ec;
+  border-top: 1px solid #f0e6d3;
 }
 
 .profile-container {
@@ -210,11 +210,11 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #c9ced9;
+  background: #f0e6d3;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #101b3f;
+  color: #2d3436;
   font-weight: 700;
   font-size: 0.9rem;
 }
@@ -226,10 +226,10 @@
 }
 
 .profile-name {
-  color: #101b3f;
+  color: #2d3436;
   font-size: 0.88rem;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -237,9 +237,9 @@
 }
 
 .profile-role {
-  color: #8b9099;
+  color: #82776d;
   font-size: 0.75rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
 }
 
 .sidebar-logout-btn,
@@ -251,10 +251,10 @@
   width: 100%;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid #d7dbe5;
+  border: 1px solid #d8c7a8;
   background: transparent;
-  color: #747985;
-  font-family: 'Inter', sans-serif;
+  color: #82776d;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.85rem;
   font-weight: 500;
   text-decoration: none;
@@ -266,8 +266,8 @@
 
 .sidebar-logout-btn:hover,
 .sidebar-login-btn:hover {
-  background: #e8ebf2;
-  color: #101b3f;
+  background: #f0e6d3;
+  color: #2d3436;
   transform: translateX(8px);
 }
 
