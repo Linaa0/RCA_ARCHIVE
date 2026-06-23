@@ -24,7 +24,7 @@ function Login() {
   const [resetOtpSending, setResetOtpSending] = useState(false);
   const [focusedField, setFocusedField] = useState("");
   const [ripples, setRipples] = useState([]);
-  const [forgotPasswordPreviewUrl, setForgotPasswordPreviewUrl] = useState("");
+  const [otpPreviewUrl, setOtpPreviewUrl] = useState("");
   const navigate = useNavigate();
 
   const resetForm = () => {
@@ -37,7 +37,7 @@ function Login() {
     setResetEmail("");
     setResetOtp("");
     setResetOtpSent(false);
-    setForgotPasswordPreviewUrl("");
+    setOtpPreviewUrl("");
     setError("");
     setSuccess("");
     setShowPassword(false);
@@ -68,6 +68,7 @@ function Login() {
   const handleSendOtp = async (operation) => {
     setError("");
     setSuccess("");
+    setOtpPreviewUrl("");
 
     const targetEmail = operation === "reset-password" ? resetEmail : email;
     
@@ -83,6 +84,12 @@ function Login() {
     try {
       const { data } = await api.post("/send-otp", { email: targetEmail, operation });
       setSuccess(data.message);
+      if (data.previewUrl) {
+        setOtpPreviewUrl(data.previewUrl);
+      }
+      if (data.otp) {
+        setOtp(data.otp);
+      }
       sentState(true);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
@@ -245,7 +252,7 @@ function Login() {
                 <h1 className="form-title">Reset password</h1>
                 <p className="form-subtitle">Enter your email, verify with OTP, and set a new password.</p>
 
-                <Message error={error} success={success} />
+                <Message error={error} success={success} previewUrl={otpPreviewUrl} />
 
                 <form className="login-form" onSubmit={handleForgotPassword}>
                   <Field
@@ -330,7 +337,7 @@ function Login() {
                   {isSignup ? "Sign up to get access to all materials" : "Log in to your account"}
                 </p>
 
-                <Message error={error} success={success && !loading ? success : ""} />
+                <Message error={error} success={success && !loading ? success : ""} previewUrl={otpPreviewUrl} />
 
                 <form className="login-form" onSubmit={handleSubmit}>
                   {isSignup && (
@@ -683,10 +690,21 @@ function SubmitButton({ children, loading, onClick, ripples }) {
   );
 }
 
-function Message({ error, success }) {
-  if (error) return <div className="error-msg">{error}</div>;
-  if (success) return <div className="success-msg">{success}</div>;
-  return null;
+function Message({ error, success, previewUrl }) {
+  return (
+    <>
+      {error && <div className="error-msg">{error}</div>}
+      {success && <div className="success-msg">{success}</div>}
+      {previewUrl && (
+        <div className="form-info-box" style={{ marginTop: "12px", wordBreak: "break-all" }}>
+          <strong>Preview URL:</strong>{" "}
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>
+            {previewUrl}
+          </a>
+        </div>
+      )}
+    </>
+  );
 }
 
 function Feature({ icon, text }) {

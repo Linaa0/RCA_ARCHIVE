@@ -42,7 +42,16 @@ function isRealSmtpConfigured() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
-  if (!host || !user || !pass) {
+  if (!host) {
+    console.log("❌ SMTP not configured: SMTP_HOST not set");
+    return false;
+  }
+  if (!user) {
+    console.log("❌ SMTP not configured: SMTP_USER not set");
+    return false;
+  }
+  if (!pass) {
+    console.log("❌ SMTP not configured: SMTP_PASS not set");
     return false;
   }
 
@@ -51,15 +60,33 @@ function isRealSmtpConfigured() {
   const lowerUser = user.toLowerCase();
   const lowerPass = pass.toLowerCase();
 
-  if (
-    lowerHost.includes("example.com") ||
-    lowerPass.includes("your-sendgrid-api-key") ||
-    lowerPass.includes("your-smtp-password") ||
-    lowerPass.includes("your-app-password") ||
-    lowerUser.includes("your-smtp-user") ||
-    lowerUser.includes("your-email@gmail.com")
-  ) {
-    return false;
+  const placeholderChecks = [
+    { key: "SMTP_HOST", value: lowerHost, checks: ["example.com"] },
+    {
+      key: "SMTP_PASS",
+      value: lowerPass,
+      checks: [
+        "your-sendgrid-api-key",
+        "your-smtp-password",
+        "your-app-password",
+      ],
+    },
+    {
+      key: "SMTP_USER",
+      value: lowerUser,
+      checks: ["your-smtp-user", "your-email@gmail.com"],
+    },
+  ];
+
+  for (const { key, value, checks } of placeholderChecks) {
+    for (const check of checks) {
+      if (value.includes(check)) {
+        console.log(
+          `❌ SMTP not configured: ${key} contains placeholder "${check}"`,
+        );
+        return false;
+      }
+    }
   }
 
   return true;
