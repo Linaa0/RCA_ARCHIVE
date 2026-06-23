@@ -3,26 +3,26 @@
   justify-content: center;
   gap: 20px;
   padding: 36px 40px;
-  background: #f8faff;
+  background: #fdfaf5;
   flex-wrap: wrap;
 }
 
 .stat-box {
   background: #ffffff;
-  border: 1px solid #e8edf5;
+  border: 1px solid #f0e6d3;
   border-radius: 14px;
   padding: 22px 32px;
   display: flex;
   align-items: center;
   gap: 16px;
   min-width: 200px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 12px rgba(186, 141, 64, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stat-box:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.09);
+  box-shadow: 0 8px 24px rgba(186, 141, 64, 0.09);
 }
 
 .stat-icon {
@@ -36,38 +36,38 @@
   flex-shrink: 0;
 }
 
-.stat-icon.blue   { background: #ffffff; color: #1e40af; }
-.stat-icon.green  { background: #ffffff; color: #1e40af; }
-.stat-icon.purple { background: #ffffff; color: #1e40af; }
-.stat-icon.orange { background: #ffffff; color: #1e40af; }
+.stat-icon.blue   { background: #f0e6d3; color: #9c6c3c; }
+.stat-icon.green  { background: #f0e6d3; color: #9c6c3c; }
+.stat-icon.purple { background: #f0e6d3; color: #9c6c3c; }
+.stat-icon.orange { background: #f0e6d3; color: #9c6c3c; }
 .stat-text {
   display: flex;
   flex-direction: column;
 }
 
 .stat-number {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 1.9rem;
   font-weight: 800;
   line-height: 1;
   margin-bottom: 4px;
 }
 
-.stat-number.blue   { color: #2563eb; }
-.stat-number.green  { color: #2563eb; }
-.stat-number.purple { color: #2563eb; }
-.stat-number.orange { color: #2563eb; }
+.stat-number.blue   { color: #b68d40; }
+.stat-number.green  { color: #b68d40; }
+.stat-number.purple { color: #b68d40; }
+.stat-number.orange { color: #b68d40; }
 
 .stat-label {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #374151;
+  color: #4a4139;
   margin-bottom: 2px;
 }
 
 .stat-sublabel {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #82776d;
 }

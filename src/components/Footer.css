@@ -1,7 +1,7 @@
 .site-footer {
-  background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%);
+  background: linear-gradient(135deg, #5a3f2e 0%, #7a543c 100%);
   color: rgba(255,255,255,0.75);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   margin-top: auto;
 }
 
@@ -63,9 +63,9 @@
 }
 
 .footer-social:hover {
-  border-color: #2563eb;
-  color: #60a5fa;
-  background: rgba(37,99,235,0.1);
+  border-color: #b68d40;
+  color: #b68d40;
+  background: rgba(182, 141, 64, 0.1);
 }
 
 .footer-col-title {
@@ -97,7 +97,7 @@
 }
 
 .footer-links a:hover {
-  color: #60a5fa;
+  color: #b68d40;
 }
 
 .footer-contact li {
@@ -125,7 +125,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 568px) {
   .footer-inner {
     grid-template-columns: 1fr;
     padding: 32px 20px 24px;
