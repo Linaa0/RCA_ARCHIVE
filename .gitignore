@@ -25,7 +25,6 @@ yarn-error.log*
 IMPLEMENTATION_SUMMARY.md
 
 # Environment files
-.env.example
 .env
 
 # Backend uploads
