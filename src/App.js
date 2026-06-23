@@ -239,7 +239,8 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const publicPaths = ["/login", "/reset-password"];
-    if (!token && !publicPaths.includes(location.pathname)) {
+    const isPublic = publicPaths.some((path) => location.pathname === path || location.pathname.startsWith(path));
+    if (!token && !isPublic) {
       navigate("/login", { replace: true });
     }
   }, [navigate, location.pathname]);
