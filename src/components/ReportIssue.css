@@ -1,32 +1,32 @@
 .report-issue-page {
   flex: 1;
   min-height: calc(100vh - 56px);
-  background: #f8f9fa;
+  background: #fdfaf5;
   padding: 30px;
-  color: #0d1117;
+  color: #2d3436;
 }
 
 .report-issue-panel {
   max-width: 900px;
   margin: 0;
   background: #ffffff;
-  border: 1.5px solid #d8dee4;
+  border: 1.5px solid #f0e6d3;
   border-radius: 10px;
   padding: 30px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(186, 141, 64, 0.08);
 }
 
 .report-issue-header {
   margin-bottom: 24px;
   padding-bottom: 18px;
-  border-bottom: 2px solid #d8dee4;
+  border-bottom: 2px solid #f0e6d3;
 }
 
 .report-issue-kicker {
   display: block;
   margin-bottom: 8px;
-  color: #004080;
-  font-family: 'Inter', sans-serif;
+  color: #b68d40;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -35,8 +35,8 @@
 
 .report-issue-header h1 {
   margin: 0 0 10px;
-  color: #004080;
-  font-family: 'Inter', sans-serif;
+  color: #5a3f2e;
+  font-family: 'Quicksand', sans-serif;
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.2;
@@ -45,8 +45,8 @@
 .report-issue-header p {
   max-width: 620px;
   margin: 0;
-  color: #6e7681;
-  font-family: 'Inter', sans-serif;
+  color: #82776d;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.95rem;
   line-height: 1.55;
 }
@@ -67,8 +67,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: #0d1117;
-  font-family: 'Inter', sans-serif;
+  color: #2d3436;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
 }
@@ -77,11 +77,11 @@
 .report-issue-form select,
 .report-issue-form textarea {
   width: 100%;
-  border: 1.5px solid #d8dee4;
+  border: 1.5px solid #f0e6d3;
   border-radius: 8px;
-  background: #eaeef2;
-  color: #111827;
-  font-family: 'Inter', sans-serif;
+  background: #fdfaf5;
+  color: #2d3436;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.92rem;
   padding: 12px 14px;
   outline: none;
@@ -90,7 +90,7 @@
 
 .report-issue-form input::placeholder,
 .report-issue-form textarea::placeholder {
-  color: #8b949e;
+  color: #a1958a;
 }
 
 .report-issue-form textarea {
@@ -101,30 +101,30 @@
 .report-issue-form input:focus,
 .report-issue-form select:focus,
 .report-issue-form textarea:focus {
-  border-color: #004080;
+  border-color: #b68d40;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(0, 64, 128, 0.15);
+  box-shadow: 0 0 0 3px rgba(182, 141, 64, 0.15);
 }
 
 .report-submit-btn {
   width: fit-content;
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(135deg, #004080 0%, #003060 100%);
+  background: linear-gradient(135deg, #b68d40 0%, #9c6c3c 100%);
   color: #ffffff;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.9rem;
   font-weight: 700;
   padding: 12px 24px;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 64, 128, 0.2);
+  box-shadow: 0 2px 8px rgba(182, 141, 64, 0.2);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .report-submit-btn:hover {
-  box-shadow: 0 4px 12px rgba(0, 64, 128, 0.3);
+  box-shadow: 0 4px 12px rgba(182, 141, 64, 0.3);
   transform: translateY(-1px);
 }
 
@@ -139,7 +139,7 @@
 .back-home-link {
   display: inline-block;
   margin-top: 18px;
-  color: #2563eb;
+  color: #b68d40;
   font-weight: 700;
   text-decoration: none;
 }
@@ -170,15 +170,15 @@
   margin-top: 24px;
   padding: 24px;
   border-radius: 10px;
-  background: #f5f7fb;
-  color: #24303f;
-  font-family: 'Inter', sans-serif;
+  background: #f0e6d3;
+  color: #5a3f2e;
+  font-family: 'Quicksand', sans-serif;
 }
 
 .back-home-link {
   display: inline-block;
   margin-top: 18px;
-  color: #004080;
+  color: #b68d40;
   text-decoration: none;
   font-weight: 700;
 }
