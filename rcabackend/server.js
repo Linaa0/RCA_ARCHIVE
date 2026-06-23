@@ -67,33 +67,35 @@ function isRealSmtpConfigured() {
 
 async function createMailTransporter() {
   if (isRealSmtpConfigured()) {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      // Add these for Gmail-specific settings
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-
-    // Verify connection
     try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === "true",
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        // Add these for Gmail-specific settings
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      // Verify connection
       await transporter.verify();
       console.log("✅ SMTP connection verified successfully!");
-    } catch (verifyErr) {
-      console.error("❌ SMTP verification failed:", verifyErr);
+      return { transporter, isReal: true };
+    } catch (err) {
+      console.warn(
+        "⚠️ Real SMTP failed, falling back to test account:",
+        err.message,
+      );
     }
-
-    return transporter;
   }
 
   const testAccount = await nodemailer.createTestAccount();
-  return nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     host: testAccount.smtp.host,
     port: testAccount.smtp.port,
     secure: testAccount.smtp.secure,
@@ -102,10 +104,11 @@ async function createMailTransporter() {
       pass: testAccount.pass,
     },
   });
+  return { transporter, isReal: false };
 }
 
 async function sendVerificationEmail(email, otp) {
-  const transporter = await createMailTransporter();
+  const { transporter, isReal } = await createMailTransporter();
   const info = await transporter.sendMail({
     from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
     to: email,
@@ -117,11 +120,16 @@ async function sendVerificationEmail(email, otp) {
     `,
   });
 
-  if (!process.env.SMTP_HOST) {
-    console.log(
-      `OTP email preview URL for ${email}: ${nodemailer.getTestMessageUrl(info)}`,
-    );
+  if (!isReal) {
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    console.log("======================================");
+    console.log("📧 OTP Email Preview URL:");
+    console.log(previewUrl);
+    console.log("======================================");
+    return { info, previewUrl };
   }
+
+  return { info, previewUrl: null };
 }
 
 function getFrontendBaseUrl(req) {
@@ -147,7 +155,7 @@ function getFrontendBaseUrl(req) {
 }
 
 async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
-  const transporter = await createMailTransporter();
+  const { transporter, isReal } = await createMailTransporter();
   const baseUrl = (
     frontendBaseUrl ||
     FRONTEND_BASE_URL ||
@@ -166,14 +174,16 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
     `,
   });
 
-  const realSmtp = isRealSmtpConfigured();
-  const previewUrl = !realSmtp ? nodemailer.getTestMessageUrl(info) : null;
+  const previewUrl = !isReal ? nodemailer.getTestMessageUrl(info) : null;
 
   if (previewUrl) {
-    console.log(`Password reset email preview URL for ${email}: ${previewUrl}`);
+    console.log("======================================");
+    console.log("📧 Password Reset Email Preview URL:");
+    console.log(previewUrl);
+    console.log("======================================");
   }
 
-  return { info, previewUrl, realSmtp };
+  return { info, previewUrl, realSmtp: isReal };
 }
 
 async function cleanExpiredOtps() {
@@ -445,7 +455,7 @@ app.post("/api/send-otp", async (req, res) => {
       html = `<p>Your RCA password reset verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
     }
 
-    const transporter = await createMailTransporter();
+    const { transporter, isReal } = await createMailTransporter();
     const info = await transporter.sendMail({
       from:
         process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
@@ -455,24 +465,21 @@ app.post("/api/send-otp", async (req, res) => {
       html,
     });
 
-    // Log test email URL for development
-    if (!isRealSmtpConfigured()) {
-      const testUrl = nodemailer.getTestMessageUrl(info);
+    let previewUrl = null;
+    if (!isReal) {
+      previewUrl = nodemailer.getTestMessageUrl(info);
       console.log("======================================");
       console.log("📧 OTP Email Preview URL:");
-      console.log(testUrl);
+      console.log(previewUrl);
       console.log("======================================");
-      // Also return the OTP and preview URL in dev mode for easy testing
-      return res.json({
-        message:
-          "OTP sent successfully! Check the server logs for the preview URL.",
-        otp,
-        previewUrl: testUrl,
-      });
     }
 
     res.json({
-      message: "OTP sent successfully. Check your email for the code.",
+      message: isReal
+        ? "OTP sent successfully. Check your email for the code."
+        : "OTP sent successfully! Check the server logs for the preview URL.",
+      otp,
+      previewUrl,
     });
   } catch (err) {
     console.error("❌ Detailed OTP email error:", {
