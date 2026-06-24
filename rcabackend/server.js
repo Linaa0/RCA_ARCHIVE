@@ -1,4 +1,5 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
@@ -6,7 +7,6 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
-const path = require("path");
 const fs = require("fs");
 const { TEACHER_EMAILS } = require("./teacherEmails");
 const {
@@ -62,14 +62,28 @@ function isRealSmtpConfigured() {
 
   const placeholderChecks = [
     { key: "SMTP_HOST", value: lowerHost, checks: ["example.com"] },
-    { key: "SMTP_PASS", value: lowerPass, checks: ["your-sendgrid-api-key", "your-smtp-password", "your-app-password"] },
-    { key: "SMTP_USER", value: lowerUser, checks: ["your-smtp-user", "your-email@gmail.com"] },
+    {
+      key: "SMTP_PASS",
+      value: lowerPass,
+      checks: [
+        "your-sendgrid-api-key",
+        "your-smtp-password",
+        "your-app-password",
+      ],
+    },
+    {
+      key: "SMTP_USER",
+      value: lowerUser,
+      checks: ["your-smtp-user", "your-email@gmail.com"],
+    },
   ];
 
   for (const { key, value, checks } of placeholderChecks) {
     for (const check of checks) {
       if (value.includes(check)) {
-        console.log(`❌ SMTP not configured: ${key} contains placeholder "${check}"`);
+        console.log(
+          `❌ SMTP not configured: ${key} contains placeholder "${check}"`,
+        );
         return false;
       }
     }
@@ -457,7 +471,8 @@ app.post("/api/send-otp", async (req, res) => {
       let title, subtitle;
       if (operation === "signup") {
         title = "Verify Your Account";
-        subtitle = "Welcome to RCA Archive! Please use the verification code below to complete your signup.";
+        subtitle =
+          "Welcome to RCA Archive! Please use the verification code below to complete your signup.";
       } else if (operation === "login") {
         title = "Login Verification";
         subtitle = "Use this code to log in to your RCA Archive account.";
@@ -614,7 +629,8 @@ app.post("/api/send-otp", async (req, res) => {
 
     const { transporter, isReal } = await createMailTransporter();
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
+      from:
+        process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
       to: email,
       subject,
       text: emailContent.text,
@@ -1122,6 +1138,7 @@ initDB().then(async () => {
   // Print environment status (redacted for security)
   console.log("📋 Server Configuration:");
   console.log(`   - PORT: ${PORT}`);
+  console.log(`   - .env path: ${path.join(__dirname, ".env")}`);
   console.log(`   - SMTP_HOST: ${process.env.SMTP_HOST}`);
   console.log(`   - SMTP_PORT: ${process.env.SMTP_PORT}`);
   console.log(`   - SMTP_USER: ${process.env.SMTP_USER}`);
@@ -1137,7 +1154,8 @@ initDB().then(async () => {
   if (isRealSmtpConfigured()) {
     try {
       console.log("🔍 Testing SMTP connection...");
-      const transporter = await createMailTransporter();
+      const { transporter } = await createMailTransporter();
+      await transporter.verify();
       console.log("✅ SMTP test passed! Server is ready to send emails!");
     } catch (smtpErr) {
       console.error("❌ SMTP Test FAILED:", smtpErr);
