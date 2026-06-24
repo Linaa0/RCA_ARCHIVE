@@ -62,28 +62,14 @@ function isRealSmtpConfigured() {
 
   const placeholderChecks = [
     { key: "SMTP_HOST", value: lowerHost, checks: ["example.com"] },
-    {
-      key: "SMTP_PASS",
-      value: lowerPass,
-      checks: [
-        "your-sendgrid-api-key",
-        "your-smtp-password",
-        "your-app-password",
-      ],
-    },
-    {
-      key: "SMTP_USER",
-      value: lowerUser,
-      checks: ["your-smtp-user", "your-email@gmail.com"],
-    },
+    { key: "SMTP_PASS", value: lowerPass, checks: ["your-sendgrid-api-key", "your-smtp-password", "your-app-password"] },
+    { key: "SMTP_USER", value: lowerUser, checks: ["your-smtp-user", "your-email@gmail.com"] },
   ];
 
   for (const { key, value, checks } of placeholderChecks) {
     for (const check of checks) {
       if (value.includes(check)) {
-        console.log(
-          `❌ SMTP not configured: ${key} contains placeholder "${check}"`,
-        );
+        console.log(`❌ SMTP not configured: ${key} contains placeholder "${check}"`);
         return false;
       }
     }
@@ -466,30 +452,173 @@ app.post("/api/send-otp", async (req, res) => {
   });
 
   try {
-    // Send appropriate email based on operation
-    let subject, text, html;
-    if (operation === "signup") {
-      subject = "RCA Archive Verification Code";
-      text = `Your RCA verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
-      html = `<p>Your RCA verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
-    } else if (operation === "login") {
-      subject = "RCA Archive Login Verification Code";
-      text = `Your RCA login verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
-      html = `<p>Your RCA login verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
-    } else if (operation === "reset-password") {
-      subject = "RCA Archive Password Reset Verification Code";
-      text = `Your RCA password reset verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
-      html = `<p>Your RCA password reset verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
+    // Create beautiful email template
+    const createEmailTemplate = (operation, otpCode) => {
+      let title, subtitle;
+      if (operation === "signup") {
+        title = "Verify Your Account";
+        subtitle = "Welcome to RCA Archive! Please use the verification code below to complete your signup.";
+      } else if (operation === "login") {
+        title = "Login Verification";
+        subtitle = "Use this code to log in to your RCA Archive account.";
+      } else if (operation === "reset-password") {
+        title = "Reset Your Password";
+        subtitle = "Use this verification code to reset your password.";
+      }
+
+      return {
+        text: `${title}\n\n${subtitle}\n\nYour verification code: ${otpCode}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, please ignore this email.`,
+        html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f0f4ff;
+      padding: 40px 20px;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(37, 99, 235, 0.15);
+      overflow: hidden;
+    }
+    .email-header {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .email-logo {
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    .email-body {
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .email-title {
+      color: #1e3a8a;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .email-subtitle {
+      color: #64748b;
+      font-size: 16px;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .otp-card {
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      padding: 30px 20px;
+      margin-bottom: 32px;
+      display: inline-block;
+    }
+    .otp-label {
+      color: #1d4ed8;
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .otp-code {
+      color: #1e3a8a;
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: 10px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    .expiry-note {
+      color: #ef4444;
+      font-size: 14px;
+      margin-bottom: 32px;
+      font-weight: 500;
+    }
+    .email-footer {
+      background: #f8fafc;
+      padding: 24px 30px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+    }
+    .footer-text {
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    @media (max-width: 480px) {
+      .email-header {
+        padding: 30px 20px;
+      }
+      .email-body {
+        padding: 30px 20px;
+      }
+      .otp-code {
+        font-size: 32px;
+        letter-spacing: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="email-header">
+      <div class="email-logo">RCA ARCHIVE+</div>
+    </div>
+    <div class="email-body">
+      <h1 class="email-title">${title}</h1>
+      <p class="email-subtitle">${subtitle}</p>
+      <div class="otp-card">
+        <div class="otp-label">Verification Code</div>
+        <div class="otp-code">${otpCode}</div>
+      </div>
+      <p class="expiry-note">This code expires in 10 minutes</p>
+      <p style="color: #64748b; font-size: 14px;">If you didn't request this, please ignore this email.</p>
+    </div>
+    <div class="email-footer">
+      <p class="footer-text">RCA Archive<br>Rwanda Coding Academy<br>© 2026 RCA Archive. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
+        `,
+      };
+    };
+
+    // Determine subject and generate email content
+    let subject;
+    if (operation === "signup") {
+      subject = "Verify Your RCA Archive Account";
+    } else if (operation === "login") {
+      subject = "Your RCA Archive Login Code";
+    } else if (operation === "reset-password") {
+      subject = "Reset Your RCA Archive Password";
+    }
+
+    const emailContent = createEmailTemplate(operation, otp);
 
     const { transporter, isReal } = await createMailTransporter();
     const info = await transporter.sendMail({
-      from:
-        process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
+      from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
       to: email,
       subject,
-      text,
-      html,
+      text: emailContent.text,
+      html: emailContent.html,
     });
 
     let previewUrl = null;
@@ -501,11 +630,13 @@ app.post("/api/send-otp", async (req, res) => {
       console.log("======================================");
     }
 
+    // Log OTP in dev for testing, but don't send to client
+    console.log(`🔐 OTP for ${email} (${operation}): ${otp}`);
+
     res.json({
       message: isReal
         ? "OTP sent successfully. Check your email for the code."
         : "OTP sent successfully! Check the server logs for the preview URL.",
-      otp,
       previewUrl,
     });
   } catch (err) {
@@ -514,10 +645,11 @@ app.post("/api/send-otp", async (req, res) => {
       code: err.code,
       stack: err.stack,
     });
+    // Still log OTP in dev even if email fails
+    console.log(`🔐 OTP for ${email} (${operation}): ${otp}`);
     if (process.env.NODE_ENV !== "production") {
       return res.json({
-        message: `OTP email failed to send, but here's your code for development: ${otp}`,
-        otp,
+        message: `OTP email failed to send, but check server logs for the code.`,
         error: err.message,
       });
     }
