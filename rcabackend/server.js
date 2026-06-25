@@ -200,7 +200,7 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reset Your Password</title>
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -208,81 +208,81 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
       box-sizing: border-box;
     }
     body {
-      font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: #f5f7fa;
-      padding: 30px 15px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f3f4f6;
+      padding: 24px 16px;
     }
     .email-container {
-      max-width: 480px;
+      max-width: 420px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       overflow: hidden;
     }
     .email-header {
-      background: #1e3a8a;
-      padding: 25px 30px;
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      padding: 20px 24px;
       text-align: center;
     }
     .email-logo {
       color: white;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
     }
     .email-body {
-      padding: 35px 30px;
+      padding: 28px 24px;
       text-align: center;
     }
     .email-title {
-      color: #1e3a8a;
-      font-size: 20px;
+      color: #0f172a;
+      font-size: 18px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .email-subtitle {
-      color: #5a6c7d;
-      font-size: 14px;
-      margin-bottom: 28px;
-      line-height: 1.6;
+      color: #475569;
+      font-size: 13px;
+      margin-bottom: 24px;
+      line-height: 1.5;
     }
     .reset-button {
-      background: #1e3a8a;
+      background: #2563eb;
       color: white;
       text-decoration: none;
-      padding: 14px 40px;
-      border-radius: 8px;
-      font-size: 14px;
+      padding: 12px 36px;
+      border-radius: 6px;
+      font-size: 13px;
       font-weight: 600;
       display: inline-block;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
     .expiry-note {
       color: #dc2626;
-      font-size: 13px;
-      margin-bottom: 22px;
+      font-size: 12px;
+      margin-bottom: 20px;
       font-weight: 600;
     }
     .info-note {
-      color: #5a6c7d;
-      font-size: 13px;
-      line-height: 1.6;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
     }
     .email-footer {
       background: #f8fafc;
-      padding: 20px 30px;
+      padding: 16px 24px;
       text-align: center;
       border-top: 1px solid #e2e8f0;
     }
     .footer-text {
-      color: #5a6c7d;
-      font-size: 12px;
-      line-height: 1.6;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.5;
     }
-    @media only screen and (max-width: 500px) {
-      body { padding: 20px 10px; }
-      .email-body { padding: 28px 22px; }
+    @media only screen and (max-width: 450px) {
+      body { padding: 16px 12px; }
+      .email-body { padding: 24px 20px; }
     }
   </style>
 </head>
@@ -622,7 +622,7 @@ app.post("/api/send-otp", async (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -630,95 +630,95 @@ app.post("/api/send-otp", async (req, res) => {
       box-sizing: border-box;
     }
     body {
-      font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: #f5f7fa;
-      padding: 30px 15px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f3f4f6;
+      padding: 24px 16px;
     }
     .email-container {
-      max-width: 480px;
+      max-width: 420px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       overflow: hidden;
     }
     .email-header {
-      background: #1e3a8a;
-      padding: 25px 30px;
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      padding: 20px 24px;
       text-align: center;
     }
     .email-logo {
       color: white;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
     }
     .email-body {
-      padding: 35px 30px;
+      padding: 28px 24px;
       text-align: center;
     }
     .email-title {
-      color: #1e3a8a;
-      font-size: 20px;
+      color: #0f172a;
+      font-size: 18px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .email-subtitle {
-      color: #5a6c7d;
-      font-size: 14px;
-      margin-bottom: 28px;
-      line-height: 1.6;
+      color: #475569;
+      font-size: 13px;
+      margin-bottom: 24px;
+      line-height: 1.5;
     }
     .otp-card {
-      background: #f0f7ff;
-      border: 1px solid #b8daff;
-      border-radius: 8px;
-      padding: 22px 25px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 18px 20px;
       text-align: center;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
       display: inline-block;
     }
     .otp-label {
-      color: #1e3a8a;
-      font-size: 12px;
+      color: #64748b;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .otp-code {
-      color: #1e3a8a;
-      font-size: 32px;
+      color: #0f172a;
+      font-size: 28px;
       font-weight: 700;
-      letter-spacing: 8px;
+      letter-spacing: 6px;
       font-family: 'Courier New', Courier, monospace;
     }
     .expiry-note {
       color: #dc2626;
-      font-size: 13px;
-      margin-bottom: 22px;
+      font-size: 12px;
+      margin-bottom: 20px;
       font-weight: 600;
     }
     .info-note {
-      color: #5a6c7d;
-      font-size: 13px;
-      line-height: 1.6;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
     }
     .email-footer {
       background: #f8fafc;
-      padding: 20px 30px;
+      padding: 16px 24px;
       text-align: center;
       border-top: 1px solid #e2e8f0;
     }
     .footer-text {
-      color: #5a6c7d;
-      font-size: 12px;
-      line-height: 1.6;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.5;
     }
-    @media only screen and (max-width: 500px) {
-      body { padding: 20px 10px; }
-      .email-body { padding: 28px 22px; }
-      .otp-code { font-size: 26px; letter-spacing: 6px; }
+    @media only screen and (max-width: 450px) {
+      body { padding: 16px 12px; }
+      .email-body { padding: 24px 20px; }
+      .otp-code { font-size: 24px; letter-spacing: 5px; }
     }
   </style>
 </head>
