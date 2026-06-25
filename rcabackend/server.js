@@ -302,10 +302,11 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
         `,
   };
 
+  const timestamp = new Date().toLocaleTimeString();
   const info = await transporter.sendMail({
     from: "RCA Archive <isabelleutuje12@gmail.com>",
     to: email,
-    subject: "Reset Your RCA Archive Password",
+    subject: `Reset Your RCA Archive Password - ${timestamp}`,
     replyTo: "isabelleutuje12@gmail.com",
     text: emailContent.text,
     html: emailContent.html,
@@ -736,11 +737,14 @@ app.post("/api/send-otp", async (req, res) => {
     // Determine subject and generate email content
     let subject;
     if (operation === "signup") {
-      subject = "Verify your RCA Archive account - your OTP is inside";
+      const timestamp = new Date().toLocaleTimeString();
+      subject = `Verify your RCA Archive account - ${timestamp}`;
     } else if (operation === "login") {
-      subject = "Your RCA Archive login verification code";
+      const timestamp = new Date().toLocaleTimeString();
+      subject = `Your RCA Archive login code - ${timestamp}`;
     } else if (operation === "reset-password") {
-      subject = "Your RCA Archive password reset OTP";
+      const timestamp = new Date().toLocaleTimeString();
+      subject = `Your RCA Archive password reset code - ${timestamp}`;
     }
     console.log("📧 Email subject:", subject);
 
