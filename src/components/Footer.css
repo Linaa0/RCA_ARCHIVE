@@ -1,8 +1,9 @@
 .site-footer {
-  background: linear-gradient(135deg, #020617 0%, #1e3a8a 100%);
-  color: rgba(255,255,255,0.75);
+  background: var(--nav-bg);
+  color: var(--nav-text-muted);
   font-family: 'Quicksand', sans-serif;
   margin-top: auto;
+  border-top: 1px solid var(--nav-border);
 }
 
 .footer-inner {
@@ -25,20 +26,23 @@
   width: 25px;
   height: 25px;
   object-fit: contain;
-  filter: brightness(1.2);
+}
+
+.light-mode .footer-logo {
+  filter: brightness(1);
 }
 
 .footer-brand-name {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--nav-text-primary);
   letter-spacing: 0.3px;
 }
 
 .footer-brand-desc {
   font-size: 0.74rem;
   line-height: 1.5;
-  color: rgba(255,255,255,0.5);
+  color: var(--text-muted);
   margin: 0 0 14px;
   max-width: 260px;
 }
@@ -52,11 +56,11 @@
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid var(--nav-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255,255,255,0.6);
+  color: var(--text-muted);
   text-decoration: none;
   font-size: 0.72rem;
   transition: all 0.2s ease;
@@ -71,7 +75,7 @@
 .footer-col-title {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--nav-text-primary);
   margin: 0 0 11px;
   letter-spacing: 0.2px;
 }
@@ -87,11 +91,11 @@
 
 .footer-links li {
   font-size: 0.74rem;
-  color: rgba(255,255,255,0.5);
+  color: var(--text-muted);
 }
 
 .footer-links a {
-  color: rgba(255,255,255,0.5);
+  color: var(--text-muted);
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -107,7 +111,7 @@
 }
 
 .footer-bottom {
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid var(--nav-border);
   max-width: 1280px;
   margin: 0 auto;
   padding: 13px 40px;
@@ -115,7 +119,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 0.7rem;
-  color: rgba(255,255,255,0.35);
+  color: var(--text-muted);
 }
 
 @media (max-width: 900px) {

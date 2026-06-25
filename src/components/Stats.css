@@ -36,7 +36,16 @@
   flex-shrink: 0;
 }
 
-.stat-icon { background: #1e3a8a; color: #60a5fa; }
+.stat-icon { 
+  background: #1e3a8a; 
+  color: #60a5fa; 
+}
+
+.light-mode .stat-icon { 
+  background: rgba(37, 99, 235, 0.1); 
+  color: var(--accent-primary); 
+}
+
 .stat-text {
   display: flex;
   flex-direction: column;

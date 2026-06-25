@@ -361,6 +361,47 @@
   }
 }
 
+/* Light mode specific sidebar adjustments */
+.light-mode .sidebar-brand-name,
+.light-mode .menu-section-title,
+.light-mode .sidebar-nav-btn,
+.light-mode .sidebar-submenu-btn,
+.light-mode .profile-name,
+.light-mode .profile-role,
+.light-mode .sidebar-logout-btn,
+.light-mode .sidebar-login-btn,
+.light-mode .theme-toggle-label {
+  color: var(--text-primary);
+}
+
+.light-mode .sidebar-nav-btn,
+.light-mode .sidebar-submenu-btn {
+  color: var(--text-muted);
+}
+
+.light-mode .sidebar-nav-btn:hover,
+.light-mode .sidebar-nav-btn.active,
+.light-mode .sidebar-submenu-btn:hover,
+.light-mode .sidebar-logout-btn:hover,
+.light-mode .sidebar-login-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.light-mode .theme-toggle-icon {
+  color: var(--accent-primary);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.light-mode .theme-toggle-switch.light {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.light-mode .profile-avatar {
+  background: var(--accent-primary);
+  color: white;
+}
+
 @media (max-width: 768px) {
   .app-sidebar {
     width: 100%;

@@ -1,11 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
 
 .nav {
-  background: linear-gradient(135deg, #020617 0%, #1e3a8a 100%);
+  background: var(--nav-bg);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid var(--nav-border);
 }
 
 .navbar {
@@ -28,7 +29,6 @@
   width: 36px;
   height: 36px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
   transition: transform 0.3s ease;
 }
 
@@ -37,7 +37,7 @@
 }
 
 .nav-brand {
-  color: #ffffff;
+  color: var(--nav-text-primary);
   font-family: 'Quicksand', sans-serif;
   font-size: 1.1rem;
   font-weight: 700;
@@ -49,13 +49,13 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(37, 99, 235, 0.08);
   border-radius: 50px;
   padding: 4px;
 }
 
 .nav-link {
-  color: rgba(255,255,255,0.75);
+  color: var(--nav-text-muted);
   text-decoration: none;
   font-family: 'Quicksand', sans-serif;
   font-size: 0.875rem;
@@ -69,8 +69,8 @@
 }
 
 .nav-link:hover {
-  color: #ffffff;
-  background: rgba(255,255,255,0.12);
+  color: var(--nav-text-primary);
+  background: rgba(37, 99, 235, 0.15);
 }
 
 .nav-link.active {
@@ -101,7 +101,7 @@
 }
 
 .welcome-text {
-  color: rgba(255,255,255,0.8);
+  color: var(--nav-text-muted);
   font-size: 0.875rem;
   font-weight: 500;
   font-family: 'Quicksand', sans-serif;
@@ -109,9 +109,9 @@
 
 .logout-btn {
   background: transparent;
-  color: rgba(255,255,255,0.75);
+  color: var(--nav-text-muted);
   padding: 7px 16px;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid var(--nav-border);
   border-radius: 50px;
   cursor: pointer;
   font-size: 0.875rem;
@@ -121,9 +121,9 @@
 }
 
 .logout-btn:hover {
-  background: rgba(220, 53, 69, 0.15);
-  border-color: rgba(220, 53, 69, 0.5);
-  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #dc2626;
 }
 
 .login-btn {
