@@ -1,4 +1,5 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
@@ -6,7 +7,6 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
-const path = require("path");
 const fs = require("fs");
 const { TEACHER_EMAILS } = require("./teacherEmails");
 const {
@@ -216,16 +216,142 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
     "http://localhost:3074"
   ).replace(/\/$/, "");
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
-  const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
-    to: email,
-    subject: "RCA Archive Password Reset",
-    text: `You requested a password reset. Click the link below to reset your password:\n\n${resetUrl}\n\nThis link expires in 1 hour.`,
+
+  // Create beautiful email template
+  const emailContent = {
+    text: `Reset Your Password\n\nUse this link to reset your password:\n\n${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, please ignore this email.`,
     html: `
-      <p>You requested a password reset.</p>
-      <p><a href="${resetUrl}">Reset your password</a></p>
-      <p>This link expires in 1 hour.</p>
-    `,
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your Password</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f5f7fa;
+      padding: 30px 15px;
+    }
+    .email-container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .email-header {
+      background: #1e3a8a;
+      padding: 25px 30px;
+      text-align: center;
+    }
+    .email-logo {
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    .email-body {
+      padding: 35px 30px;
+      text-align: center;
+    }
+    .email-title {
+      color: #1e3a8a;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .email-subtitle {
+      color: #5a6c7d;
+      font-size: 14px;
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .reset-button {
+      background: #1e3a8a;
+      color: white;
+      text-decoration: none;
+      padding: 14px 40px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 28px;
+    }
+    .expiry-note {
+      color: #dc2626;
+      font-size: 13px;
+      margin-bottom: 22px;
+      font-weight: 600;
+    }
+    .info-note {
+      color: #5a6c7d;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .email-footer {
+      background: #f8fafc;
+      padding: 20px 30px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+    }
+    .footer-text {
+      color: #5a6c7d;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media only screen and (max-width: 500px) {
+      body { padding: 20px 10px; }
+      .email-body { padding: 28px 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="email-header">
+      <div class="email-logo">RCA ARCHIVE</div>
+    </div>
+    <div class="email-body">
+      <h1 class="email-title">Reset Your Password</h1>
+      <p class="email-subtitle">Click the button below to reset your password for RCA Archive.</p>
+      <a class="reset-button" href="${resetUrl}" target="_blank" rel="noopener noreferrer">Reset Your Password</a>
+      <p class="expiry-note">This link expires in 1 hour.</p>
+      <p class="info-note">If you didn't request this, please ignore this email or contact us if you have concerns.</p>
+    </div>
+    <div class="email-footer">
+      <p class="footer-text">
+        You're receiving this because you requested a password reset for RCA Archive.<br>
+        &copy; ${new Date().getFullYear()} RCA Archive. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+        `,
+  };
+
+  const info = await transporter.sendMail({
+    from: "RCA Archive <isabelleutuje12@gmail.com>",
+    to: email,
+    subject: "Reset Your RCA Archive Password",
+    replyTo: "isabelleutuje12@gmail.com",
+    text: emailContent.text,
+    html: emailContent.html,
+    headers: {
+      "X-Priority": "3",
+      "X-MSMail-Priority": "Normal",
+      Importance: "Normal",
+      "List-Unsubscribe":
+        "<mailto:isabelleutuje12@gmail.com?subject=Unsubscribe>",
+      Precedence: "bulk",
+    },
   });
 
   const previewUrl = !isReal ? nodemailer.getTestMessageUrl(info) : null;
@@ -501,31 +627,203 @@ app.post("/api/send-otp", async (req, res) => {
   });
 
   try {
-    // Send appropriate email based on operation
-    let subject, text, html;
-    if (operation === "signup") {
-      subject = "RCA Archive Verification Code";
-      text = `Your RCA verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
-      html = `<p>Your RCA verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
-    } else if (operation === "login") {
-      subject = "RCA Archive Login Verification Code";
-      text = `Your RCA login verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
-      html = `<p>Your RCA login verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
-    } else if (operation === "reset-password") {
-      subject = "RCA Archive Password Reset Verification Code";
-      text = `Your RCA password reset verification code is: ${otp}\n\nThis code expires in 10 minutes.`;
-      html = `<p>Your RCA password reset verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
-    }
+    console.log("📧 Starting send-otp process...");
+    console.log("📧 Email to send to:", email);
+    console.log("📧 Operation type:", operation);
 
+    // Create beautiful email template
+    const createEmailTemplate = (operation, otpCode) => {
+      let title, subtitle;
+      if (operation === "signup") {
+        title = "Verify Your Account";
+        subtitle =
+          "Welcome to RCA Archive! Please use the verification code below to complete your signup.";
+      } else if (operation === "login") {
+        title = "Login Verification";
+        subtitle = "Use this code to log in to your RCA Archive account.";
+      } else if (operation === "reset-password") {
+        title = "Reset Your Password";
+        subtitle = "Use this verification code to reset your password.";
+      }
+
+      console.log("📧 Email template created with OTP:", otpCode);
+
+      return {
+        text: `${title}\n\n${subtitle}\n\nYour verification code: ${otpCode}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, please ignore this email.`,
+        html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f5f7fa;
+      padding: 30px 15px;
+    }
+    .email-container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .email-header {
+      background: #1e3a8a;
+      padding: 25px 30px;
+      text-align: center;
+    }
+    .email-logo {
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    .email-body {
+      padding: 35px 30px;
+      text-align: center;
+    }
+    .email-title {
+      color: #1e3a8a;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .email-subtitle {
+      color: #5a6c7d;
+      font-size: 14px;
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .otp-card {
+      background: #f0f7ff;
+      border: 1px solid #b8daff;
+      border-radius: 8px;
+      padding: 22px 25px;
+      text-align: center;
+      margin-bottom: 28px;
+      display: inline-block;
+    }
+    .otp-label {
+      color: #1e3a8a;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .otp-code {
+      color: #1e3a8a;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 8px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    .expiry-note {
+      color: #dc2626;
+      font-size: 13px;
+      margin-bottom: 22px;
+      font-weight: 600;
+    }
+    .info-note {
+      color: #5a6c7d;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .email-footer {
+      background: #f8fafc;
+      padding: 20px 30px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+    }
+    .footer-text {
+      color: #5a6c7d;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media only screen and (max-width: 500px) {
+      body { padding: 20px 10px; }
+      .email-body { padding: 28px 22px; }
+      .otp-code { font-size: 26px; letter-spacing: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="email-header">
+      <div class="email-logo">RCA ARCHIVE</div>
+    </div>
+    <div class="email-body">
+      <h1 class="email-title">${title}</h1>
+      <p class="email-subtitle">${subtitle}</p>
+      <div class="otp-card">
+        <div class="otp-label">Verification Code</div>
+        <div class="otp-code">${otpCode}</div>
+      </div>
+      <p class="expiry-note">This code expires in 10 minutes</p>
+      <p class="info-note">If you didn't request this code, please ignore this email and your account will remain secure.</p>
+    </div>
+    <div class="email-footer">
+      <p class="footer-text">
+        You're receiving this because you requested a verification code for RCA Archive.<br>
+        &copy; ${new Date().getFullYear()} RCA Archive. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+        `,
+      };
+    };
+
+    // Determine subject and generate email content
+    let subject;
+    if (operation === "signup") {
+      subject = "Verify your RCA Archive account - your OTP is inside";
+    } else if (operation === "login") {
+      subject = "Your RCA Archive login verification code";
+    } else if (operation === "reset-password") {
+      subject = "Your RCA Archive password reset OTP";
+    }
+    console.log("📧 Email subject:", subject);
+
+    const emailContent = createEmailTemplate(operation, otp);
+    console.log("📧 Email content generated successfully");
+
+    console.log("📧 Getting mail transporter...");
     const { transporter, isReal } = await createMailTransporter();
-    const info = await transporter.sendMail({
-      from:
-        process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
+    console.log("📧 Transporter obtained. isReal:", isReal);
+
+    const mailOptions = {
+      from: "RCA Archive <isabelleutuje12@gmail.com>",
       to: email,
-      subject,
-      text,
-      html,
-    });
+      subject: subject,
+      replyTo: "isabelleutuje12@gmail.com",
+      text: emailContent.text,
+      html: emailContent.html,
+      headers: {
+        "X-Priority": "3",
+        "X-MSMail-Priority": "Normal",
+        Importance: "Normal",
+        "List-Unsubscribe":
+          "<mailto:isabelleutuje12@gmail.com?subject=Unsubscribe>",
+        Precedence: "bulk",
+      },
+    };
+    console.log("📧 Mail options:", mailOptions);
+
+    console.log("📧 Sending email...");
+    const info = await transporter.sendMail(mailOptions);
+    console.log("📧 Email sent successfully! Info:", info);
 
     let previewUrl = null;
     if (!isReal) {
@@ -536,11 +834,13 @@ app.post("/api/send-otp", async (req, res) => {
       console.log("======================================");
     }
 
+    // Log OTP in dev for testing, but don't send to client
+    console.log(`🔐 OTP for ${email} (${operation}): ${otp}`);
+
     res.json({
       message: isReal
         ? "OTP sent successfully. Check your email for the code."
         : "OTP sent successfully! Check the server logs for the preview URL.",
-      otp,
       previewUrl,
     });
   } catch (err) {
@@ -549,10 +849,11 @@ app.post("/api/send-otp", async (req, res) => {
       code: err.code,
       stack: err.stack,
     });
+    // Still log OTP in dev even if email fails
+    console.log(`🔐 OTP for ${email} (${operation}): ${otp}`);
     if (process.env.NODE_ENV !== "production") {
       return res.json({
-        message: `OTP email failed to send, but here's your code for development: ${otp}`,
-        otp,
+        message: `OTP email failed to send, but check server logs for the code.`,
         error: err.message,
       });
     }
@@ -1146,6 +1447,7 @@ initDB().then(async () => {
   // Print environment status (redacted for security)
   console.log("📋 Server Configuration:");
   console.log(`   - PORT: ${PORT}`);
+  console.log(`   - .env path: ${path.join(__dirname, ".env")}`);
   console.log(`   - SMTP_HOST: ${process.env.SMTP_HOST}`);
   console.log(`   - SMTP_PORT: ${process.env.SMTP_PORT}`);
   console.log(`   - SMTP_USER: ${process.env.SMTP_USER}`);
@@ -1161,7 +1463,8 @@ initDB().then(async () => {
   if (isRealSmtpConfigured()) {
     try {
       console.log("🔍 Testing SMTP connection...");
-      const transporter = await createMailTransporter();
+      const { transporter } = await createMailTransporter();
+      await transporter.verify();
       console.log("✅ SMTP test passed! Server is ready to send emails!");
     } catch (smtpErr) {
       console.error("❌ SMTP Test FAILED:", smtpErr);

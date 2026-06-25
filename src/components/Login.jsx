@@ -87,9 +87,6 @@ function Login() {
       if (data.previewUrl) {
         setOtpPreviewUrl(data.previewUrl);
       }
-      if (data.otp) {
-        setOtp(data.otp);
-      }
       sentState(true);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
