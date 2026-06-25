@@ -200,7 +200,6 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reset Your Password</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -208,99 +207,92 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
       box-sizing: border-box;
     }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: #f3f4f6;
-      padding: 24px 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f5f5f5;
+      padding: 20px 12px;
     }
     .email-container {
-      max-width: 420px;
+      max-width: 360px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      overflow: hidden;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
     }
-    .email-header {
-      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-      padding: 20px 24px;
+    .email-body {
+      padding: 24px 20px;
       text-align: center;
     }
     .email-logo {
-      color: white;
-      font-size: 16px;
+      color: #111111;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 1.5px;
-    }
-    .email-body {
-      padding: 28px 24px;
-      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
     }
     .email-title {
-      color: #0f172a;
-      font-size: 18px;
+      color: #111111;
+      font-size: 16px;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .email-subtitle {
-      color: #475569;
-      font-size: 13px;
-      margin-bottom: 24px;
+      color: #666666;
+      font-size: 12px;
+      margin-bottom: 20px;
       line-height: 1.5;
     }
     .reset-button {
-      background: #2563eb;
+      background: #111111;
       color: white;
       text-decoration: none;
-      padding: 12px 36px;
-      border-radius: 6px;
-      font-size: 13px;
+      padding: 10px 32px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 600;
       display: inline-block;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .expiry-note {
-      color: #dc2626;
-      font-size: 12px;
-      margin-bottom: 20px;
+      color: #c53030;
+      font-size: 11px;
+      margin-bottom: 16px;
       font-weight: 600;
     }
     .info-note {
-      color: #64748b;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-    .email-footer {
-      background: #f8fafc;
-      padding: 16px 24px;
-      text-align: center;
-      border-top: 1px solid #e2e8f0;
-    }
-    .footer-text {
-      color: #94a3b8;
+      color: #888888;
       font-size: 11px;
       line-height: 1.5;
     }
-    @media only screen and (max-width: 450px) {
-      body { padding: 16px 12px; }
-      .email-body { padding: 24px 20px; }
+    .email-footer {
+      background: #f9f9f9;
+      padding: 14px 20px;
+      text-align: center;
+      border-top: 1px solid #e0e0e0;
+    }
+    .footer-text {
+      color: #aaaaaa;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+    @media only screen and (max-width: 400px) {
+      body { padding: 16px 10px; }
+      .email-body { padding: 20px 16px; }
     }
   </style>
 </head>
 <body>
   <div class="email-container">
-    <div class="email-header">
-      <div class="email-logo">RCA ARCHIVE</div>
-    </div>
     <div class="email-body">
+      <div class="email-logo">RCA ARCHIVE</div>
       <h1 class="email-title">Reset Your Password</h1>
-      <p class="email-subtitle">Click the button below to reset your password for RCA Archive.</p>
-      <a class="reset-button" href="${resetUrl}" target="_blank" rel="noopener noreferrer">Reset Your Password</a>
-      <p class="expiry-note">This link expires in 1 hour.</p>
-      <p class="info-note">If you didn't request this, please ignore this email or contact us if you have concerns.</p>
+      <p class="email-subtitle">Click the button below to reset your password.</p>
+      <a class="reset-button" href="${resetUrl}" target="_blank" rel="noopener noreferrer">Reset Password</a>
+      <p class="expiry-note">Expires in 1 hour</p>
+      <p class="info-note">If you didn't request this, please ignore this email.</p>
     </div>
     <div class="email-footer">
       <p class="footer-text">
-        You're receiving this because you requested a password reset for RCA Archive.<br>
         &copy; ${new Date().getFullYear()} RCA Archive. All rights reserved.
       </p>
     </div>
@@ -622,7 +614,6 @@ app.post("/api/send-otp", async (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -630,116 +621,108 @@ app.post("/api/send-otp", async (req, res) => {
       box-sizing: border-box;
     }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: #f3f4f6;
-      padding: 24px 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f5f5f5;
+      padding: 20px 12px;
     }
     .email-container {
-      max-width: 420px;
+      max-width: 360px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      overflow: hidden;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
     }
-    .email-header {
-      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-      padding: 20px 24px;
+    .email-body {
+      padding: 24px 20px;
       text-align: center;
     }
     .email-logo {
-      color: white;
-      font-size: 16px;
+      color: #111111;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 1.5px;
-    }
-    .email-body {
-      padding: 28px 24px;
-      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
     }
     .email-title {
-      color: #0f172a;
-      font-size: 18px;
+      color: #111111;
+      font-size: 16px;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .email-subtitle {
-      color: #475569;
-      font-size: 13px;
-      margin-bottom: 24px;
+      color: #666666;
+      font-size: 12px;
+      margin-bottom: 20px;
       line-height: 1.5;
     }
     .otp-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 18px 20px;
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 14px 16px;
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       display: inline-block;
     }
     .otp-label {
-      color: #64748b;
-      font-size: 11px;
+      color: #666666;
+      font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .otp-code {
-      color: #0f172a;
-      font-size: 28px;
+      color: #111111;
+      font-size: 22px;
       font-weight: 700;
-      letter-spacing: 6px;
-      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 4px;
     }
     .expiry-note {
-      color: #dc2626;
-      font-size: 12px;
-      margin-bottom: 20px;
+      color: #c53030;
+      font-size: 11px;
+      margin-bottom: 16px;
       font-weight: 600;
     }
     .info-note {
-      color: #64748b;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-    .email-footer {
-      background: #f8fafc;
-      padding: 16px 24px;
-      text-align: center;
-      border-top: 1px solid #e2e8f0;
-    }
-    .footer-text {
-      color: #94a3b8;
+      color: #888888;
       font-size: 11px;
       line-height: 1.5;
     }
-    @media only screen and (max-width: 450px) {
-      body { padding: 16px 12px; }
-      .email-body { padding: 24px 20px; }
-      .otp-code { font-size: 24px; letter-spacing: 5px; }
+    .email-footer {
+      background: #f9f9f9;
+      padding: 14px 20px;
+      text-align: center;
+      border-top: 1px solid #e0e0e0;
+    }
+    .footer-text {
+      color: #aaaaaa;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+    @media only screen and (max-width: 400px) {
+      body { padding: 16px 10px; }
+      .email-body { padding: 20px 16px; }
+      .otp-code { font-size: 20px; letter-spacing: 3px; }
     }
   </style>
 </head>
 <body>
   <div class="email-container">
-    <div class="email-header">
-      <div class="email-logo">RCA ARCHIVE</div>
-    </div>
     <div class="email-body">
+      <div class="email-logo">RCA ARCHIVE</div>
       <h1 class="email-title">${title}</h1>
       <p class="email-subtitle">${subtitle}</p>
       <div class="otp-card">
         <div class="otp-label">Verification Code</div>
         <div class="otp-code">${otpCode}</div>
       </div>
-      <p class="expiry-note">This code expires in 10 minutes</p>
-      <p class="info-note">If you didn't request this code, please ignore this email and your account will remain secure.</p>
+      <p class="expiry-note">Expires in 10 minutes</p>
+      <p class="info-note">If you didn't request this, please ignore this email.</p>
     </div>
     <div class="email-footer">
       <p class="footer-text">
-        You're receiving this because you requested a verification code for RCA Archive.<br>
         &copy; ${new Date().getFullYear()} RCA Archive. All rights reserved.
       </p>
     </div>
