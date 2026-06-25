@@ -181,6 +181,33 @@ function getFrontendBaseUrl(req) {
   return "http://localhost:3074";
 }
 
+async function sendTeacherInviteEmail(email, username, token, frontendBaseUrl) {
+  const { transporter, isReal } = await createMailTransporter();
+  const baseUrl = (frontendBaseUrl || "http://localhost:3000").replace(/\/$/, "");
+  const setupUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  const info = await transporter.sendMail({
+    from: `"RCA Archive" <${process.env.SMTP_FROM || "no-reply@rca.ac.rw"}>`,
+    to: email,
+    subject: "Welcome to RCA Archive — Set up your teacher account",
+    text:
+      `Hello ${username || "Teacher"},\n\n` +
+      `An RCA Archive teacher account has been created for you.\n` +
+      `Please set your password using the link below (valid for 24 hours):\n\n${setupUrl}\n\n` +
+      `After setting your password you can log in with your email and the password you chose.`,
+    html: `
+      <p>Hello <strong>${username || "Teacher"}</strong>,</p>
+      <p>An <strong>RCA Archive</strong> teacher account has been created for you.</p>
+      <p>Please set your password using the button below (link valid for 24 hours):</p>
+      <p><a href="${setupUrl}" style="display:inline-block;padding:10px 18px;background:#0a7;color:#fff;border-radius:6px;text-decoration:none">Set your password</a></p>
+      <p>Or open this link: <br><a href="${setupUrl}">${setupUrl}</a></p>
+      <p>After setting your password, log in with your email and the password you chose.</p>
+    `,
+  });
+  const previewUrl = !isReal ? nodemailer.getTestMessageUrl(info) : null;
+  if (previewUrl) console.log("📧 Teacher invite preview:", previewUrl);
+  return { previewUrl };
+}
+
 async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
   const { transporter, isReal } = await createMailTransporter();
   const baseUrl = (
@@ -396,6 +423,14 @@ function requireAuth(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+
+
 function hashFile(filePath) {
   const buffer = fs.readFileSync(filePath);
   return crypto.createHash("sha256").update(buffer).digest("hex");
@@ -601,6 +636,8 @@ app.post("/api/forgot-password", async (req, res) => {
       error:
         "Failed to send password reset email. Please try again later. Verify server SMTP logs for details.",
     });
+
+
   }
 });
 
@@ -631,10 +668,15 @@ app.post("/api/reset-password", async (req, res) => {
       return res.status(404).json({ error: "User not found." });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await users.updateOne(
+        await users.updateOne(
       { email: resetRecord.email },
-      { $set: { password: hashedPassword } },
+      {
+        $set: {
+          password: hashedPassword,
+          status: "active",
+          updatedAt: new Date(),
+        },
+      },
     );
 
     await resetCollection.deleteMany({ email: resetRecord.email });
@@ -694,6 +736,15 @@ app.post("/api/signup", async (req, res) => {
       .json({ error: "Email, password, and username are required" });
   }
 
+    // Teachers cannot self-register. Admin must create them.
+  if (role === "teacher") {
+    return res.status(403).json({
+      error: "Teacher accounts can only be created by an administrator.",
+    });
+  }
+  // finalRole stays "student"
+
+
   const normalizedEmail = normalizeEmail(email);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
@@ -728,6 +779,14 @@ app.post("/api/signup", async (req, res) => {
     email: normalizedEmail,
     operation: "signup",
   });
+
+
+    if (user.status === "pending_password_setup" || !user.password) {
+    return res.status(403).json({
+      error: "Your account is pending password setup. Check your email for the setup link.",
+    });
+  }
+
 
   // Check for teacher role
   if (role === "teacher") {
@@ -764,6 +823,7 @@ app.post("/api/signup", async (req, res) => {
   });
 });
 
+
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -774,6 +834,13 @@ app.post("/api/login", async (req, res) => {
   const user = await findUserByEmail(email);
   if (!user) {
     return res.status(400).json({ error: "User not found" });
+  }
+
+    // Block invited teachers who haven't set their password yet
+  if (user.status === "pending_password_setup" || !user.password) {
+    return res.status(403).json({
+      error: "Please set your password first using the link sent to your email.",
+    });
   }
 
   const match = await bcrypt.compare(password, user.password);
@@ -799,6 +866,95 @@ app.post("/api/login", async (req, res) => {
     role: user.role,
   });
 });
+
+
+// Admin creates a teacher account (no password, sends setup email)
+app.post("/api/admin/teachers", requireAuth, requireAdmin, async (req, res) => {
+  const { email, username } = req.body;
+  if (!email || !username) {
+    return res.status(400).json({ error: "Email and username are required" });
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+  const normalizedEmail = normalizeEmail(email);
+  const users = getUsersCollection();
+
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ error: "A user with this email already exists" });
+  }
+
+  const teacher = {
+    id: Date.now().toString(),
+    email: normalizedEmail,
+    username: username.trim(),
+    password: null,
+    role: "teacher",
+    status: "pending_password_setup",
+    createdAt: new Date().toISOString(),
+    createdBy: req.user.email,
+  };
+  await users.insertOne(teacher);
+
+  // Reuse existing password-reset token storage
+  const resetCollection = getPasswordResetCollection();
+  const token = crypto.randomBytes(24).toString("hex");
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24h for invites
+  await resetCollection.deleteMany({ email: normalizedEmail });
+  await resetCollection.insertOne({ email: normalizedEmail, token, expiresAt });
+
+  try {
+    const { previewUrl } = await sendTeacherInviteEmail(
+      normalizedEmail,
+      teacher.username,
+      token,
+      getFrontendBaseUrl(req),
+    );
+    return res.json({
+      message: "Teacher created. Setup email sent.",
+      teacher: { email: teacher.email, username: teacher.username, role: teacher.role, status: teacher.status },
+      previewUrl,
+    });
+  } catch (err) {
+    console.error("❌ Teacher invite email failed:", err);
+    // Account exists; admin can resend
+    return res.status(500).json({
+      error: "Teacher created but email failed to send. Use 'Resend invite' to retry.",
+    });
+  }
+});
+
+// Optional: resend invite
+app.post("/api/admin/teachers/resend-invite", requireAuth, requireAdmin, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+  const normalizedEmail = normalizeEmail(email);
+  const user = await findUserByEmail(email);
+  if (!user || user.role !== "teacher") return res.status(404).json({ error: "Teacher not found" });
+  if (user.status !== "pending_password_setup") {
+    return res.status(400).json({ error: "Teacher already activated" });
+  }
+  const resetCollection = getPasswordResetCollection();
+  const token = crypto.randomBytes(24).toString("hex");
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+  await resetCollection.deleteMany({ email: normalizedEmail });
+  await resetCollection.insertOne({ email: normalizedEmail, token, expiresAt });
+  const { previewUrl } = await sendTeacherInviteEmail(normalizedEmail, user.username, token, getFrontendBaseUrl(req));
+  res.json({ message: "Invite resent", previewUrl });
+});
+
+// Optional: list teachers
+app.get("/api/admin/teachers", requireAuth, requireAdmin, async (_req, res) => {
+  const users = getUsersCollection();
+  const teachers = await users
+    .find({ role: "teacher" }, { projection: { password: 0 } })
+    .sort({ createdAt: -1 })
+    .toArray();
+  res.json({ teachers });
+});
+
 
 app.post(
   "/api/upload",
@@ -1014,5 +1170,35 @@ initDB().then(async () => {
 
   app.listen(PORT, () => {
     console.log(`\n✅ RCA Backend running on http://localhost:${PORT}`);
+  });
+});
+
+
+app.put("/api/make-admin", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email required" });
+  }
+
+  const users = getUsersCollection();
+
+  const result = await users.updateOne(
+    { email: normalizeEmail(email) },
+    {lcear
+      $set: {
+        role: "admin"
+      }
+    }
+  );
+
+  if (result.matchedCount === 0) {
+    return res.status(404).json({
+      error: "User not found"
+    });
+  }
+
+  res.json({
+    message: "User is now admin"
   });
 });

@@ -344,7 +344,7 @@ function Login() {
                     <div className="form-group">
                       <label className="auth-label">Account type</label>
                       <div className="role-select-row">
-                        {["student", "teacher"].map((item) => (
+                        {["student"].map((item) => (
                           <label key={item} className={`role-option ${role === item ? "active" : ""}`}>
                             <input
                               type="radio"
