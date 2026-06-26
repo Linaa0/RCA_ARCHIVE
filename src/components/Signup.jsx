@@ -177,9 +177,15 @@ const Signup = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send verification code");
       setOtpSent(true);
-      setInfo("Verification code sent to your email!");
+      let infoMsg = "Verification code sent to your email!";
+      if (data.previewUrl) {
+        infoMsg += ` Preview URL: ${data.previewUrl}`;
+      }
+      setInfo(infoMsg);
+      console.log("📧 Send OTP response data:", data);
     } catch (e) {
       setError(e.message);
+      console.error("❌ Send OTP error:", e);
     } finally {
       setLoading(false);
     }
