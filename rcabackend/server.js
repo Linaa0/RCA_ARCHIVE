@@ -230,7 +230,6 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reset Your Password</title>
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -238,99 +237,92 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
       box-sizing: border-box;
     }
     body {
-      font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: #f5f7fa;
-      padding: 30px 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f5f5f5;
+      padding: 20px 12px;
     }
     .email-container {
-      max-width: 480px;
+      max-width: 360px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      overflow: hidden;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
     }
-    .email-header {
-      background: #1e3a8a;
-      padding: 25px 30px;
+    .email-body {
+      padding: 24px 20px;
       text-align: center;
     }
     .email-logo {
-      color: white;
-      font-size: 18px;
+      color: #111111;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 2px;
-    }
-    .email-body {
-      padding: 35px 30px;
-      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
     }
     .email-title {
-      color: #1e3a8a;
-      font-size: 20px;
+      color: #111111;
+      font-size: 16px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
     }
     .email-subtitle {
-      color: #5a6c7d;
-      font-size: 14px;
-      margin-bottom: 28px;
-      line-height: 1.6;
+      color: #666666;
+      font-size: 12px;
+      margin-bottom: 20px;
+      line-height: 1.5;
     }
     .reset-button {
-      background: #1e3a8a;
+      background: #111111;
       color: white;
       text-decoration: none;
-      padding: 14px 40px;
-      border-radius: 8px;
-      font-size: 14px;
+      padding: 10px 32px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 600;
       display: inline-block;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
     }
     .expiry-note {
-      color: #dc2626;
-      font-size: 13px;
-      margin-bottom: 22px;
+      color: #c53030;
+      font-size: 11px;
+      margin-bottom: 16px;
       font-weight: 600;
     }
     .info-note {
-      color: #5a6c7d;
-      font-size: 13px;
-      line-height: 1.6;
+      color: #888888;
+      font-size: 11px;
+      line-height: 1.5;
     }
     .email-footer {
-      background: #f8fafc;
-      padding: 20px 30px;
+      background: #f9f9f9;
+      padding: 14px 20px;
       text-align: center;
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid #e0e0e0;
     }
     .footer-text {
-      color: #5a6c7d;
-      font-size: 12px;
-      line-height: 1.6;
+      color: #aaaaaa;
+      font-size: 10px;
+      line-height: 1.5;
     }
-    @media only screen and (max-width: 500px) {
-      body { padding: 20px 10px; }
-      .email-body { padding: 28px 22px; }
+    @media only screen and (max-width: 400px) {
+      body { padding: 16px 10px; }
+      .email-body { padding: 20px 16px; }
     }
   </style>
 </head>
 <body>
   <div class="email-container">
-    <div class="email-header">
-      <div class="email-logo">RCA ARCHIVE</div>
-    </div>
     <div class="email-body">
+      <div class="email-logo">RCA ARCHIVE</div>
       <h1 class="email-title">Reset Your Password</h1>
-      <p class="email-subtitle">Click the button below to reset your password for RCA Archive.</p>
-      <a class="reset-button" href="${resetUrl}" target="_blank" rel="noopener noreferrer">Reset Your Password</a>
-      <p class="expiry-note">This link expires in 1 hour.</p>
-      <p class="info-note">If you didn't request this, please ignore this email or contact us if you have concerns.</p>
+      <p class="email-subtitle">Click the button below to reset your password.</p>
+      <a class="reset-button" href="${resetUrl}" target="_blank" rel="noopener noreferrer">Reset Password</a>
+      <p class="expiry-note">Expires in 1 hour</p>
+      <p class="info-note">If you didn't request this, please ignore this email.</p>
     </div>
     <div class="email-footer">
       <p class="footer-text">
-        You're receiving this because you requested a password reset for RCA Archive.<br>
         &copy; ${new Date().getFullYear()} RCA Archive. All rights reserved.
       </p>
     </div>
@@ -340,10 +332,11 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
         `,
   };
 
+  const timestamp = new Date().toLocaleTimeString();
   const info = await transporter.sendMail({
     from: "RCA Archive <isabelleutuje12@gmail.com>",
     to: email,
-    subject: "Reset Your RCA Archive Password",
+    subject: `Reset Your RCA Archive Password - ${timestamp}`,
     replyTo: "isabelleutuje12@gmail.com",
     text: emailContent.text,
     html: emailContent.html,
@@ -750,7 +743,6 @@ app.post("/api/send-otp", async (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -758,116 +750,108 @@ app.post("/api/send-otp", async (req, res) => {
       box-sizing: border-box;
     }
     body {
-      font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: #f5f7fa;
-      padding: 30px 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #f5f5f5;
+      padding: 20px 12px;
     }
     .email-container {
-      max-width: 480px;
+      max-width: 360px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      overflow: hidden;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
     }
-    .email-header {
-      background: #1e3a8a;
-      padding: 25px 30px;
+    .email-body {
+      padding: 24px 20px;
       text-align: center;
     }
     .email-logo {
-      color: white;
-      font-size: 18px;
+      color: #111111;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 2px;
-    }
-    .email-body {
-      padding: 35px 30px;
-      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
     }
     .email-title {
-      color: #1e3a8a;
-      font-size: 20px;
+      color: #111111;
+      font-size: 16px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
     }
     .email-subtitle {
-      color: #5a6c7d;
-      font-size: 14px;
-      margin-bottom: 28px;
-      line-height: 1.6;
+      color: #666666;
+      font-size: 12px;
+      margin-bottom: 20px;
+      line-height: 1.5;
     }
     .otp-card {
-      background: #f0f7ff;
-      border: 1px solid #b8daff;
-      border-radius: 8px;
-      padding: 22px 25px;
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 14px 16px;
       text-align: center;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
       display: inline-block;
     }
     .otp-label {
-      color: #1e3a8a;
-      font-size: 12px;
+      color: #666666;
+      font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .otp-code {
-      color: #1e3a8a;
-      font-size: 32px;
+      color: #111111;
+      font-size: 22px;
       font-weight: 700;
-      letter-spacing: 8px;
-      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 4px;
     }
     .expiry-note {
-      color: #dc2626;
-      font-size: 13px;
-      margin-bottom: 22px;
+      color: #c53030;
+      font-size: 11px;
+      margin-bottom: 16px;
       font-weight: 600;
     }
     .info-note {
-      color: #5a6c7d;
-      font-size: 13px;
-      line-height: 1.6;
+      color: #888888;
+      font-size: 11px;
+      line-height: 1.5;
     }
     .email-footer {
-      background: #f8fafc;
-      padding: 20px 30px;
+      background: #f9f9f9;
+      padding: 14px 20px;
       text-align: center;
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid #e0e0e0;
     }
     .footer-text {
-      color: #5a6c7d;
-      font-size: 12px;
-      line-height: 1.6;
+      color: #aaaaaa;
+      font-size: 10px;
+      line-height: 1.5;
     }
-    @media only screen and (max-width: 500px) {
-      body { padding: 20px 10px; }
-      .email-body { padding: 28px 22px; }
-      .otp-code { font-size: 26px; letter-spacing: 6px; }
+    @media only screen and (max-width: 400px) {
+      body { padding: 16px 10px; }
+      .email-body { padding: 20px 16px; }
+      .otp-code { font-size: 20px; letter-spacing: 3px; }
     }
   </style>
 </head>
 <body>
   <div class="email-container">
-    <div class="email-header">
-      <div class="email-logo">RCA ARCHIVE</div>
-    </div>
     <div class="email-body">
+      <div class="email-logo">RCA ARCHIVE</div>
       <h1 class="email-title">${title}</h1>
       <p class="email-subtitle">${subtitle}</p>
       <div class="otp-card">
         <div class="otp-label">Verification Code</div>
         <div class="otp-code">${otpCode}</div>
       </div>
-      <p class="expiry-note">This code expires in 10 minutes</p>
-      <p class="info-note">If you didn't request this code, please ignore this email and your account will remain secure.</p>
+      <p class="expiry-note">Expires in 10 minutes</p>
+      <p class="info-note">If you didn't request this, please ignore this email.</p>
     </div>
     <div class="email-footer">
       <p class="footer-text">
-        You're receiving this because you requested a verification code for RCA Archive.<br>
         &copy; ${new Date().getFullYear()} RCA Archive. All rights reserved.
       </p>
     </div>
@@ -881,11 +865,14 @@ app.post("/api/send-otp", async (req, res) => {
     // Determine subject and generate email content
     let subject;
     if (operation === "signup") {
-      subject = "Verify your RCA Archive account - your OTP is inside";
+      const timestamp = new Date().toLocaleTimeString();
+      subject = `Verify your RCA Archive account - ${timestamp}`;
     } else if (operation === "login") {
-      subject = "Your RCA Archive login verification code";
+      const timestamp = new Date().toLocaleTimeString();
+      subject = `Your RCA Archive login code - ${timestamp}`;
     } else if (operation === "reset-password") {
-      subject = "Your RCA Archive password reset OTP";
+      const timestamp = new Date().toLocaleTimeString();
+      subject = `Your RCA Archive password reset code - ${timestamp}`;
     }
     console.log("📧 Email subject:", subject);
 
