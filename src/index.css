@@ -19,8 +19,8 @@
   --input-bg: #0f172a;
   --nav-bg: linear-gradient(135deg, #020617 0%, #1e3a8a 100%);
   --nav-text-primary: #ffffff;
-  --nav-text-muted: rgba(255,255,255,0.75);
-  --nav-border: rgba(255,255,255,0.2);
+  --nav-text-muted: rgba(255, 255, 255, 0.75);
+  --nav-border: rgba(255, 255, 255, 0.2);
 }
 
 .light-mode {
@@ -31,8 +31,8 @@
   --text-primary: #0f172a; /* Maximum contrast black text */
   --text-secondary: #1e293b; /* Dark slate, still very readable */
   --text-muted: #475569; /* Dark muted, no struggle to read */
-  --accent-primary: #1d4ed8; /* Strong blue for visibility */
-  --accent-secondary: #2563eb;
+  --accent-primary: #2563eb; /* Strong blue for visibility */
+  --accent-secondary: #1d4ed8;
   --accent-light: #1e40af;
   --border-color: #d1d5db; /* Clear but not harsh borders */
   --shadow: 0 2px 12px rgba(15, 23, 42, 0.12);
