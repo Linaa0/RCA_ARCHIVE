@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../api";
 import "./Login.css";
 import rcaLogo from "../rca.png";
 
 function ResetPassword() {
   const [searchParams] = useSearchParams();
+  const { token: routeToken = "" } = useParams();
   const navigate = useNavigate();
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
@@ -15,9 +16,9 @@ function ResetPassword() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const tokenParam = searchParams.get("token") || "";
+    const tokenParam = searchParams.get("token") || routeToken || "";
     setToken(tokenParam);
-  }, [searchParams]);
+  }, [searchParams, routeToken]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

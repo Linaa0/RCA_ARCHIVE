@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import api, { API_ROOT } from "../api";
+import api from "../api";
+
+const API_ROOT = process.env.REACT_APP_API_URL
+  ? process.env.REACT_APP_API_URL.replace(/\/api$/, "")
+  : "";
 
 export default function FileViewer() {
   const navigate = useNavigate();

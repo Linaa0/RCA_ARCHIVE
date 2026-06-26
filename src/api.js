@@ -1,36 +1,35 @@
-import axios from 'axios';
-
-const defaultApiRoot = window?.location?.hostname === 'localhost'
-  ? 'http://localhost:5077'
-  : 'https://api.archive.innov.rw';
-
-export const API_ROOT =
-  process.env.REACT_APP_API_BASE_URL || defaultApiRoot;
+import axios from "axios";
+import { clearAuthStorage, getStoredToken, isSessionExpired, isTokenExpired } from "./utils/auth";
 
 const api = axios.create({
-  baseURL: `${API_ROOT.replace(/\/$/, '')}/api`,
+  baseURL: process.env.REACT_APP_API_URL || "/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Automatically attach token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const token = getStoredToken();
+
+  if (token && !(isTokenExpired(token) || isSessionExpired())) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 
-// Automatically handle unauthorized responses
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('username');
-      localStorage.removeItem('email');
-      localStorage.removeItem('role');
-      window.location.href = '/login';
+    const status = error?.response?.status;
+
+    if (status === 401 || status === 403) {
+      clearAuthStorage();
     }
+
     return Promise.reject(error);
-  },
+  }
 );
 
 export default api;
+export { api };

@@ -1,22 +1,20 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { clearAuthStorage } from "../utils/auth";
 import "./Sidebar.css";
 
 function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, toggleDarkMode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const username = localStorage.getItem("username");
+  const role = localStorage.getItem("role") || "student";
   const token = localStorage.getItem("token");
   const isAcademicPage = location.pathname === "/" || location.pathname.startsWith("/subject/");
   const [yearsOpen, setYearsOpen] = useState(isAcademicPage);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
+    clearAuthStorage();
     navigate("/login");
-    window.location.reload();
   };
 
   const handleYearClick = (y) => {
@@ -143,7 +141,7 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
               <div className="profile-avatar">{initial}</div>
               <div className="profile-text">
                 <span className="profile-name">{username}</span>
-                <span className="profile-role">Student</span>
+                <span className="profile-role">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
               </div>
             </div>
             <button onClick={handleLogout} className="sidebar-logout-btn">
