@@ -53,7 +53,8 @@
   flex: 1;
 }
 
-.admin-nav-item {
+.admin-nav-item,
+a.admin-nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -69,6 +70,8 @@
   text-align: left;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .admin-nav-item:hover {

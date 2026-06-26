@@ -385,9 +385,24 @@ const storage = multer.diskStorage({
   },
 });
 
+const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx"];
+const ALLOWED_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
 const upload = multer({
   storage,
-  fileFilter: (_req, _file, cb) => cb(null, true),
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ALLOWED_EXTENSIONS.includes(ext) && ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF and Word documents (.pdf, .doc, .docx) are allowed."));
+    }
+  },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max
 });
 
 const defaultCorsOrigins = [
@@ -1686,7 +1701,15 @@ app.patch(
 app.post(
   "/api/upload",
   requireAuth,
-  upload.single("file"),
+  (req, res, next) => {
+    // Run multer and surface file-type errors cleanly
+    upload.single("file")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message || "File upload failed." });
+      }
+      next();
+    });
+  },
   async (req, res) => {
     if (req.user.role !== "teacher" && req.user.role !== "admin") {
       return res.status(403).json({

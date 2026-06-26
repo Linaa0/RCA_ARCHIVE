@@ -57,7 +57,14 @@ function SubjectPage() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) { alert("Please select a file"); return; }
+    if (!file) { setPopup({ type: "error", message: "Please select a file." }); return; }
+
+    // Client-side file type check
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["pdf", "doc", "docx"].includes(ext)) {
+      setPopup({ type: "error", message: "Only PDF and Word documents (.pdf, .doc, .docx) are allowed." });
+      return;
+    }
 
     setUploading(true);
 
@@ -68,12 +75,8 @@ function SubjectPage() {
     formData.append("year", year);
     formData.append("type", type);
 
-     try {
+    try {
       await api.post("/upload", formData);
-
-      // api.js interceptor handles Authorization automatically
-      // Check for duplicate via status — axios throws on non-2xx,
-      // so we handle 409 in the catch block
       setPopup({ type: "success", message: "Paper uploaded successfully." });
       setTitle("");
       setFile(null);
@@ -83,7 +86,7 @@ function SubjectPage() {
       if (err.response?.status === 409) {
         setPopup({ type: "duplicate", message: err.response.data.message });
       } else {
-        setPopup({ type: "error", message: err.response?.data?.error || "Upload failed" });
+        setPopup({ type: "error", message: err.response?.data?.error || "Upload failed. Please try again." });
       }
     }
 
@@ -365,10 +368,10 @@ function SubjectPage() {
               <option>Quiz</option>
             </select>
 
-            <label>File (any type supported)</label>
+            <label>File (PDF or Word document only)</label>
             <input
               type="file"
-              accept="*/*"
+              accept=".pdf,.doc,.docx"
               onChange={(e) => setFile(e.target.files[0])}
               required
             />
