@@ -1,5 +1,4 @@
 {
-  "proxy": "http://localhost:5077",
   "name": "rca-past-papers",
   "version": "0.1.0",
   "private": true,

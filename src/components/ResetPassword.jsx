@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../api";
 import "./Login.css";
 import rcaLogo from "../rca.png";
 
 function ResetPassword() {
   const [searchParams] = useSearchParams();
+  const { token: routeToken = "" } = useParams();
   const navigate = useNavigate();
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
@@ -15,9 +16,17 @@ function ResetPassword() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const tokenParam = searchParams.get("token") || "";
+    const tokenParam = searchParams.get("token") || routeToken || "";
     setToken(tokenParam);
-  }, [searchParams]);
+  }, [searchParams, routeToken]);
+
+  // If a token is in the URL it's a setup/reset link — detect if it's a teacher setup
+  const isSetupFlow = Boolean(routeToken || searchParams.get("token"));
+  const pageTitle = isSetupFlow ? "Set Password" : "Reset Password";
+  const pageSubtitle = isSetupFlow
+    ? "Welcome to RCA Archive. Create a password to activate your teacher account."
+    : "Set a new password to restore access to your account.";
+  const buttonLabel = isSetupFlow ? "Set Password" : "Reset Password";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,8 +85,8 @@ function ResetPassword() {
 
         <section className="auth-panel" aria-label="Reset password form">
           <div className="auth-card">
-            <h1 className="form-title">Reset Password</h1>
-            <p className="form-subtitle">Set a new password to restore access to your account.</p>
+            <h1 className="form-title">{pageTitle}</h1>
+            <p className="form-subtitle">{pageSubtitle}</p>
 
             <Message error={error} success={success && !loading ? success : ""} />
 
@@ -117,7 +126,7 @@ function ResetPassword() {
               </div>
 
               <SubmitButton loading={loading}>
-                Reset Password
+                {buttonLabel}
               </SubmitButton>
             </form>
 

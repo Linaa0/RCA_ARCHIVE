@@ -1,22 +1,20 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { clearAuthStorage } from "../utils/auth";
 import "./Sidebar.css";
 
 function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, toggleDarkMode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const username = localStorage.getItem("username");
+  const role = localStorage.getItem("role") || "student";
   const token = localStorage.getItem("token");
   const isAcademicPage = location.pathname === "/" || location.pathname.startsWith("/subject/");
   const [yearsOpen, setYearsOpen] = useState(isAcademicPage);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
+    clearAuthStorage();
     navigate("/login");
-    window.location.reload();
   };
 
   const handleYearClick = (y) => {
@@ -97,6 +95,19 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
             </svg>
             <span>Report Issue</span>
           </Link>
+
+          {/* Admin panel link — only shown to admins */}
+          {role === "admin" && (
+            <Link
+              to="/admin"
+              className={`sidebar-nav-btn sidebar-link-btn ${location.pathname === "/admin" ? "active" : ""}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+              <span>Admin Panel</span>
+            </Link>
+          )}
         </nav>
       </div>
 
@@ -143,7 +154,7 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
               <div className="profile-avatar">{initial}</div>
               <div className="profile-text">
                 <span className="profile-name">{username}</span>
-                <span className="profile-role">Student</span>
+                <span className="profile-role">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
               </div>
             </div>
             <button onClick={handleLogout} className="sidebar-logout-btn">

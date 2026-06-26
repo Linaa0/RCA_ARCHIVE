@@ -19,8 +19,22 @@ function SubjectPage() {
   const [selectedRatings, setSelectedRatings] = useState({});
 
   const [popup, setPopup] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    subject: "",
+    year: "",
+    type: "",
+  });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const token = localStorage.getItem("token");
+  const username = localStorage.getItem("username");
+  const role = localStorage.getItem("role");
+  const canUpload = role === "teacher" || role === "admin";
 
   const fetchPapers = async () => {
     setLoading(true);
@@ -43,7 +57,14 @@ function SubjectPage() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) { alert("Please select a file"); return; }
+    if (!file) { setPopup({ type: "error", message: "Please select a file." }); return; }
+
+    // Client-side file type check
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["pdf", "doc", "docx"].includes(ext)) {
+      setPopup({ type: "error", message: "Only PDF and Word documents (.pdf, .doc, .docx) are allowed." });
+      return;
+    }
 
     setUploading(true);
 
@@ -54,12 +75,8 @@ function SubjectPage() {
     formData.append("year", year);
     formData.append("type", type);
 
-     try {
+    try {
       await api.post("/upload", formData);
-
-      // api.js interceptor handles Authorization automatically
-      // Check for duplicate via status — axios throws on non-2xx,
-      // so we handle 409 in the catch block
       setPopup({ type: "success", message: "Paper uploaded successfully." });
       setTitle("");
       setFile(null);
@@ -69,22 +86,84 @@ function SubjectPage() {
       if (err.response?.status === 409) {
         setPopup({ type: "duplicate", message: err.response.data.message });
       } else {
-        setPopup({ type: "error", message: err.response?.data?.error || "Upload failed" });
+        setPopup({ type: "error", message: err.response?.data?.error || "Upload failed. Please try again." });
       }
     }
 
     setUploading(false);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this paper?")) return;
+  const handleOpenDeleteRequest = (paper) => {
+    setDeleteTarget(paper);
+    setDeleteReason("");
+  };
 
-   
+  const handleOpenEdit = (paper) => {
+    setEditTarget(paper);
+    setEditForm({
+      title: paper.title || "",
+      subject: paper.subject || "",
+      year: paper.year || "",
+      type: paper.type || "",
+    });
+  };
+
+  const handleEditPaper = async (event) => {
+    event.preventDefault();
+
+    if (!editTarget) return;
+
+    if (!editForm.title.trim() || !editForm.subject.trim() || !editForm.year.trim() || !editForm.type.trim()) {
+      setPopup({ type: "error", message: "Please fill in all edit fields." });
+      return;
+    }
+
+    setEditSubmitting(true);
     try {
-      await api.delete(`/papers/${id}`);
+      const { data } = await api.put(`/papers/${editTarget.id}`, {
+        title: editForm.title.trim(),
+        subject: editForm.subject.trim(),
+        year: editForm.year.trim(),
+        type: editForm.type.trim(),
+      });
+      setPopup({ type: "success", message: data.message || "Paper updated successfully." });
+      setEditTarget(null);
       fetchPapers();
     } catch (err) {
-      alert(err.response?.data?.error || "Delete failed");
+      setPopup({
+        type: "error",
+        message: err.response?.data?.error || "Unable to update paper.",
+      });
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleRequestDelete = async (event) => {
+    event.preventDefault();
+
+    if (!deleteTarget) return;
+    if (!deleteReason.trim()) {
+      setPopup({ type: "error", message: "Please provide a reason for the deletion request." });
+      return;
+    }
+
+    setDeleteSubmitting(true);
+    try {
+      const { data } = await api.post(`/papers/${deleteTarget.id}/request-delete`, {
+        reason: deleteReason,
+      });
+      setPopup({ type: "success", message: data.message || "Deletion request submitted." });
+      setDeleteTarget(null);
+      setDeleteReason("");
+      fetchPapers();
+    } catch (err) {
+      setPopup({
+        type: "error",
+        message: err.response?.data?.error || "Unable to submit deletion request.",
+      });
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
   const handleRate = async (paperId) => {
@@ -103,9 +182,6 @@ function SubjectPage() {
       setPopup({ type: "error", message: err.response?.data?.error || "Unable to save rating." });
     }
   };
-  const username = localStorage.getItem("username");
-  const role = localStorage.getItem("role");
-
   return (
     <div className="subject-page">
 
@@ -126,18 +202,152 @@ function SubjectPage() {
         </div>
       )}
 
+      {editTarget && (
+        <div className="delete-request-overlay">
+          <div className="delete-request-modal">
+            <div className="delete-request-header">
+              <div>
+                <p className="delete-request-kicker">Edit paper</p>
+                <h3>{editTarget.title}</h3>
+                <p>Update the paper details below.</p>
+              </div>
+              <button
+                type="button"
+                className="delete-request-close"
+                onClick={() => setEditTarget(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleEditPaper} className="delete-request-form">
+              <label htmlFor="edit-title">Title</label>
+              <input
+                id="edit-title"
+                className="edit-field"
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm((current) => ({ ...current, title: e.target.value }))
+                }
+              />
+
+              <label htmlFor="edit-subject">Subject</label>
+              <input
+                id="edit-subject"
+                className="edit-field"
+                value={editForm.subject}
+                onChange={(e) =>
+                  setEditForm((current) => ({ ...current, subject: e.target.value }))
+                }
+              />
+
+              <label htmlFor="edit-year">Year</label>
+              <input
+                id="edit-year"
+                className="edit-field"
+                value={editForm.year}
+                onChange={(e) =>
+                  setEditForm((current) => ({ ...current, year: e.target.value }))
+                }
+              />
+
+              <label htmlFor="edit-type">Type</label>
+              <input
+                id="edit-type"
+                className="edit-field"
+                value={editForm.type}
+                onChange={(e) =>
+                  setEditForm((current) => ({ ...current, type: e.target.value }))
+                }
+              />
+
+              <div className="delete-request-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setEditTarget(null)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="danger-btn" disabled={editSubmitting}>
+                  {editSubmitting ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="delete-request-overlay">
+          <div className="delete-request-modal">
+            <div className="delete-request-header">
+              <div>
+                <p className="delete-request-kicker">Request deletion</p>
+                <h3>{deleteTarget.title}</h3>
+                <p>
+                  {deleteTarget.subject} • Year {deleteTarget.year} • {deleteTarget.type}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="delete-request-close"
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeleteReason("");
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleRequestDelete} className="delete-request-form">
+              <label htmlFor="delete-reason">Reason for deletion</label>
+              <textarea
+                id="delete-reason"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Explain why this paper should be removed from the archive"
+                rows={5}
+                required
+              />
+
+              <div className="delete-request-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => {
+                    setDeleteTarget(null);
+                    setDeleteReason("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="danger-btn" disabled={deleteSubmitting}>
+                  {deleteSubmitting ? "Submitting..." : "Submit Request"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <nav className="subject-nav">
         <Link to="/" className="back-link">← Back to Home</Link>
       </nav>
 
       <div className="subject-header">
         <h2>{subject}: Year {year}</h2>
-        <button className="upload-toggle-btn" onClick={() => setShowUpload(!showUpload)}>
-          {showUpload ? "Cancel" : "Upload Paper / Note"}
-        </button>
+        {canUpload ? (
+          <button className="upload-toggle-btn" onClick={() => setShowUpload(!showUpload)}>
+            {showUpload ? "Cancel" : "Upload Paper / Note"}
+          </button>
+        ) : (
+          <div className="upload-note">Teachers upload papers. Students can request deletions.</div>
+        )}
       </div>
 
-      {showUpload && (
+      {canUpload && showUpload && (
         <div className="upload-form-box">
           <h3>Upload a New Paper or Note</h3>
           <form onSubmit={handleUpload}>
@@ -158,10 +368,10 @@ function SubjectPage() {
               <option>Quiz</option>
             </select>
 
-            <label>File (any type supported)</label>
+            <label>File (PDF or Word document only)</label>
             <input
               type="file"
-              accept="*/*"
+              accept=".pdf,.doc,.docx"
               onChange={(e) => setFile(e.target.files[0])}
               required
             />
@@ -248,9 +458,14 @@ function SubjectPage() {
                   >
                     Download
                   </a>
-                  {(paper.uploadedBy === username || role === "teacher") && (
-                    <button className="delete-btn" onClick={() => handleDelete(paper.id)}>
-                      Delete
+                  {token && (paper.uploadedBy === username || role === "admin") && (
+                    <button className="delete-btn" onClick={() => handleOpenEdit(paper)}>
+                      Edit
+                    </button>
+                  )}
+                  {token && role !== "admin" && (
+                    <button className="delete-btn" onClick={() => handleOpenDeleteRequest(paper)}>
+                      Request Deletion
                     </button>
                   )}
                 </div>

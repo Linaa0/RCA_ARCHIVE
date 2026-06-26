@@ -19,8 +19,18 @@ async function connectToMongo() {
     db
       .collection("papers")
       .createIndex({ hash: 1 }, { unique: true, sparse: true }),
-    db.collection("pendingTeacherOtps").createIndex({ email: 1 }),
-    db.collection("pendingPasswordResets").createIndex({ email: 1 }),
+    db
+      .collection("pendingTeacherOtps")
+      .createIndex({ email: 1, operation: 1 }),
+    db
+      .collection("pendingPasswordResets")
+      .createIndex({ email: 1, purpose: 1 }),
+    db
+      .collection("pendingPasswordResets")
+      .createIndex({ token: 1 }, { unique: true, sparse: true }),
+    db.collection("deletionRequests").createIndex({ id: 1 }, { unique: true }),
+    db.collection("deletionRequests").createIndex({ status: 1 }),
+    db.collection("deletionRequests").createIndex({ paperId: 1 }),
   ]);
 
   return db;
@@ -46,10 +56,16 @@ function getPasswordResetCollection() {
   return db.collection("pendingPasswordResets");
 }
 
+function getDeletionRequestsCollection() {
+  if (!db) throw new Error("MongoDB is not connected yet");
+  return db.collection("deletionRequests");
+}
+
 module.exports = {
   connectToMongo,
   getUsersCollection,
   getPapersCollection,
   getOtpCollection,
   getPasswordResetCollection,
+  getDeletionRequestsCollection,
 };
