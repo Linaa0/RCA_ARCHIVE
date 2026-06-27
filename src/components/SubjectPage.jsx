@@ -36,6 +36,21 @@ function SubjectPage() {
   const role = localStorage.getItem("role");
   const canUpload = !!token; // Anyone logged in can upload
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const openMenus = document.querySelectorAll('.more-menu.open');
+      openMenus.forEach(menu => {
+        if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) {
+          menu.classList.remove('open');
+        }
+      });
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
   const fetchPapers = async () => {
     setLoading(true);
     try {
@@ -450,22 +465,46 @@ function SubjectPage() {
                   >
                     View
                   </a>
-                  <a
-                    href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
-                    className="download-btn"
-                  >
-                    Download
-                  </a>
-                  {token && (paper.uploadedBy === username || role === "admin") && (
-                    <button className="delete-btn" onClick={() => handleOpenEdit(paper)}>
-                      Edit
+                  <div className="more-menu-container">
+                    <button 
+                      className="more-menu-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const menu = e.target.nextElementSibling;
+                        menu.classList.toggle('open');
+                      }}
+                    >
+                      ⋮
                     </button>
-                  )}
-                  {token && role !== "admin" && (
-                    <button className="delete-btn" onClick={() => handleOpenDeleteRequest(paper)}>
-                      Request Deletion
-                    </button>
-                  )}
+                    <div className="more-menu">
+                      <a
+                        href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
+                        className="more-menu-item"
+                      >
+                        Download
+                      </a>
+                      {token && (paper.uploadedBy === username || role === "admin") && (
+                        <button 
+                          className="more-menu-item" 
+                          onClick={() => {
+                            handleOpenEdit(paper);
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {token && role !== "admin" && (
+                        <button 
+                          className="more-menu-item" 
+                          onClick={() => {
+                            handleOpenDeleteRequest(paper);
+                          }}
+                        >
+                          Request Deletion
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

@@ -604,3 +604,91 @@
 .popup-close-btn:active {
   transform: translateY(0);
 }
+
+/* Three-Dot Menu Styles */
+.more-menu-container {
+  position: relative;
+}
+
+.more-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.more-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+.more-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.more-menu.open {
+  display: flex;
+}
+
+.more-menu-item {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.more-menu-item:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent-primary);
+}
+
+/* Make View Button more prominent */
+.view-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  padding: 10px 22px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+}
+
+.view-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
