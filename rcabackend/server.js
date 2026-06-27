@@ -1770,12 +1770,6 @@ app.post(
     });
   },
   async (req, res) => {
-    if (req.user.role !== "teacher" && req.user.role !== "admin") {
-      return res.status(403).json({
-        error: "Only teachers and admins can upload papers.",
-      });
-    }
-
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const { title, subject, year, type } = req.body;
@@ -2227,11 +2221,9 @@ app.delete(
       }
 
       if (user.role === "admin") {
-        return res
-          .status(400)
-          .json({
-            message: "Admin accounts cannot be deleted from this screen.",
-          });
+        return res.status(400).json({
+          message: "Admin accounts cannot be deleted from this screen.",
+        });
       }
 
       const usersCollection = getUsersCollection();

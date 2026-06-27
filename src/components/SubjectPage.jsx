@@ -34,7 +34,7 @@ function SubjectPage() {
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
   const role = localStorage.getItem("role");
-  const canUpload = role === "teacher" || role === "admin";
+  const canUpload = !!token; // Anyone logged in can upload
 
   const fetchPapers = async () => {
     setLoading(true);
@@ -342,9 +342,7 @@ function SubjectPage() {
           <button className="upload-toggle-btn" onClick={() => setShowUpload(!showUpload)}>
             {showUpload ? "Cancel" : "Upload Paper / Note"}
           </button>
-        ) : (
-          <div className="upload-note">Teachers upload papers. Students can request deletions.</div>
-        )}
+        ) : null}
       </div>
 
       {canUpload && showUpload && (
