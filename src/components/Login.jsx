@@ -159,6 +159,16 @@ const Login = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Helper to parse responses safely (like apiClient.js)
+  const parseResponse = async (response) => {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+    const text = await response.text();
+    return text ? { message: text } : {};
+  };
+
   // ── Login submit ──────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -172,7 +182,7 @@ const Login = () => {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      const data = await parseResponse(response);
 
       if (!response.ok) {
         // Server returns { error: "..." }
@@ -208,7 +218,7 @@ const Login = () => {
         body: JSON.stringify({ email: forgotEmail }),
       });
 
-      const data = await response.json();
+      const data = await parseResponse(response);
 
       if (!response.ok) {
         throw new Error(data.error || data.message || "Failed to send reset link.");

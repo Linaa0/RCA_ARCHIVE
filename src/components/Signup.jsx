@@ -164,6 +164,16 @@ const Signup = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Helper to parse responses safely (like apiClient.js)
+  const parseResponse = async (response) => {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+    const text = await response.text();
+    return text ? { message: text } : {};
+  };
+
   const sendOtp = async () => {
     setError("");
     setInfo("");
@@ -174,7 +184,7 @@ const Signup = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email, operation: "signup" }),
       });
-      const data = await res.json();
+      const data = await parseResponse(res);
       if (!res.ok) throw new Error(data.error || "Failed to send verification code");
       setOtpSent(true);
       let infoMsg = "Verification code sent to your email!";
@@ -219,7 +229,7 @@ const Signup = () => {
         }),
       });
 
-      const data = await response.json();
+      const data = await parseResponse(response);
 
       if (!response.ok) {
         throw new Error(data.error || data.message || "Signup failed");
