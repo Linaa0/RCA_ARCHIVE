@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearAuthStorage, getStoredUser, isAuthenticated, persistAuth } from "../utils/auth";
+import api from "../api";
 import "./Login.css";
 import rcaLogo from "../rca.png";
 
@@ -159,16 +160,6 @@ const Login = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Helper to parse responses safely (like apiClient.js)
-  const parseResponse = async (response) => {
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      return response.json();
-    }
-    const text = await response.text();
-    return text ? { message: text } : {};
-  };
-
   // ── Login submit ──────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -176,18 +167,7 @@ const Login = () => {
     setError("");
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await parseResponse(response);
-
-      if (!response.ok) {
-        // Server returns { error: "..." }
-        throw new Error(data.error || data.message || "Login failed");
-      }
+      const { data } = await api.post("/login", formData);
 
       persistAuth({
         token: data.token,
@@ -198,7 +178,7 @@ const Login = () => {
 
       navigate(data.role === "admin" ? "/admin" : "/", { replace: true });
     } catch (err) {
-      setError(err.message || "Unable to sign in. Please try again.");
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Unable to sign in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -212,30 +192,16 @@ const Login = () => {
     setInfo("");
 
     try {
-      const response = await fetch("/api/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail }),
-      });
-
-      const data = await parseResponse(response);
-
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "Failed to send reset link.");
-      }
+      const { data } = await api.post("/forgot-password", { email: forgotEmail });
 
       setInfo(data.message || "If this email is registered, a reset link has been sent.");
 
       // If SMTP is not configured, show preview link for dev convenience
       if (data.previewUrl) {
-        setInfo(
-          `Reset link (dev preview): `
-        );
-        // store it so we can render as anchor below
         setForgotPreview(data.previewUrl);
       }
     } catch (err) {
-      setError(err.message || "Unable to send reset link.");
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Unable to send reset link.");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearAuthStorage, getStoredUser, isAuthenticated, persistAuth } from "../utils/auth";
+import { clearAuthStorage, getStoredUser, isAuthenticated } from "../utils/auth";
+import api from "../api";
 import "./Login.css";
 import rcaLogo from "../rca.png";
 
@@ -164,28 +165,15 @@ const Signup = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Helper to parse responses safely (like apiClient.js)
-  const parseResponse = async (response) => {
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      return response.json();
-    }
-    const text = await response.text();
-    return text ? { message: text } : {};
-  };
-
   const sendOtp = async () => {
     setError("");
     setInfo("");
     setLoading(true);
     try {
-      const res = await fetch("/api/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, operation: "signup" }),
+      const { data } = await api.post("/send-otp", { 
+        email: formData.email, 
+        operation: "signup" 
       });
-      const data = await parseResponse(res);
-      if (!res.ok) throw new Error(data.error || "Failed to send verification code");
       setOtpSent(true);
       let infoMsg = "Verification code sent to your email!";
       if (data.previewUrl) {
@@ -194,7 +182,7 @@ const Signup = () => {
       setInfo(infoMsg);
       console.log("📧 Send OTP response data:", data);
     } catch (e) {
-      setError(e.message);
+      setError(e.response?.data?.error || e.message || "Failed to send verification code");
       console.error("❌ Send OTP error:", e);
     } finally {
       setLoading(false);
@@ -218,27 +206,17 @@ const Signup = () => {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-          otp: formData.otp
-        }),
+      const { data } = await api.post("/signup", {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        otp: formData.otp
       });
 
-      const data = await parseResponse(response);
-
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "Signup failed");
-      }
-
-      setInfo("Account created! Redirecting to login...");
+      setInfo(data.message || "Account created! Redirecting to login...");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
-      setError(err.message || "Unable to create account. Please try again.");
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Unable to create account. Please try again.");
     } finally {
       setLoading(false);
     }
