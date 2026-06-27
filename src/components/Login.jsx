@@ -277,12 +277,6 @@ const Login = () => {
                     {loading && <span className="button-spinner" />}
                   </button>
                 </form>
-
-                <div className="auth-divider">
-                  <span />
-                  <small>Students only</small>
-                  <span />
-                </div>
                 <div className="form-footer">
                   <p style={{ color: "rgba(30,64,175,0.7)", fontSize: "0.85rem", margin: 0 }}>
                     New student?{" "}
@@ -294,9 +288,7 @@ const Login = () => {
                       Create account
                     </button>
                   </p>
-                  <p style={{ color: "rgba(30,64,175,0.5)", fontSize: "0.78rem", marginTop: "8px" }}>
-                    Teacher accounts are created by the admin.
-                  </p>
+                
                 </div>
               </>
             ) : (
