@@ -183,7 +183,10 @@ function getFrontendBaseUrl(req) {
 }
 
 function buildPasswordSetupUrl(frontendBaseUrl, token) {
-  const baseUrl = (frontendBaseUrl || "http://localhost:3074").replace(/\/$/, "");
+  const baseUrl = (frontendBaseUrl || "http://localhost:3074").replace(
+    /\/$/,
+    "",
+  );
   return `${baseUrl}/reset-password/${encodeURIComponent(token)}`;
 }
 
@@ -396,10 +399,17 @@ const upload = multer({
   storage,
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ALLOWED_EXTENSIONS.includes(ext) && ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    if (
+      ALLOWED_EXTENSIONS.includes(ext) &&
+      ALLOWED_MIME_TYPES.includes(file.mimetype)
+    ) {
       cb(null, true);
     } else {
-      cb(new Error("Only PDF and Word documents (.pdf, .doc, .docx) are allowed."));
+      cb(
+        new Error(
+          "Only PDF and Word documents (.pdf, .doc, .docx) are allowed.",
+        ),
+      );
     }
   },
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max
@@ -656,7 +666,6 @@ function canUseAdminBootstrapRoute(req) {
   const providedSecret = req.headers["x-admin-bootstrap-secret"];
   return providedSecret === ADMIN_BOOTSTRAP_SECRET;
 }
-
 
 function hashFile(filePath) {
   const buffer = fs.readFileSync(filePath);
@@ -995,7 +1004,10 @@ app.post("/api/forgot-password", async (req, res) => {
   const expiresAt = Date.now() + 60 * 60 * 1000;
 
   await cleanExpiredPasswordResets();
-  await resetCollection.deleteMany({ email: normalizedEmail, purpose: "password_reset" });
+  await resetCollection.deleteMany({
+    email: normalizedEmail,
+    purpose: "password_reset",
+  });
   await resetCollection.insertOne({
     email: normalizedEmail,
     token,
@@ -1035,8 +1047,6 @@ app.post("/api/forgot-password", async (req, res) => {
       error:
         "Failed to send password reset email. Please try again later. Verify server SMTP logs for details.",
     });
-
-
   }
 });
 
@@ -1090,7 +1100,9 @@ app.post("/api/reset-password", async (req, res) => {
       },
     );
 
-    await resetCollection.deleteMany({ email: normalizeEmail(resetRecord.email) });
+    await resetCollection.deleteMany({
+      email: normalizeEmail(resetRecord.email),
+    });
 
     return res.json({ message: "Password has been reset successfully." });
   }
@@ -1215,7 +1227,6 @@ app.post("/api/signup", async (req, res) => {
   });
 });
 
-
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -1232,10 +1243,11 @@ app.post("/api/login", async (req, res) => {
     return res.status(403).json({ error: "This account is disabled." });
   }
 
-    // Block invited teachers who haven't set their password yet
+  // Block invited teachers who haven't set their password yet
   if (user.status === "pending_password_setup" || !user.password) {
     return res.status(403).json({
-      error: "Please set your password first using the link sent to your email.",
+      error:
+        "Please set your password first using the link sent to your email.",
     });
   }
 
@@ -1292,14 +1304,15 @@ async function storePendingDeletionRequest(request) {
   return request;
 }
 
-
 // Admin creates a teacher account (no password, sends setup email)
 app.post("/api/admin/teachers", requireAuth, requireAdmin, async (req, res) => {
   const { email, name, username } = req.body;
   const teacherName = (name || username || "").trim();
 
   if (!email || !teacherName) {
-    return res.status(400).json({ error: "Teacher name and email are required" });
+    return res
+      .status(400)
+      .json({ error: "Teacher name and email are required" });
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1311,7 +1324,9 @@ app.post("/api/admin/teachers", requireAuth, requireAdmin, async (req, res) => {
 
   const existing = await findUserByEmail(normalizedEmail);
   if (existing) {
-    return res.status(400).json({ error: "A user with this email already exists" });
+    return res
+      .status(400)
+      .json({ error: "A user with this email already exists" });
   }
 
   const teacher = {
@@ -1328,7 +1343,10 @@ app.post("/api/admin/teachers", requireAuth, requireAdmin, async (req, res) => {
   await users.insertOne(teacher);
 
   try {
-    const { token } = await upsertTeacherInvite(normalizedEmail, "teacher_setup");
+    const { token } = await upsertTeacherInvite(
+      normalizedEmail,
+      "teacher_setup",
+    );
     const { previewUrl } = await sendTeacherInviteEmail(
       normalizedEmail,
       teacherName,
@@ -1344,44 +1362,51 @@ app.post("/api/admin/teachers", requireAuth, requireAdmin, async (req, res) => {
     console.error("❌ Teacher invite email failed:", err);
     // Account exists; admin can resend
     return res.status(500).json({
-      error: "Teacher created but email failed to send. Use 'Resend invite' to retry.",
+      error:
+        "Teacher created but email failed to send. Use 'Resend invite' to retry.",
     });
   }
 });
 
 // Optional: resend invite
-app.post("/api/admin/teachers/resend-invite", requireAuth, requireAdmin, async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "Email is required" });
-  const normalizedEmail = normalizeEmail(email);
-  const user = await findUserByEmail(email);
-  if (!user || user.role !== "teacher") return res.status(404).json({ error: "Teacher not found" });
-  if (user.status !== "pending_password_setup") {
-    return res.status(400).json({ error: "Teacher already activated" });
-  }
-  const resetCollection = getPasswordResetCollection();
-  const token = crypto.randomBytes(24).toString("hex");
-  const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-  await cleanExpiredPasswordResets();
-  await resetCollection.deleteMany({
-    email: normalizedEmail,
-    purpose: "teacher_setup",
-  });
-  await resetCollection.insertOne({
-    email: normalizedEmail,
-    token,
-    expiresAt,
-    purpose: "teacher_setup",
-    createdAt: new Date().toISOString(),
-  });
-  const { previewUrl } = await sendTeacherInviteEmail(
-    normalizedEmail,
-    user.name || user.username || "Teacher",
-    token,
-    getFrontendBaseUrl(req),
-  );
-  res.json({ message: "Invite resent", previewUrl });
-});
+app.post(
+  "/api/admin/teachers/resend-invite",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
+    const normalizedEmail = normalizeEmail(email);
+    const user = await findUserByEmail(email);
+    if (!user || user.role !== "teacher")
+      return res.status(404).json({ error: "Teacher not found" });
+    if (user.status !== "pending_password_setup") {
+      return res.status(400).json({ error: "Teacher already activated" });
+    }
+    const resetCollection = getPasswordResetCollection();
+    const token = crypto.randomBytes(24).toString("hex");
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+    await cleanExpiredPasswordResets();
+    await resetCollection.deleteMany({
+      email: normalizedEmail,
+      purpose: "teacher_setup",
+    });
+    await resetCollection.insertOne({
+      email: normalizedEmail,
+      token,
+      expiresAt,
+      purpose: "teacher_setup",
+      createdAt: new Date().toISOString(),
+    });
+    const { previewUrl } = await sendTeacherInviteEmail(
+      normalizedEmail,
+      user.name || user.username || "Teacher",
+      token,
+      getFrontendBaseUrl(req),
+    );
+    res.json({ message: "Invite resent", previewUrl });
+  },
+);
 
 // Optional: list teachers
 app.get("/api/admin/teachers", requireAuth, requireAdmin, async (_req, res) => {
@@ -1393,118 +1418,140 @@ app.get("/api/admin/teachers", requireAuth, requireAdmin, async (_req, res) => {
   res.json({ teachers: teachers.map(safeUserFields) });
 });
 
-app.put("/api/admin/teachers/:id", requireAuth, requireAdmin, async (req, res) => {
-  const { id } = req.params;
-  const users = getUsersCollection();
-  const currentTeacher = await findUserById(id);
+app.put(
+  "/api/admin/teachers/:id",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const users = getUsersCollection();
+    const currentTeacher = await findUserById(id);
 
-  if (!currentTeacher || currentTeacher.role !== "teacher") {
-    return res.status(404).json({ error: "Teacher not found" });
-  }
-
-  const { name, email, status } = req.body;
-  const update = {};
-
-  if (typeof name === "string") {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      return res.status(400).json({ error: "Teacher name cannot be empty" });
-    }
-    update.name = trimmedName;
-    update.username = trimmedName;
-  }
-
-  let normalizedEmail = currentTeacher.email;
-  const emailChanged =
-    typeof email === "string" && normalizeEmail(email) !== currentTeacher.email;
-
-  if (typeof email === "string") {
-    normalizedEmail = normalizeEmail(email);
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(normalizedEmail)) {
-      return res.status(400).json({ error: "Invalid email format" });
+    if (!currentTeacher || currentTeacher.role !== "teacher") {
+      return res.status(404).json({ error: "Teacher not found" });
     }
 
-    const existing = await findUserByEmail(normalizedEmail);
-    if (existing && existing.id !== currentTeacher.id) {
-      return res.status(400).json({ error: "A user with this email already exists" });
+    const { name, email, status } = req.body;
+    const update = {};
+
+    if (typeof name === "string") {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return res.status(400).json({ error: "Teacher name cannot be empty" });
+      }
+      update.name = trimmedName;
+      update.username = trimmedName;
     }
 
-    update.email = normalizedEmail;
-  }
+    let normalizedEmail = currentTeacher.email;
+    const emailChanged =
+      typeof email === "string" &&
+      normalizeEmail(email) !== currentTeacher.email;
 
-  if (typeof status === "string") {
-    const allowedStatuses = ["active", "pending_password_setup", "disabled"];
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid teacher status" });
+    if (typeof email === "string") {
+      normalizedEmail = normalizeEmail(email);
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      const existing = await findUserByEmail(normalizedEmail);
+      if (existing && existing.id !== currentTeacher.id) {
+        return res
+          .status(400)
+          .json({ error: "A user with this email already exists" });
+      }
+
+      update.email = normalizedEmail;
     }
-    update.status = status;
-    update.disabledAt = status === "disabled" ? new Date().toISOString() : null;
-  }
 
-  update.updatedAt = new Date().toISOString();
+    if (typeof status === "string") {
+      const allowedStatuses = ["active", "pending_password_setup", "disabled"];
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid teacher status" });
+      }
+      update.status = status;
+      update.disabledAt =
+        status === "disabled" ? new Date().toISOString() : null;
+    }
 
-  await users.updateOne({ id: currentTeacher.id }, { $set: update });
+    update.updatedAt = new Date().toISOString();
 
-  let previewUrl = null;
-  const refreshedTeacher = await findUserById(currentTeacher.id);
-  if (emailChanged && refreshedTeacher.status === "pending_password_setup") {
-    const { token } = await upsertTeacherInvite(normalizedEmail, "teacher_setup");
-    const invite = await sendTeacherInviteEmail(
-      normalizedEmail,
-      getDisplayName(refreshedTeacher),
-      token,
-      getFrontendBaseUrl(req),
+    await users.updateOne({ id: currentTeacher.id }, { $set: update });
+
+    let previewUrl = null;
+    const refreshedTeacher = await findUserById(currentTeacher.id);
+    if (emailChanged && refreshedTeacher.status === "pending_password_setup") {
+      const { token } = await upsertTeacherInvite(
+        normalizedEmail,
+        "teacher_setup",
+      );
+      const invite = await sendTeacherInviteEmail(
+        normalizedEmail,
+        getDisplayName(refreshedTeacher),
+        token,
+        getFrontendBaseUrl(req),
+      );
+      previewUrl = invite.previewUrl;
+    }
+
+    console.log(
+      `[TEACHER_UPDATE] id=${currentTeacher.id} actor=${req.user.email} changes=${Object.keys(update).join(",")}`,
     );
-    previewUrl = invite.previewUrl;
-  }
 
-  console.log(
-    `[TEACHER_UPDATE] id=${currentTeacher.id} actor=${req.user.email} changes=${Object.keys(update).join(",")}`,
-  );
+    return res.json({
+      message: "Teacher updated successfully.",
+      teacher: safeUserFields(await findUserById(currentTeacher.id)),
+      previewUrl,
+    });
+  },
+);
 
-  return res.json({
-    message: "Teacher updated successfully.",
-    teacher: safeUserFields(await findUserById(currentTeacher.id)),
-    previewUrl,
-  });
-});
+app.delete(
+  "/api/admin/teachers/:id",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const users = getUsersCollection();
+    const teacher = await findUserById(id);
 
-app.delete("/api/admin/teachers/:id", requireAuth, requireAdmin, async (req, res) => {
-  const { id } = req.params;
-  const users = getUsersCollection();
-  const teacher = await findUserById(id);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
 
-  if (!teacher || teacher.role !== "teacher") {
-    return res.status(404).json({ error: "Teacher not found" });
-  }
+    await users.deleteOne({ id: teacher.id });
+    await getPasswordResetCollection().deleteMany({
+      email: teacher.email,
+      purpose: "teacher_setup",
+    });
 
-  await users.deleteOne({ id: teacher.id });
-  await getPasswordResetCollection().deleteMany({
-    email: teacher.email,
-    purpose: "teacher_setup",
-  });
+    console.log(
+      `[TEACHER_DELETE] id=${teacher.id} email=${teacher.email} actor=${req.user.email}`,
+    );
 
-  console.log(
-    `[TEACHER_DELETE] id=${teacher.id} email=${teacher.email} actor=${req.user.email}`,
-  );
-
-  return res.json({ message: "Teacher account deleted successfully." });
-});
+    return res.json({ message: "Teacher account deleted successfully." });
+  },
+);
 
 app.get("/api/admin/stats", requireAuth, requireAdmin, async (_req, res) => {
   const users = getUsersCollection();
   const papers = getPapersCollection();
   const deletionRequests = getDeletionRequestsCollection();
 
-  const [totalUsers, totalStudents, totalTeachers, totalPapers, pendingDeletionRequests] =
-    await Promise.all([
-      users.countDocuments(),
-      users.countDocuments({ role: "student" }),
-      users.countDocuments({ role: "teacher" }),
-      papers.countDocuments(),
-      deletionRequests.countDocuments({ status: "Pending" }),
-    ]);
+  const [
+    totalUsers,
+    totalStudents,
+    totalTeachers,
+    totalPapers,
+    pendingDeletionRequests,
+  ] = await Promise.all([
+    users.countDocuments(),
+    users.countDocuments({ role: "student" }),
+    users.countDocuments({ role: "teacher" }),
+    papers.countDocuments(),
+    deletionRequests.countDocuments({ status: "Pending" }),
+  ]);
 
   res.json({
     totalUsers,
@@ -1521,7 +1568,9 @@ app.post("/api/papers/:id/request-delete", requireAuth, async (req, res) => {
   const trimmedReason = (reason || "").trim();
 
   if (!trimmedReason) {
-    return res.status(400).json({ error: "A reason is required for deletion requests." });
+    return res
+      .status(400)
+      .json({ error: "A reason is required for deletion requests." });
   }
 
   const paper = await getPaperById(id);
@@ -1567,52 +1616,57 @@ app.post("/api/papers/:id/request-delete", requireAuth, async (req, res) => {
   });
 });
 
-app.get("/api/admin/deletion-requests", requireAuth, requireAdmin, async (req, res) => {
-  const deletionRequests = getDeletionRequestsCollection();
-  const papers = getPapersCollection();
-  const users = getUsersCollection();
-  const status = (req.query.status || "").trim();
-  const filter = {};
+app.get(
+  "/api/admin/deletion-requests",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const deletionRequests = getDeletionRequestsCollection();
+    const papers = getPapersCollection();
+    const users = getUsersCollection();
+    const status = (req.query.status || "").trim();
+    const filter = {};
 
-  if (status) {
-    filter.status = status;
-  }
+    if (status) {
+      filter.status = status;
+    }
 
-  const requests = await deletionRequests
-    .find(filter)
-    .sort({ requestedAt: -1 })
-    .toArray();
+    const requests = await deletionRequests
+      .find(filter)
+      .sort({ requestedAt: -1 })
+      .toArray();
 
-  const enriched = await Promise.all(
-    requests.map(async (request) => {
-      const [paper, requester] = await Promise.all([
-        papers.findOne({ id: request.paperId }),
-        request.requestedByEmail
-          ? users.findOne({ email: request.requestedByEmail })
-          : Promise.resolve(null),
-      ]);
+    const enriched = await Promise.all(
+      requests.map(async (request) => {
+        const [paper, requester] = await Promise.all([
+          papers.findOne({ id: request.paperId }),
+          request.requestedByEmail
+            ? users.findOne({ email: request.requestedByEmail })
+            : Promise.resolve(null),
+        ]);
 
-      return {
-        ...request,
-        paper: paper
-          ? {
-              id: paper.id,
-              title: paper.title,
-              subject: paper.subject,
-              year: paper.year,
-              type: paper.type,
-              uploadedBy: paper.uploadedBy,
-              uploadedAt: paper.uploadedAt,
-              originalName: paper.originalName,
-            }
-          : null,
-        requester: requester ? safeUserFields(requester) : null,
-      };
-    }),
-  );
+        return {
+          ...request,
+          paper: paper
+            ? {
+                id: paper.id,
+                title: paper.title,
+                subject: paper.subject,
+                year: paper.year,
+                type: paper.type,
+                uploadedBy: paper.uploadedBy,
+                uploadedAt: paper.uploadedAt,
+                originalName: paper.originalName,
+              }
+            : null,
+          requester: requester ? safeUserFields(requester) : null,
+        };
+      }),
+    );
 
-  res.json({ deletionRequests: enriched });
-});
+    res.json({ deletionRequests: enriched });
+  },
+);
 
 app.patch(
   "/api/admin/deletion-requests/:id/approve",
@@ -1628,7 +1682,9 @@ app.patch(
     }
 
     if (request.status !== "Pending") {
-      return res.status(400).json({ error: "This request has already been processed." });
+      return res
+        .status(400)
+        .json({ error: "This request has already been processed." });
     }
 
     const paper = await getPaperById(request.paperId);
@@ -1672,7 +1728,9 @@ app.patch(
     }
 
     if (request.status !== "Pending") {
-      return res.status(400).json({ error: "This request has already been processed." });
+      return res
+        .status(400)
+        .json({ error: "This request has already been processed." });
     }
 
     const processedAt = new Date().toISOString();
@@ -1697,7 +1755,6 @@ app.patch(
   },
 );
 
-
 app.post(
   "/api/upload",
   requireAuth,
@@ -1705,7 +1762,9 @@ app.post(
     // Run multer and surface file-type errors cleanly
     upload.single("file")(req, res, (err) => {
       if (err) {
-        return res.status(400).json({ error: err.message || "File upload failed." });
+        return res
+          .status(400)
+          .json({ error: err.message || "File upload failed." });
       }
       next();
     });
@@ -1902,7 +1961,8 @@ app.put("/api/papers/:id", requireAuth, async (req, res) => {
   const update = {};
 
   if (typeof title === "string" && title.trim()) update.title = title.trim();
-  if (typeof subject === "string" && subject.trim()) update.subject = subject.trim();
+  if (typeof subject === "string" && subject.trim())
+    update.subject = subject.trim();
   if (typeof year === "string" && year.trim()) update.year = year.trim();
   if (typeof type === "string" && type.trim()) update.type = type.trim();
 
@@ -1929,6 +1989,15 @@ app.delete("/api/papers/:id", requireAuth, requireAdmin, async (req, res) => {
   await permanentlyDeletePaperRecord(paper, "admin direct delete", req.user);
   res.json({ message: "Paper deleted successfully" });
 });
+
+// Serve React static files in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "..", "build")));
+  // Catch all: send React's index.html for SPA routing
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "..", "build", "index.html"));
+  });
+}
 
 initDB().then(async () => {
   // Print environment status (redacted for security)
@@ -1965,16 +2034,19 @@ initDB().then(async () => {
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
       console.error(`\n❌ Port ${PORT} is already in use.`);
-      console.error(`   Stop the existing process first, then restart the backend.`);
+      console.error(
+        `   Stop the existing process first, then restart the backend.`,
+      );
       console.error(`   Tip: Run this to free the port on Windows:`);
-      console.error(`   for /f "tokens=5" %a in ('netstat -aon ^| findstr :${PORT}') do taskkill /F /PID %a\n`);
+      console.error(
+        `   for /f "tokens=5" %a in ('netstat -aon ^| findstr :${PORT}') do taskkill /F /PID %a\n`,
+      );
       process.exit(1);
     } else {
       throw err;
     }
   });
 });
-
 
 app.put("/api/make-admin", async (req, res) => {
   const { email } = req.body;
@@ -2018,7 +2090,10 @@ app.put("/api/make-admin", async (req, res) => {
 app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const usersCollection = getUsersCollection();
-    const users = await usersCollection.find({}).sort({ createdAt: -1 }).toArray();
+    const users = await usersCollection
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
 
     res.json({
       users: users.map((user) => safeUserFields(user)),
@@ -2029,126 +2104,154 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-app.post("/api/admin/teachers/direct", requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { name, email, password } = req.body || {};
-    const normalizedName = typeof name === "string" ? name.trim() : "";
-    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-    const rawPassword = typeof password === "string" ? password : "";
+app.post(
+  "/api/admin/teachers/direct",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { name, email, password } = req.body || {};
+      const normalizedName = typeof name === "string" ? name.trim() : "";
+      const normalizedEmail =
+        typeof email === "string" ? email.trim().toLowerCase() : "";
+      const rawPassword = typeof password === "string" ? password : "";
 
-    if (!normalizedName || !normalizedEmail || !rawPassword) {
-      return res.status(400).json({
-        message: "Name, email, and password are required to create a teacher account.",
+      if (!normalizedName || !normalizedEmail || !rawPassword) {
+        return res.status(400).json({
+          message:
+            "Name, email, and password are required to create a teacher account.",
+        });
+      }
+
+      if (rawPassword.length < 8) {
+        return res.status(400).json({
+          message: "Password must be at least 8 characters long.",
+        });
+      }
+
+      const existingUser = await findUserByEmail(normalizedEmail);
+      if (existingUser) {
+        return res
+          .status(409)
+          .json({ message: "A user with this email already exists." });
+      }
+
+      const passwordHash = await bcrypt.hash(rawPassword, 12);
+      const now = new Date().toISOString();
+      const teacherId = Date.now().toString();
+      const teacherRecord = {
+        id: teacherId,
+        name: normalizedName,
+        username: normalizedName,
+        email: normalizedEmail,
+        password: passwordHash,
+        role: "teacher",
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+        createdBy: req.user.email,
+      };
+
+      await getUsersCollection().insertOne(teacherRecord);
+
+      res.status(201).json({
+        message: "Teacher account created successfully.",
+        teacher: safeUserFields(teacherRecord),
       });
+    } catch (error) {
+      console.error("Failed to create teacher:", error);
+      res.status(500).json({ message: "Failed to create teacher account." });
     }
+  },
+);
 
-    if (rawPassword.length < 8) {
-      return res.status(400).json({
-        message: "Password must be at least 8 characters long.",
+app.get(
+  "/api/admin/users/:id/resources",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = await findUserById(id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      const papersCollection = getPapersCollection();
+      const searchTerms = [
+        user._id?.toString(),
+        user.email,
+        user.name,
+        user.username,
+      ].filter(Boolean);
+      const resources = await papersCollection
+        .find({
+          $or: [
+            { uploadedBy: { $in: searchTerms } },
+            { createdBy: { $in: searchTerms } },
+            { userEmail: { $in: searchTerms } },
+            { ownerEmail: { $in: searchTerms } },
+            { uploaderEmail: { $in: searchTerms } },
+            { uploadedById: { $in: searchTerms } },
+            { createdById: { $in: searchTerms } },
+            { ownerId: { $in: searchTerms } },
+            { userId: { $in: searchTerms } },
+          ],
+        })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.json({
+        user: safeUserFields(user),
+        resources,
       });
+    } catch (error) {
+      console.error("Failed to load admin user resources:", error);
+      res.status(500).json({ message: "Failed to load user resources." });
     }
+  },
+);
 
-    const existingUser = await findUserByEmail(normalizedEmail);
-    if (existingUser) {
-      return res.status(409).json({ message: "A user with this email already exists." });
+app.delete(
+  "/api/admin/users/:id",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = await findUserById(id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      if (user.role === "admin") {
+        return res
+          .status(400)
+          .json({
+            message: "Admin accounts cannot be deleted from this screen.",
+          });
+      }
+
+      const usersCollection = getUsersCollection();
+      // Delete by our custom id field first, then fall back to email
+      let result = await usersCollection.deleteOne({ id: String(id) });
+      if (!result.deletedCount && user.email) {
+        result = await usersCollection.deleteOne({ email: user.email });
+      }
+
+      if (!result.deletedCount) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      res.json({
+        message: "User deleted successfully.",
+        user: safeUserFields(user),
+      });
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      res.status(500).json({ message: "Failed to delete user." });
     }
-
-    const passwordHash = await bcrypt.hash(rawPassword, 12);
-    const now = new Date().toISOString();
-    const teacherId = Date.now().toString();
-    const teacherRecord = {
-      id: teacherId,
-      name: normalizedName,
-      username: normalizedName,
-      email: normalizedEmail,
-      password: passwordHash,
-      role: "teacher",
-      status: "active",
-      createdAt: now,
-      updatedAt: now,
-      createdBy: req.user.email,
-    };
-
-    await getUsersCollection().insertOne(teacherRecord);
-
-    res.status(201).json({
-      message: "Teacher account created successfully.",
-      teacher: safeUserFields(teacherRecord),
-    });
-  } catch (error) {
-    console.error("Failed to create teacher:", error);
-    res.status(500).json({ message: "Failed to create teacher account." });
-  }
-});
-
-app.get("/api/admin/users/:id/resources", requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await findUserById(id);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    const papersCollection = getPapersCollection();
-    const searchTerms = [user._id?.toString(), user.email, user.name, user.username].filter(Boolean);
-    const resources = await papersCollection
-      .find({
-        $or: [
-          { uploadedBy: { $in: searchTerms } },
-          { createdBy: { $in: searchTerms } },
-          { userEmail: { $in: searchTerms } },
-          { ownerEmail: { $in: searchTerms } },
-          { uploaderEmail: { $in: searchTerms } },
-          { uploadedById: { $in: searchTerms } },
-          { createdById: { $in: searchTerms } },
-          { ownerId: { $in: searchTerms } },
-          { userId: { $in: searchTerms } },
-        ],
-      })
-      .sort({ createdAt: -1 })
-      .toArray();
-
-    res.json({
-      user: safeUserFields(user),
-      resources,
-    });
-  } catch (error) {
-    console.error("Failed to load admin user resources:", error);
-    res.status(500).json({ message: "Failed to load user resources." });
-  }
-});
-
-app.delete("/api/admin/users/:id", requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await findUserById(id);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    if (user.role === "admin") {
-      return res.status(400).json({ message: "Admin accounts cannot be deleted from this screen." });
-    }
-
-    const usersCollection = getUsersCollection();
-    // Delete by our custom id field first, then fall back to email
-    let result = await usersCollection.deleteOne({ id: String(id) });
-    if (!result.deletedCount && user.email) {
-      result = await usersCollection.deleteOne({ email: user.email });
-    }
-
-    if (!result.deletedCount) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    res.json({
-      message: "User deleted successfully.",
-      user: safeUserFields(user),
-    });
-  } catch (error) {
-    console.error("Failed to delete user:", error);
-    res.status(500).json({ message: "Failed to delete user." });
-  }
-});
+  },
+);
