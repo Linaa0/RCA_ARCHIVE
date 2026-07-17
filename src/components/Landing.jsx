@@ -95,11 +95,11 @@ function Landing() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <img src={rcaLogo} alt="RCA" style={{
-              width: "40px",
-              height: "40px",
-              objectFit: "contain",
-              filter: isDarkMode ? "none" : "drop-shadow(0px 2px 4px rgba(0,0,0,0.1))"
-            }} />
+            width: "40px",
+            height: "40px",
+            objectFit: "contain",
+            filter: isDarkMode ? "none" : "drop-shadow(0px 2px 8px rgba(0,0,0,0.25)) brightness(0.95)"
+          }} />
           <div>
               <h1 style={{
                 fontSize: "1.25rem",
