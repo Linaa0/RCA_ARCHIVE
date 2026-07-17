@@ -24,6 +24,9 @@ const FRONTEND_BASE_URL =
   process.env.FRONTEND_BASE_URL || "http://localhost:3074";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
 const ADMIN_BOOTSTRAP_SECRET = process.env.ADMIN_BOOTSTRAP_SECRET || "";
+
+const HARDCODED_ADMINS = ["deenovdunya01@gmail.com", "chretiensano@gmail.com"];
+
 if (!process.env.JWT_SECRET) {
   console.warn(
     "Warning: JWT_SECRET is not set. Using insecure fallback for development. Set `JWT_SECRET` in the environment for production.",
@@ -337,19 +340,21 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
 
   const timestamp = new Date().toLocaleTimeString();
   const info = await transporter.sendMail({
-    from: "RCA Archive <isabelleutuje12@gmail.com>",
+    from: process.env.EMAIL_FROM || "RCA Archive <no-reply@rcarchive.local>",
     to: email,
     subject: `Reset Your RCA Archive Password - ${timestamp}`,
-    replyTo: "isabelleutuje12@gmail.com",
+    replyTo: process.env.EMAIL_FROM || "no-reply@rcarchive.local",
     text: emailContent.text,
     html: emailContent.html,
     headers: {
-      "X-Priority": "3",
-      "X-MSMail-Priority": "Normal",
-      Importance: "Normal",
+      "X-Priority": "1",
+      "X-MSMail-Priority": "High",
+      Importance: "High",
       "List-Unsubscribe":
         "<mailto:isabelleutuje12@gmail.com?subject=Unsubscribe>",
       Precedence: "bulk",
+      "X-Mailer": "Node.js",
+      "Content-Type": "text/html; charset=utf-8",
     },
   });
 
@@ -895,19 +900,21 @@ app.post("/api/send-otp", async (req, res) => {
     console.log("📧 Transporter obtained. isReal:", isReal);
 
     const mailOptions = {
-      from: "RCA Archive <isabelleutuje12@gmail.com>",
+      from: process.env.EMAIL_FROM || "RCA Archive <no-reply@rcarchive.local>",
       to: email,
       subject: subject,
-      replyTo: "isabelleutuje12@gmail.com",
+      replyTo: process.env.EMAIL_FROM || "no-reply@rcarchive.local",
       text: emailContent.text,
       html: emailContent.html,
       headers: {
-        "X-Priority": "3",
-        "X-MSMail-Priority": "Normal",
-        Importance: "Normal",
+        "X-Priority": "1",
+        "X-MSMail-Priority": "High",
+        Importance: "High",
         "List-Unsubscribe":
           "<mailto:isabelleutuje12@gmail.com?subject=Unsubscribe>",
         Precedence: "bulk",
+        "X-Mailer": "Node.js",
+        "Content-Type": "text/html; charset=utf-8",
       },
     };
     console.log("📧 Mail options:", mailOptions);
@@ -1243,12 +1250,25 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ error: "Wrong password" });
   }
 
+  const normalizedEmail = normalizeEmail(email);
+
+  // Check if user is hardcoded admin and update role if needed
+  let role = user.role;
+  if (HARDCODED_ADMINS.includes(normalizedEmail) && role !== "admin") {
+    const users = getUsersCollection();
+    await users.updateOne(
+      { email: normalizedEmail },
+      { $set: { role: "admin", updatedAt: new Date().toISOString() } },
+    );
+    role = "admin";
+  }
+
   const token = jwt.sign(
     {
       id: user.id,
       email: user.email,
       username: user.name || user.username,
-      role: user.role,
+      role: role,
     },
     JWT_SECRET,
     { expiresIn: "12h" },
@@ -1258,7 +1278,7 @@ app.post("/api/login", async (req, res) => {
     token,
     email: user.email,
     username: user.username,
-    role: user.role,
+    role: role,
   });
 });
 
@@ -1969,6 +1989,32 @@ app.delete("/api/papers/:id", requireAuth, requireAdmin, async (req, res) => {
 
   await permanentlyDeletePaperRecord(paper, "admin direct delete", req.user);
   res.json({ message: "Paper deleted successfully" });
+});
+
+app.delete("/api/account", requireAuth, async (req, res) => {
+  const users = getUsersCollection();
+  const papers = getPapersCollection();
+
+  // Find user
+  const user = await users.findOne({ email: normalizeEmail(req.user.email) });
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  // Delete all papers uploaded by this user
+  const userPapers = await papers.find({ uploadedBy: user.username }).toArray();
+  for (const paper of userPapers) {
+    await permanentlyDeletePaperRecord(
+      paper,
+      "user account deletion",
+      req.user,
+    );
+  }
+
+  // Delete the user
+  await users.deleteOne({ email: normalizeEmail(req.user.email) });
+
+  res.json({ message: "Account and associated papers deleted successfully" });
 });
 
 function mountFrontendIfAvailable() {
