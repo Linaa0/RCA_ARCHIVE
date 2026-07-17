@@ -18,7 +18,7 @@ const {
 } = require("./db");
 
 const app = express();
-const PORT = process.env.PORT || 5009;
+const PORT = process.env.PORT || 5077;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const FRONTEND_BASE_URL =
   process.env.FRONTEND_BASE_URL || "http://localhost:3074";
