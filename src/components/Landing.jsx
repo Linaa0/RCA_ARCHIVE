@@ -93,11 +93,15 @@ function Landing() {
           justifyContent: "space-between",
           alignItems: "center"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <img src={rcaLogo} alt="RCA" style={{
-            width: "40px",
-            height: "40px",
-            objectFit: "contain"
+            width: "64px",
+            height: "64px",
+            objectFit: "contain",
+            display: "block",
+            filter: "drop-shadow(0 8px 20px rgba(0, 0, 0, 0.3))",
+            transform: "scale(1.3)",
+            transformOrigin: "center"
           }} />
           <div>
               <h1 style={{
@@ -198,10 +202,14 @@ function Landing() {
           margin: "0 auto"
         }}>
           <img src={rcaLogo} alt="RCA" style={{
-            width: "96px",
-            height: "96px",
+            width: "128px",
+            height: "128px",
             objectFit: "contain",
-            marginBottom: "4px"
+            marginBottom: "8px",
+            display: "block",
+            filter: "drop-shadow(0 15px 35px rgba(0, 0, 0, 0.5))",
+            transform: "scale(1.3)",
+            transformOrigin: "center"
           }} />
 
           <h1 style={{
