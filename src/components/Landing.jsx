@@ -94,24 +94,12 @@ function Landing() {
           alignItems: "center"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "56px",
-              height: "56px",
-              borderRadius: "12px",
-              backgroundColor: isDarkMode ? "transparent" : "white",
-              boxShadow: isDarkMode ? "none" : "0 2px 8px rgba(0,0,0,0.1)"
-            }}>
-              <img src={rcaLogo} alt="RCA" style={{
-                width: "40px",
-                height: "40px",
-                objectFit: "contain",
-                filter: isDarkMode ? "none" : "drop-shadow(0 1px 2px rgba(0,0,0,0.1))"
-              }} />
-            </div>
-            <div>
+            <img src={rcaLogo} alt="RCA" style={{
+            width: "40px",
+            height: "40px",
+            objectFit: "contain"
+          }} />
+          <div>
               <h1 style={{
                 fontSize: "1.25rem",
                 fontWeight: 700,
@@ -209,24 +197,12 @@ function Landing() {
           maxWidth: "750px",
           margin: "0 auto"
         }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "128px",
-            height: "128px",
-            borderRadius: "24px",
-            backgroundColor: isDarkMode ? "transparent" : "white",
-            boxShadow: isDarkMode ? "none" : "0 4px 16px rgba(0,0,0,0.12)",
-            marginBottom: "8px"
-          }}>
-            <img src={rcaLogo} alt="RCA" style={{
-              width: "96px",
-              height: "96px",
-              objectFit: "contain",
-              filter: isDarkMode ? "none" : "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
-            }} />
-          </div>
+          <img src={rcaLogo} alt="RCA" style={{
+            width: "96px",
+            height: "96px",
+            objectFit: "contain",
+            marginBottom: "4px"
+          }} />
 
           <h1 style={{
             fontSize: "2.5rem",
