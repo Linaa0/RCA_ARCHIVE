@@ -99,7 +99,9 @@ function Landing() {
             height: "64px",
             objectFit: "contain",
             display: "block",
-            filter: "drop-shadow(0 8px 20px rgba(0, 0, 0, 0.3))",
+            filter: isDarkMode 
+              ? "drop-shadow(0 8px 20px rgba(0, 0, 0, 0.3))" 
+              : "invert(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.15))",
             transform: "scale(1.3)",
             transformOrigin: "center"
           }} />
@@ -207,7 +209,9 @@ function Landing() {
             objectFit: "contain",
             marginBottom: "8px",
             display: "block",
-            filter: "drop-shadow(0 15px 35px rgba(0, 0, 0, 0.5))",
+            filter: isDarkMode 
+              ? "drop-shadow(0 15px 35px rgba(0, 0, 0, 0.5))" 
+              : "invert(0.9) drop-shadow(0 4px 8px rgba(0,0,0,0.2))",
             transform: "scale(1.3)",
             transformOrigin: "center"
           }} />
