@@ -203,7 +203,7 @@ function Landing() {
             height: "96px",
             objectFit: "contain",
             marginBottom: "4px",
-            filter: isDarkMode ? "none" : "drop-shadow(0px 4px 8px rgba(0,0,0,0.15))"
+            filter: isDarkMode ? "none" : "drop-shadow(0px 4px 16px rgba(0,0,0,0.3)) brightness(0.95)"
           }} />
 
           <h1 style={{
@@ -466,7 +466,7 @@ function Landing() {
             color: "var(--text-primary)",
             textAlign: "center"
           }}>
-            About the RCA Past Papers Archive
+            About the RCA Archive+
           </h2>
           <div style={{
             display: "grid",
