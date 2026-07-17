@@ -126,8 +126,8 @@ function BrandPanel() {
         <Feature icon={<StarIcon />} text="Quality resources" />
       </div>
       <div className="stat-row">
-        <StatCard value="1200k+" label="Students" />
-        <StatCard value="340+" label="Papers" />
+        <StatCard value="200+" label="Students" />
+        <StatCard value="300+" label="Papers" />
         <StatCard value="24+" label="Subjects" />
       </div>
     </section>
