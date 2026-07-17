@@ -177,7 +177,7 @@ const Login = () => {
         role: data.role || "student",
       });
 
-      navigate(data.role === "admin" ? "/admin" : "/", { replace: true });
+      navigate(data.role === "admin" ? "/admin" : "/home", { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || err.message || "Unable to sign in. Please try again.");
     } finally {
