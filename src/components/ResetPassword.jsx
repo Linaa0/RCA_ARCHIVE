@@ -346,17 +346,6 @@ function CheckIcon() {
   );
 }
 
-function KeyIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="7.5" cy="15.5" r="5.5" />
-      <path d="M12 12l9-9" />
-      <path d="M16 7l2 2" />
-      <path d="M19 4l2 2" />
-    </svg>
-  );
-}
-
 function DocumentIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

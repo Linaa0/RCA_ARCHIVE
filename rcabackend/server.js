@@ -1993,7 +1993,6 @@ app.delete("/api/papers/:id", requireAuth, requireAdmin, async (req, res) => {
 
 app.delete("/api/account", requireAuth, async (req, res) => {
   const users = getUsersCollection();
-  const papers = getPapersCollection();
 
   // Find user
   const user = await users.findOne({ email: normalizeEmail(req.user.email) });
@@ -2001,20 +2000,10 @@ app.delete("/api/account", requireAuth, async (req, res) => {
     return res.status(404).json({ error: "User not found" });
   }
 
-  // Delete all papers uploaded by this user
-  const userPapers = await papers.find({ uploadedBy: user.username }).toArray();
-  for (const paper of userPapers) {
-    await permanentlyDeletePaperRecord(
-      paper,
-      "user account deletion",
-      req.user,
-    );
-  }
-
-  // Delete the user
+  // Delete the user only (keep papers)
   await users.deleteOne({ email: normalizeEmail(req.user.email) });
 
-  res.json({ message: "Account and associated papers deleted successfully" });
+  res.json({ message: "Account deleted successfully" });
 });
 
 function mountFrontendIfAvailable() {
