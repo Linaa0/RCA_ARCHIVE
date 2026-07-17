@@ -110,7 +110,7 @@ function Landing() {
                 fontSize: "1.25rem",
                 fontWeight: 700,
                 margin: 0,
-                color: "var(--text-primary)"
+                color: "#2563eb"
               }}>RCA Archive+</h1>
             </div>
           </div>
