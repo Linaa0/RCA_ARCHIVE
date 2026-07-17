@@ -13,6 +13,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import FileViewer from "./components/FileViewer";
 import Footer from "./components/Footer";
 import ReportIssue from "./components/ReportIssue";
+import Landing from "./components/Landing";
 import "./App.css";
 import api from "./api";
 
