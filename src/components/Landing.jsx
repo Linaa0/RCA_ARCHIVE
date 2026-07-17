@@ -104,14 +104,14 @@ function Landing() {
               backgroundColor: isDarkMode ? "transparent" : "white",
               boxShadow: isDarkMode ? "none" : "0 2px 8px rgba(0,0,0,0.1)"
             }}>
-            <img src={rcaLogo} alt="RCA" style={{
-            width: "40px",
-            height: "40px",
-            objectFit: "contain",
-            filter: isDarkMode ? "none" : "drop-shadow(0 1px 2px rgba(0,0,0,0.1))"
-          }} />
-          </div>
-          <div>
+              <img src={rcaLogo} alt="RCA" style={{
+                width: "40px",
+                height: "40px",
+                objectFit: "contain",
+                filter: isDarkMode ? "none" : "drop-shadow(0 1px 2px rgba(0,0,0,0.1))"
+              }} />
+            </div>
+            <div>
               <h1 style={{
                 fontSize: "1.25rem",
                 fontWeight: 700,
