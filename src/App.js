@@ -511,6 +511,9 @@ function App() {
   return (
     <div className="app-container">
       <Routes>
+        {/* Landing page (public) */}
+        <Route path="/" element={<Landing />} />
+
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -529,7 +532,7 @@ function App() {
 
         {/* Authenticated routes */}
         <Route
-          path="/"
+          path="/home"
           element={
             <PrivateRoute>
               <HomeContent
