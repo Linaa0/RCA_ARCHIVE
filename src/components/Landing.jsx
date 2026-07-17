@@ -19,7 +19,7 @@ function Landing() {
   const features = [
     {
       icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
         </svg>
@@ -29,7 +29,7 @@ function Landing() {
     },
     {
       icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 10v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6" />
           <polyline points="3.9 15 8 19 12.1 15" />
         </svg>
@@ -39,7 +39,7 @@ function Landing() {
     },
     {
       icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       ),
@@ -48,7 +48,7 @@ function Landing() {
     },
     {
       icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
         </svg>
       ),
@@ -79,7 +79,7 @@ function Landing() {
     <div className="landing-page" style={{ minHeight: "100vh" }}>
       {/* Header */}
       <header style={{
-        padding: "24px 40px",
+        padding: "16px 32px",
         borderBottom: "1px solid var(--border-color)",
         backgroundColor: "var(--bg-secondary)",
         position: "sticky",
@@ -87,21 +87,22 @@ function Landing() {
         zIndex: 1000
       }}>
         <div style={{
-          maxWidth: "1400px",
+          maxWidth: "1200px",
           margin: "0 auto",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <img src={rcaLogo} alt="RCA" style={{
-              width: "48px",
-              height: "48px",
-              objectFit: "contain"
+              width: "40px",
+              height: "40px",
+              objectFit: "contain",
+              filter: isDarkMode ? "none" : "drop-shadow(0px 2px 4px rgba(0,0,0,0.1))"
             }} />
             <div>
               <h1 style={{
-                fontSize: "1.5rem",
+                fontSize: "1.25rem",
                 fontWeight: 700,
                 margin: 0,
                 color: "var(--text-primary)"
@@ -109,19 +110,20 @@ function Landing() {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
               onClick={toggleDarkMode}
               style={{
                 background: "var(--bg-tertiary)",
                 border: "1px solid var(--border-color)",
-                borderRadius: "12px",
-                padding: "10px 16px",
+                borderRadius: "10px",
+                padding: "8px 14px",
                 cursor: "pointer",
                 color: "var(--text-primary)",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                fontSize: "0.875rem",
                 transition: "all 0.2s ease"
               }}
               onMouseEnter={(e) => {
@@ -134,7 +136,7 @@ function Landing() {
               }}
             >
               {isDarkMode ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="5" />
                   <line x1="12" y1="1" x2="12" y2="3" />
                   <line x1="12" y1="21" x2="12" y2="23" />
@@ -146,11 +148,11 @@ function Landing() {
                   <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                 </svg>
               ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
               )}
-              {isDarkMode ? "Light Mode" : "Dark Mode"}
+              {isDarkMode ? "Light" : "Dark"}
             </button>
 
             <button
@@ -159,9 +161,9 @@ function Landing() {
                 background: "transparent",
                 border: "2px solid var(--accent-primary)",
                 color: "var(--accent-primary)",
-                borderRadius: "12px",
-                padding: "12px 24px",
-                fontSize: "1rem",
+                borderRadius: "10px",
+                padding: "10px 20px",
+                fontSize: "0.9375rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 transition: "all 0.2s ease"
@@ -183,28 +185,29 @@ function Landing() {
 
       {/* Hero Section */}
       <section style={{
-        maxWidth: "1400px",
+        maxWidth: "1200px",
         margin: "0 auto",
-        padding: "80px 40px",
+        padding: "56px 32px",
         textAlign: "center"
       }}>
         <div style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "24px",
-          maxWidth: "900px",
+          gap: "16px",
+          maxWidth: "750px",
           margin: "0 auto"
         }}>
           <img src={rcaLogo} alt="RCA" style={{
-            width: "120px",
-            height: "120px",
+            width: "96px",
+            height: "96px",
             objectFit: "contain",
-            marginBottom: "8px"
+            marginBottom: "4px",
+            filter: isDarkMode ? "none" : "drop-shadow(0px 4px 8px rgba(0,0,0,0.15))"
           }} />
 
           <h1 style={{
-            fontSize: "3.5rem",
+            fontSize: "2.5rem",
             fontWeight: 700,
             lineHeight: "1.2",
             margin: 0,
@@ -217,18 +220,18 @@ function Landing() {
           </h1>
 
           <p style={{
-            fontSize: "1.25rem",
+            fontSize: "1.0625rem",
             color: "var(--text-secondary)",
-            margin: "8px 0 32px",
+            margin: "4px 0 24px",
             lineHeight: "1.6",
-            maxWidth: "700px"
+            maxWidth: "650px"
           }}>
             Access a comprehensive archive of RCA past papers and study materials, organized and ready for your success
           </p>
 
           <div style={{
             display: "flex",
-            gap: "16px",
+            gap: "12px",
             flexWrap: "wrap",
             justifyContent: "center"
           }}>
@@ -238,21 +241,21 @@ function Landing() {
                 background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
                 border: "none",
                 color: "white",
-                borderRadius: "14px",
-                padding: "16px 36px",
-                fontSize: "1.1rem",
+                borderRadius: "12px",
+                padding: "12px 32px",
+                fontSize: "1rem",
                 fontWeight: 600,
                 cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(37, 99, 235, 0.4)",
+                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.35)",
                 transition: "all 0.2s ease"
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 24px rgba(37, 99, 235, 0.5)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(37, 99, 235, 0.45)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 16px rgba(37, 99, 235, 0.4)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.35)";
               }}
             >
               Get Started
@@ -264,9 +267,9 @@ function Landing() {
                 background: "var(--bg-secondary)",
                 border: "2px solid var(--border-color)",
                 color: "var(--text-primary)",
-                borderRadius: "14px",
-                padding: "16px 36px",
-                fontSize: "1.1rem",
+                borderRadius: "12px",
+                padding: "12px 32px",
+                fontSize: "1rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 transition: "all 0.2s ease"
@@ -288,26 +291,26 @@ function Landing() {
 
       {/* Features Section */}
       <section id="features" style={{
-        maxWidth: "1400px",
+        maxWidth: "1200px",
         margin: "0 auto",
-        padding: "80px 40px",
+        padding: "48px 32px",
         backgroundColor: "var(--bg-secondary)",
-        borderRadius: "32px 32px 0 0"
+        borderRadius: "28px 28px 0 0"
       }}>
         <div style={{
           textAlign: "center",
-          marginBottom: "64px"
+          marginBottom: "40px"
         }}>
           <h2 style={{
-            fontSize: "2.5rem",
+            fontSize: "1.875rem",
             fontWeight: 700,
-            margin: "0 0 12px",
+            margin: "0 0 8px",
             color: "var(--text-primary)"
           }}>
             Why Choose RCA Archive?
           </h2>
           <p style={{
-            fontSize: "1.1rem",
+            fontSize: "1rem",
             color: "var(--text-muted)",
             margin: 0
           }}>
@@ -317,8 +320,8 @@ function Landing() {
 
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "24px"
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: "20px"
         }}>
           {features.map((feature, index) => (
             <div
@@ -326,12 +329,12 @@ function Landing() {
               style={{
                 background: "var(--bg-primary)",
                 border: "1px solid var(--border-color)",
-                borderRadius: "20px",
-                padding: "32px",
+                borderRadius: "16px",
+                padding: "24px",
                 transition: "all 0.3s ease"
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-8px)";
+                e.currentTarget.style.transform = "translateY(-4px)";
                 e.currentTarget.style.boxShadow = "var(--shadow-hover)";
                 e.currentTarget.style.borderColor = "var(--accent-primary)";
               }}
@@ -342,22 +345,22 @@ function Landing() {
               }}
             >
               <div style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "16px",
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
                 background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-light) 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "white",
-                marginBottom: "20px"
+                marginBottom: "16px"
               }}>
                 {feature.icon}
               </div>
               <h3 style={{
-                fontSize: "1.35rem",
+                fontSize: "1.125rem",
                 fontWeight: 600,
-                margin: "0 0 12px",
+                margin: "0 0 8px",
                 color: "var(--text-primary)"
               }}>
                 {feature.title}
@@ -365,7 +368,8 @@ function Landing() {
               <p style={{
                 margin: 0,
                 color: "var(--text-muted)",
-                lineHeight: "1.6"
+                lineHeight: "1.6",
+                fontSize: "0.9375rem"
               }}>
                 {feature.description}
               </p>
@@ -376,24 +380,24 @@ function Landing() {
 
       {/* How It Works */}
       <section id="how-it-works" style={{
-        maxWidth: "1400px",
+        maxWidth: "1200px",
         margin: "0 auto",
-        padding: "80px 40px"
+        padding: "48px 32px"
       }}>
         <div style={{
           textAlign: "center",
-          marginBottom: "64px"
+          marginBottom: "40px"
         }}>
           <h2 style={{
-            fontSize: "2.5rem",
+            fontSize: "1.875rem",
             fontWeight: 700,
-            margin: "0 0 12px",
+            margin: "0 0 8px",
             color: "var(--text-primary)"
           }}>
             How to Get Started
           </h2>
           <p style={{
-            fontSize: "1.1rem",
+            fontSize: "1rem",
             color: "var(--text-muted)",
             margin: 0
           }}>
@@ -403,30 +407,30 @@ function Landing() {
 
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "32px"
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: "24px"
         }}>
           {steps.map((step, index) => (
             <div key={index} style={{
               textAlign: "center",
-              padding: "32px",
+              padding: "28px 20px",
               background: "var(--card-bg)",
-              borderRadius: "24px",
+              borderRadius: "20px",
               border: "1px solid var(--border-color)"
             }}>
               <div style={{
-                fontSize: "4rem",
+                fontSize: "3rem",
                 fontWeight: 700,
                 color: "var(--accent-primary)",
                 lineHeight: "1",
-                marginBottom: "16px"
+                marginBottom: "12px"
               }}>
                 {step.number}
               </div>
               <h3 style={{
-                fontSize: "1.35rem",
+                fontSize: "1.125rem",
                 fontWeight: 600,
-                margin: "0 0 12px",
+                margin: "0 0 8px",
                 color: "var(--text-primary)"
               }}>
                 {step.title}
@@ -434,7 +438,8 @@ function Landing() {
               <p style={{
                 margin: 0,
                 color: "var(--text-muted)",
-                lineHeight: "1.6"
+                lineHeight: "1.6",
+                fontSize: "0.9375rem"
               }}>
                 {step.description}
               </p>
@@ -445,17 +450,17 @@ function Landing() {
 
       {/* About Section */}
       <section id="about" style={{
-        maxWidth: "1400px",
+        maxWidth: "1200px",
         margin: "0 auto",
-        padding: "80px 40px",
+        padding: "48px 32px",
         backgroundColor: "var(--bg-secondary)"
       }}>
         <div style={{
-          maxWidth: "1000px",
+          maxWidth: "900px",
           margin: "0 auto"
         }}>
           <h2 style={{
-            fontSize: "2.5rem",
+            fontSize: "1.875rem",
             fontWeight: 700,
             margin: "0 0 24px",
             color: "var(--text-primary)",
@@ -465,22 +470,23 @@ function Landing() {
           </h2>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
-            gap: "40px"
+            gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+            gap: "32px"
           }}>
             <div>
               <h3 style={{
-                fontSize: "1.5rem",
+                fontSize: "1.25rem",
                 fontWeight: 600,
-                margin: "0 0 16px",
+                margin: "0 0 12px",
                 color: "var(--text-primary)"
               }}>
                 Why It Exists
               </h3>
               <p style={{
                 color: "var(--text-secondary)",
-                lineHeight: "1.8",
-                margin: 0
+                lineHeight: "1.7",
+                margin: 0,
+                fontSize: "0.9375rem"
               }}>
                 The RCA Past Papers Archive was created to give every student easy access to previous exam papers and study materials. 
                 By organizing materials by year and subject, we make studying efficient and stress-free, helping you prepare better for your exams.
@@ -488,17 +494,18 @@ function Landing() {
             </div>
             <div>
               <h3 style={{
-                fontSize: "1.5rem",
+                fontSize: "1.25rem",
                 fontWeight: 600,
-                margin: "0 0 16px",
+                margin: "0 0 12px",
                 color: "var(--text-primary)"
               }}>
                 Our Purpose
               </h3>
               <p style={{
                 color: "var(--text-secondary)",
-                lineHeight: "1.8",
-                margin: 0
+                lineHeight: "1.7",
+                margin: 0,
+                fontSize: "0.9375rem"
               }}>
                 We believe in accessible education. This platform ensures that all RCA students have equal opportunity to use past papers 
                 as a learning resource, helping them understand exam patterns and prepare effectively.
@@ -511,28 +518,28 @@ function Landing() {
       {/* CTA Section */}
       <section style={{
         background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
-        padding: "80px 40px",
+        padding: "48px 32px",
         textAlign: "center"
       }}>
-        <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "700px", margin: "0 auto" }}>
           <h2 style={{
-            fontSize: "2.5rem",
+            fontSize: "1.875rem",
             fontWeight: 700,
-            margin: "0 0 16px",
+            margin: "0 0 12px",
             color: "white"
           }}>
             Ready to Excel?
           </h2>
           <p style={{
-            fontSize: "1.2rem",
-            margin: "0 0 32px",
+            fontSize: "1rem",
+            margin: "0 0 24px",
             color: "rgba(255, 255, 255, 0.9)"
           }}>
             Join thousands of RCA students using this archive for their studies
           </p>
           <div style={{
             display: "flex",
-            gap: "16px",
+            gap: "12px",
             justifyContent: "center",
             flexWrap: "wrap"
           }}>
@@ -542,21 +549,21 @@ function Landing() {
                 background: "white",
                 border: "none",
                 color: "var(--accent-primary)",
-                borderRadius: "14px",
-                padding: "16px 36px",
-                fontSize: "1.1rem",
+                borderRadius: "12px",
+                padding: "12px 32px",
+                fontSize: "1rem",
                 fontWeight: 600,
                 cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
                 transition: "all 0.2s ease"
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 24px rgba(0, 0, 0, 0.3)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.3)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.2)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
               }}
             >
               Create Your Account
@@ -567,9 +574,9 @@ function Landing() {
                 background: "transparent",
                 border: "2px solid white",
                 color: "white",
-                borderRadius: "14px",
-                padding: "16px 36px",
-                fontSize: "1.1rem",
+                borderRadius: "12px",
+                padding: "12px 32px",
+                fontSize: "1rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 transition: "all 0.2s ease"
@@ -591,13 +598,14 @@ function Landing() {
 
       {/* Footer */}
       <footer style={{
-        padding: "40px",
+        padding: "32px",
         textAlign: "center",
         color: "var(--text-muted)",
-        borderTop: "1px solid var(--border-color)"
+        borderTop: "1px solid var(--border-color)",
+        fontSize: "0.875rem"
       }}>
         <p style={{ margin: 0 }}>
-          &copy; {new Date().getFullYear()} RCA Past Papers Archive. All rights reserved.
+          © {new Date().getFullYear()} RCA Past Papers Archive. All rights reserved.
         </p>
       </footer>
     </div>
