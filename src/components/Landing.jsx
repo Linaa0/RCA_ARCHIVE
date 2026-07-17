@@ -220,12 +220,13 @@ function Landing() {
             boxShadow: isDarkMode ? "none" : "0 4px 16px rgba(0,0,0,0.12)",
             marginBottom: "8px"
           }}>
-          <img src={rcaLogo} alt="RCA" style={{
-            width: "96px",
-            height: "96px",
-            objectFit: "contain",
-            filter: isDarkMode ? "none" : "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
-          }} />
+            <img src={rcaLogo} alt="RCA" style={{
+              width: "96px",
+              height: "96px",
+              objectFit: "contain",
+              filter: isDarkMode ? "none" : "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
+            }} />
+          </div>
 
           <h1 style={{
             fontSize: "2.5rem",
