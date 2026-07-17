@@ -605,7 +605,7 @@ function Landing() {
         fontSize: "0.875rem"
       }}>
         <p style={{ margin: 0 }}>
-          © {new Date().getFullYear()} RCA Past Papers Archive. All rights reserved.
+          © {new Date().getFullYear()} RCA Archive+. All rights reserved.
         </p>
       </footer>
     </div>
