@@ -16,7 +16,7 @@ const PrivateRoute = ({ children, requiredRole }) => {
   // Role-based guard: redirect to home if user doesn't have the required role
   if (requiredRole && role !== requiredRole) {
     // Non-admin trying to hit /admin → go to home
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return children;

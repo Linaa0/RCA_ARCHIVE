@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import SearchBar from "./components/SearchBar";
 import Stats from "./components/Stats";
@@ -16,6 +16,7 @@ import ReportIssue from "./components/ReportIssue";
 import Landing from "./components/Landing";
 import "./App.css";
 import api from "./api";
+import { isAuthenticated, getStoredRole } from "./utils/auth";
 
 const year1Subjects = [
   "Mathematics",
@@ -341,8 +342,20 @@ function App() {
   return (
     <div className="app-container">
       <Routes>
-        {/* Landing page (public) */}
-        <Route path="/" element={<Landing />} />
+        {/* Landing page (public) - redirect authenticated users */}
+        <Route
+          path="/"
+          element={
+            isAuthenticated() ? (
+              <Navigate
+                to={getStoredRole() === "admin" ? "/admin" : "/home"}
+                replace
+              />
+            ) : (
+              <Landing />
+            )
+          }
+        />
 
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
