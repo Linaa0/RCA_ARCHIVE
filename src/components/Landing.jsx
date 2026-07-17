@@ -100,13 +100,13 @@ function Landing() {
               objectFit: "contain",
               filter: isDarkMode ? "none" : "drop-shadow(0px 2px 4px rgba(0,0,0,0.1))"
             }} />
-            <div>
+          <div>
               <h1 style={{
                 fontSize: "1.25rem",
                 fontWeight: 700,
                 margin: 0,
                 color: "var(--text-primary)"
-              }}>RCA Past Papers Archive</h1>
+              }}>RCA Archive+</h1>
             </div>
           </div>
 
