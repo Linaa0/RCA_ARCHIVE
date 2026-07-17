@@ -540,19 +540,6 @@ app.get("/api/papers", async (req, res) => {
   res.json(result);
 });
 
-if (process.env.NODE_ENV === "production") {
-  const buildDir = path.join(__dirname, "../build");
-  app.use(express.static(buildDir));
-
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) {
-      return next();
-    }
-
-    res.sendFile(path.join(buildDir, "index.html"));
-  });
-}
-
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   const tokenMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
@@ -1984,14 +1971,31 @@ app.delete("/api/papers/:id", requireAuth, requireAdmin, async (req, res) => {
   res.json({ message: "Paper deleted successfully" });
 });
 
-// Serve React static files in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "..", "build")));
-  // Catch all: send React's index.html for SPA routing
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "..", "build", "index.html"));
+function mountFrontendIfAvailable() {
+  if (process.env.SERVE_FRONTEND === "false") {
+    return;
+  }
+
+  const buildDir = path.join(__dirname, "..", "build");
+  const indexHtml = path.join(buildDir, "index.html");
+
+  if (!fs.existsSync(indexHtml)) {
+    console.log(
+      "ℹ️ Frontend build not found — running API-only mode (no static files).",
+    );
+    return;
+  }
+
+  app.use(express.static(buildDir));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) {
+      return next();
+    }
+    res.sendFile(indexHtml);
   });
 }
+
+mountFrontendIfAvailable();
 
 initDB().then(async () => {
   // Print environment status (redacted for security)
