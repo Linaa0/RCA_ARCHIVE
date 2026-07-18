@@ -1306,7 +1306,7 @@ app.post("/api/login", async (req, res) => {
   });
 
   // Get current failed attempts count
-  const recentAttempts = await failedAttemptsCollection.countDocuments({
+  let recentAttempts = await failedAttemptsCollection.countDocuments({
     email: normalizedEmail,
     createdAt: { $gte: oneHourAgo },
   });
@@ -1320,7 +1320,7 @@ app.post("/api/login", async (req, res) => {
 
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
-    // Increment failed attempts
+    // Increment failed attempts FIRST
     await failedAttemptsCollection.insertOne({
       email: normalizedEmail,
       ip: req.ip || req.headers["x-forwarded-for"] || "unknown",
@@ -1328,10 +1328,15 @@ app.post("/api/login", async (req, res) => {
       createdAt: new Date().toISOString(),
     });
 
-    const newAttemptsCount = recentAttempts + 1;
+    // Now count again to get the updated number
+    recentAttempts = await failedAttemptsCollection.countDocuments({
+      email: normalizedEmail,
+      createdAt: { $gte: oneHourAgo },
+    });
+    const attemptsLeft = 3 - recentAttempts;
 
     // If this is the 3rd failed attempt, send an email
-    if (newAttemptsCount === 3) {
+    if (recentAttempts === 3) {
       try {
         const { transporter } = await createMailTransporter();
         const emailSubject =
