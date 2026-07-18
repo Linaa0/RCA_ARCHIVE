@@ -220,7 +220,7 @@ const AdminDashboard = () => {
 
           {/* Link to student/user view */}
           <Link
-            to="/"
+            to="/home"
             className="admin-nav-item"
             style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "12px" }}
           >
