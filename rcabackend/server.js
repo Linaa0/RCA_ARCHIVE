@@ -500,6 +500,39 @@ function normalizeEmail(value) {
   return (value || "").trim().toLowerCase();
 }
 
+function validatePasswordStrength(password) {
+  if (!password || password.length < 8) {
+    return {
+      valid: false,
+      message: "Password must be at least 8 characters long",
+    };
+  }
+
+  if (!/[a-zA-Z]/.test(password)) {
+    return {
+      valid: false,
+      message: "Password must contain at least one letter",
+    };
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return {
+      valid: false,
+      message: "Password must contain at least one number",
+    };
+  }
+
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    return {
+      valid: false,
+      message:
+        "Password must contain at least one special character (!@#$%^&*()_+-=[]{};':\"\\|,.<>/?)",
+    };
+  }
+
+  return { valid: true };
+}
+
 async function findUserByEmail(email) {
   const normalizedEmail = normalizeEmail(email);
   const users = getUsersCollection();
@@ -1267,12 +1300,10 @@ app.post("/api/login", async (req, res) => {
   });
 
   if (recentAttempts >= 3) {
-    return res
-      .status(429)
-      .json({
-        error:
-          "Too many failed login attempts. Please try again later or check your email for further instructions.",
-      });
+    return res.status(429).json({
+      error:
+        "Too many failed login attempts. Please try again later or check your email for further instructions.",
+    });
   }
 
   const match = await bcrypt.compare(password, user.password);
