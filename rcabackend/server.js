@@ -15,6 +15,7 @@ const {
   getOtpCollection,
   getPasswordResetCollection,
   getDeletionRequestsCollection,
+  getFailedLoginAttemptsCollection,
 } = require("./db");
 
 const app = express();
@@ -25,7 +26,11 @@ const FRONTEND_BASE_URL =
 const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
 const ADMIN_BOOTSTRAP_SECRET = process.env.ADMIN_BOOTSTRAP_SECRET || "";
 
-const HARDCODED_ADMINS = ["deenovdunya01@gmail.com", "chretiensano@gmail.com", "mucyoasifiwe80@gmail.com"];
+const HARDCODED_ADMINS = [
+  "deenovdunya01@gmail.com",
+  "chretiensano@gmail.com",
+  "mucyoasifiwe80@gmail.com",
+];
 
 if (!process.env.JWT_SECRET) {
   console.warn(

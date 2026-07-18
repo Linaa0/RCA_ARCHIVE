@@ -61,6 +61,11 @@ function getDeletionRequestsCollection() {
   return db.collection("deletionRequests");
 }
 
+function getFailedLoginAttemptsCollection() {
+  if (!db) throw new Error("MongoDB is not connected yet");
+  return db.collection("failedLoginAttempts");
+}
+
 module.exports = {
   connectToMongo,
   getUsersCollection,
@@ -68,4 +73,5 @@ module.exports = {
   getOtpCollection,
   getPasswordResetCollection,
   getDeletionRequestsCollection,
+  getFailedLoginAttemptsCollection,
 };
