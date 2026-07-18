@@ -1384,7 +1384,7 @@ RCA Archive Team
 
     return res.status(400).json({
       error: "Wrong password",
-      attemptsLeft: 3 - newAttemptsCount,
+      attemptsLeft: attemptsLeft,
     });
   }
 
