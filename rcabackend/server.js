@@ -1250,12 +1250,98 @@ app.post("/api/login", async (req, res) => {
     });
   }
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) {
-    return res.status(400).json({ error: "Wrong password" });
+  const normalizedEmail = normalizeEmail(email);
+  const failedAttemptsCollection = getFailedLoginAttemptsCollection();
+
+  // Clean up old failed attempts (older than 1 hour)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  await failedAttemptsCollection.deleteMany({
+    email: normalizedEmail,
+    createdAt: { $lt: oneHourAgo },
+  });
+
+  // Get current failed attempts count
+  const recentAttempts = await failedAttemptsCollection.countDocuments({
+    email: normalizedEmail,
+    createdAt: { $gte: oneHourAgo },
+  });
+
+  if (recentAttempts >= 3) {
+    return res
+      .status(429)
+      .json({
+        error:
+          "Too many failed login attempts. Please try again later or check your email for further instructions.",
+      });
   }
 
-  const normalizedEmail = normalizeEmail(email);
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) {
+    // Increment failed attempts
+    await failedAttemptsCollection.insertOne({
+      email: normalizedEmail,
+      ip: req.ip || req.headers["x-forwarded-for"] || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
+      createdAt: new Date().toISOString(),
+    });
+
+    const newAttemptsCount = recentAttempts + 1;
+
+    // If this is the 3rd failed attempt, send an email
+    if (newAttemptsCount === 3) {
+      try {
+        const { transporter } = await createMailTransporter();
+        const emailSubject =
+          "Suspicious Login Attempts on Your RCA Archive Account";
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">RCA Archive: Multiple Failed Login Attempts</h2>
+            <p>Hi ${user.username || user.name || "there"},</p>
+            <p>We noticed 3 failed login attempts to your RCA Archive account in the last hour. If this was you, you can try again in a little while.</p>
+            <p>If this wasn't you, we recommend:</p>
+            <ul>
+              <li>Changing your password immediately</li>
+              <li>Checking if your email account has been compromised</li>
+              <li>Contacting support if you need further assistance</li>
+            </ul>
+            <p>Best regards,<br>RCA Archive Team</p>
+          </div>
+        `;
+        const emailText = `
+Hi ${user.username || user.name || "there"},
+
+We noticed 3 failed login attempts to your RCA Archive account in the last hour. If this was you, you can try again in a little while.
+
+If this wasn't you, we recommend:
+- Changing your password immediately
+- Checking if your email account has been compromised
+- Contacting support if you need further assistance
+
+Best regards,
+RCA Archive Team
+        `;
+
+        await transporter.sendMail({
+          from:
+            process.env.EMAIL_FROM || "RCA Archive <no-reply@rcarchive.local>",
+          to: user.email,
+          subject: emailSubject,
+          text: emailText,
+          html: emailHtml,
+        });
+      } catch (emailError) {
+        console.error("Error sending suspicious login email:", emailError);
+      }
+    }
+
+    return res.status(400).json({
+      error: "Wrong password",
+      attemptsLeft: 3 - newAttemptsCount,
+    });
+  }
+
+  // Reset failed attempts on successful login
+  await failedAttemptsCollection.deleteMany({ email: normalizedEmail });
 
   // Check if user is hardcoded admin and update role if needed
   let role = user.role;
