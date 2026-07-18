@@ -156,7 +156,7 @@ const Signup = () => {
   useEffect(() => {
     if (isAuthenticated()) {
       const { role } = getStoredUser();
-      navigate(role === "admin" ? "/admin" : "/", { replace: true });
+      navigate(role === "admin" ? "/admin" : "/home", { replace: true });
     } else {
       clearAuthStorage();
     }
