@@ -1306,12 +1306,14 @@ app.post("/api/login", async (req, res) => {
   });
 
   // Get current failed attempts count
-  let recentAttempts = await failedAttemptsCollection.countDocuments({
+  const initialAttempts = await failedAttemptsCollection.countDocuments({
     email: normalizedEmail,
     createdAt: { $gte: oneHourAgo },
   });
 
-  if (recentAttempts >= 3) {
+  console.log("Initial failed attempts count:", initialAttempts);
+
+  if (initialAttempts >= 3) {
     return res.status(429).json({
       error:
         "Too many failed login attempts. Please try again later or check your email for further instructions.",
@@ -1320,7 +1322,7 @@ app.post("/api/login", async (req, res) => {
 
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
-    // Increment failed attempts FIRST
+    // Increment failed attempts
     await failedAttemptsCollection.insertOne({
       email: normalizedEmail,
       ip: req.ip || req.headers["x-forwarded-for"] || "unknown",
@@ -1328,15 +1330,17 @@ app.post("/api/login", async (req, res) => {
       createdAt: new Date().toISOString(),
     });
 
-    // Now count again to get the updated number
-    recentAttempts = await failedAttemptsCollection.countDocuments({
-      email: normalizedEmail,
-      createdAt: { $gte: oneHourAgo },
-    });
-    const attemptsLeft = 3 - recentAttempts;
+    const newAttemptsCount = initialAttempts + 1;
+    const attemptsLeft = 3 - newAttemptsCount;
+    console.log(
+      "New attempts count:",
+      newAttemptsCount,
+      "Attempts left:",
+      attemptsLeft,
+    );
 
     // If this is the 3rd failed attempt, send an email
-    if (recentAttempts === 3) {
+    if (newAttemptsCount === 3) {
       try {
         const { transporter } = await createMailTransporter();
         const emailSubject =
@@ -2198,6 +2202,21 @@ initDB().then(async () => {
       console.error("❌ SMTP Test FAILED:", smtpErr);
     }
   }
+
+  // Test endpoint to clear failed login attempts (for development)
+  app.post("/api/test/clear-failed-attempts", async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email required" });
+
+    const normalizedEmail = normalizeEmail(email);
+    const failedAttemptsCollection = getFailedLoginAttemptsCollection();
+    const deleteResult = await failedAttemptsCollection.deleteMany({
+      email: normalizedEmail,
+    });
+    res.json({
+      message: `Cleared ${deleteResult.deletedCount} failed attempts for ${normalizedEmail}`,
+    });
+  });
 
   const server = app.listen(PORT, () => {
     console.log(`\n✅ RCA Backend running on http://localhost:${PORT}`);
