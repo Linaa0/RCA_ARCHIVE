@@ -219,6 +219,18 @@ const Login = () => {
 
         <section className="auth-panel" aria-label={mode === "login" ? "Sign in form" : "Forgot password form"}>
           <div className="auth-card">
+            {/* Back to home link */}
+            <button
+              type="button"
+              className="toggle-link"
+              onClick={() => navigate("/")}
+              style={{ marginBottom: "16px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Back to Home
+            </button>
             {mode === "login" ? (
               <>
                 <h1 className="form-title">Sign in</h1>
