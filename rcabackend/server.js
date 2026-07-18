@@ -1703,6 +1703,14 @@ app.get("/api/admin/stats", requireAuth, requireAdmin, async (_req, res) => {
     deletionRequests.countDocuments({ status: "Pending" }),
   ]);
 
+  console.log("ADMIN STATS:", {
+    totalUsers,
+    totalStudents,
+    totalTeachers,
+    totalPapers,
+    pendingDeletionRequests,
+  });
+
   res.json({
     totalUsers,
     totalStudents,
@@ -1949,6 +1957,8 @@ app.post(
       originalName: req.file.originalname,
       hash,
       uploadedBy: req.user.username,
+      uploadedByEmail: req.user.email,
+      uploadedById: req.user.id,
       uploadedAt: new Date().toISOString(),
       ratings: [],
     };
@@ -2372,6 +2382,7 @@ app.get(
       const papersCollection = getPapersCollection();
       const searchTerms = [
         user._id?.toString(),
+        user.id,
         user.email,
         user.name,
         user.username,
@@ -2379,12 +2390,13 @@ app.get(
       const resources = await papersCollection
         .find({
           $or: [
+            { uploadedById: { $in: searchTerms } },
+            { uploadedByEmail: { $in: searchTerms } },
             { uploadedBy: { $in: searchTerms } },
             { createdBy: { $in: searchTerms } },
             { userEmail: { $in: searchTerms } },
             { ownerEmail: { $in: searchTerms } },
             { uploaderEmail: { $in: searchTerms } },
-            { uploadedById: { $in: searchTerms } },
             { createdById: { $in: searchTerms } },
             { ownerId: { $in: searchTerms } },
             { userId: { $in: searchTerms } },

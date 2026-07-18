@@ -1,11 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { isAuthenticated, getStoredRole } from "../utils/auth";
+import { isAuthenticated } from "../utils/auth";
 import "./Footer.css";
 
 function Footer() {
   const isAuth = isAuthenticated();
-  const role = getStoredRole();
   const homePath = isAuth ? "/home" : "/";
   
   return (

@@ -81,9 +81,14 @@ const AdminDashboard = () => {
         authGet("/api/admin/deletion-requests"),
       ]);
 
+      console.log("API STATS RESPONSE:", statsData);
+      console.log("API TEACHERS RESPONSE:", teachersData);
+      console.log("API DELETIONS RESPONSE:", deletionsData);
+
       let usersData = [];
       try {
         const response = await authGet("/api/admin/users");
+        console.log("API USERS RESPONSE:", response);
         usersData = Array.isArray(response) ? response : response.users || [];
       } catch {
         try {
@@ -103,6 +108,7 @@ const AdminDashboard = () => {
       );
       setUsers(usersData);
     } catch (err) {
+      console.error("ERROR LOADING DASHBOARD:", err);
       setError(err.message || "Unable to load admin dashboard.");
     } finally {
       setLoading(false);
