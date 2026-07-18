@@ -179,7 +179,14 @@ const Login = () => {
 
       navigate(data.role === "admin" ? "/admin" : "/home", { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Unable to sign in. Please try again.");
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || "Unable to sign in. Please try again.";
+      const attemptsLeft = err.response?.data?.attemptsLeft;
+      
+      if (attemptsLeft !== undefined) {
+        setError(`${errorMsg} (${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left)`);
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }

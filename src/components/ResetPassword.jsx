@@ -50,11 +50,6 @@ function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -115,6 +110,9 @@ function ResetPassword() {
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </span>
                 </div>
+                <p style={{ fontSize: '0.8rem', color: 'rgba(30,64,175,0.7)', marginTop: '0.25rem' }}>
+                  Password must be at least 8 characters, include one letter, one number, and one special character
+                </p>
               </div>
 
               <div className="form-group">

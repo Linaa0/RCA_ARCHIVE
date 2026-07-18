@@ -1093,6 +1093,12 @@ app.post("/api/reset-password", async (req, res) => {
     });
   }
 
+  // Validate password strength
+  const passwordCheck = validatePasswordStrength(newPassword);
+  if (!passwordCheck.valid) {
+    return res.status(400).json({ error: passwordCheck.message });
+  }
+
   if (token) {
     const resetCollection = getPasswordResetCollection();
     const resetRecord = await resetCollection.findOne({ token });
@@ -1197,6 +1203,12 @@ app.post("/api/signup", async (req, res) => {
     return res
       .status(400)
       .json({ error: "Email, password, and username are required" });
+  }
+
+  // Validate password strength
+  const passwordCheck = validatePasswordStrength(password);
+  if (!passwordCheck.valid) {
+    return res.status(400).json({ error: passwordCheck.message });
   }
 
   if (role === "teacher") {
