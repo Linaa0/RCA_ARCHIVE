@@ -348,7 +348,7 @@ function SubjectPage() {
       )}
 
       <nav className="subject-nav">
-        <Link to="/" className="back-link">← Back to Home</Link>
+        <Link to="/home" className="back-link">← Back to Home</Link>
       </nav>
 
       <div className="subject-header">

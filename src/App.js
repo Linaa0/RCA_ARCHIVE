@@ -306,7 +306,7 @@ function App() {
   const toggleDarkMode = () => setIsDarkMode((d) => !d);
 
   useEffect(() => {
-    if (location.pathname !== "/") return;
+    if (location.pathname !== "/" && location.pathname !== "/home") return;
     const params = new URLSearchParams(location.search);
     const yearParam = parseInt(params.get("year"), 10);
     if ([1, 2, 3].includes(yearParam) && yearParam !== activeYear) {

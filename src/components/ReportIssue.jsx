@@ -56,7 +56,7 @@ function ReportIssue() {
           </div>
           <div className="report-issue-summary">
             <p>Please check your email client to complete sending the report if it did not open automatically.</p>
-            <Link to="/" className="back-home-link">
+            <Link to="/home" className="back-home-link">
               ← Back to home
             </Link>
           </div>

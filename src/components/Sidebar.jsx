@@ -9,7 +9,7 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
   const username = localStorage.getItem("username");
   const role = localStorage.getItem("role") || "student";
   const token = localStorage.getItem("token");
-  const isAcademicPage = location.pathname === "/" || location.pathname.startsWith("/subject/");
+  const isAcademicPage = location.pathname === "/" || location.pathname === "/home" || location.pathname.startsWith("/subject/");
   const [yearsOpen, setYearsOpen] = useState(isAcademicPage);
 
   const handleLogout = () => {
@@ -25,7 +25,7 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
 
     // Navigate to homepage with year query param and hash
     // This triggers App.js useEffect to scroll to subjects section
-    navigate(`/?year=${y}#subjects`);
+    navigate(`/home?year=${y}#subjects`);
   };
 
   const initial = username ? username.charAt(0).toUpperCase() : "U";
@@ -55,7 +55,7 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
           {yearsOpen && (
             <div className="sidebar-submenu">
               {allYears.map((y) => {
-                const isActive = activeYear === y && location.pathname === "/";
+                const isActive = activeYear === y && (location.pathname === "/" || location.pathname === "/home");
                 const icon = y === 1 ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
