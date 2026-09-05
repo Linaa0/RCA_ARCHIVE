@@ -13,18 +13,18 @@
     "dotenv": "^17.4.2",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^5.9.2",
-    "multer": "^2.1.1",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "react-router-dom": "^6.30.3",
-    "react-scripts": "^5.0.1",
+    "multer": "^2.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3",
+    "vite": "^7.1.7",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "concurrently \"npm run react\" \"npm run backend\"",
-    "react": "cross-env PORT=3074 react-scripts start",
+    "react": "vite --port 3074",
     "backend": "cd rcabackend && node server.js",
-    "build": "react-scripts build",
+    "build": "vite build",
     "start:prod": "cross-env NODE_ENV=production node rcabackend/server.js"
   },
   "eslintConfig": {
@@ -46,7 +46,12 @@
     ]
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0"
+  },
+  "overrides": {
+    "qs": "^6.16.0",
+    "body-parser": "^1.20.6"
   }
 }

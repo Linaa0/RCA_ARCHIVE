@@ -26,7 +26,7 @@ function ResetPassword() {
   const isSetupFlow = Boolean(routeToken || searchParams.get("token"));
   const pageTitle = isSetupFlow ? "Set Password" : "Reset Password";
   const pageSubtitle = isSetupFlow
-    ? "Welcome to RCA Archive. Create a password to activate your teacher account."
+    ? "Welcome to RCA Archive. Create a password to activate your account."
     : "Set a new password to restore access to your account.";
   const buttonLabel = isSetupFlow ? "Set Password" : "Reset Password";
 
@@ -62,7 +62,13 @@ function ResetPassword() {
       setConfirmPassword("");
       setTimeout(() => navigate("/login"), 1800);
     } catch (err) {
-      setError(err.response?.data?.error || "Unable to reset password.");
+      setError(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          (typeof err.response?.data === "string" ? err.response.data : "") ||
+          err.message ||
+          "Unable to reset password.",
+      );
     } finally {
       setLoading(false);
     }
@@ -85,7 +91,10 @@ function ResetPassword() {
             <h1 className="form-title">{pageTitle}</h1>
             <p className="form-subtitle">{pageSubtitle}</p>
 
-            <Message error={error} success={success && !loading ? success : ""} />
+            <Message
+              error={error}
+              success={success && !loading ? success : ""}
+            />
 
             <form className="login-form" onSubmit={handleSubmit}>
               <div className="form-group">
@@ -101,17 +110,24 @@ function ResetPassword() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
-                  <span 
-                    className="input-icon" 
-                    style={{ cursor: "pointer" }} 
+                  <span
+                    className="input-icon"
+                    style={{ cursor: "pointer" }}
                     onClick={() => setShowPassword(!showPassword)}
                     title={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.8rem', color: 'rgba(30,64,175,0.7)', marginTop: '0.25rem' }}>
-                  Password must be at least 8 characters, include one letter, one number, and one special character
+                <p
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "rgba(30,64,175,0.7)",
+                    marginTop: "0.25rem",
+                  }}
+                >
+                  Password must be at least 8 characters, include one letter,
+                  one number, and one special character
                 </p>
               </div>
 
@@ -128,20 +144,20 @@ function ResetPassword() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
-                  <span 
-                    className="input-icon" 
-                    style={{ cursor: "pointer" }} 
+                  <span
+                    className="input-icon"
+                    style={{ cursor: "pointer" }}
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    title={showConfirmPassword ? "Hide password" : "Show password"}
+                    title={
+                      showConfirmPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </span>
                 </div>
               </div>
 
-              <SubmitButton loading={loading}>
-                {buttonLabel}
-              </SubmitButton>
+              <SubmitButton loading={loading}>{buttonLabel}</SubmitButton>
             </form>
 
             <div className="auth-divider">
@@ -151,7 +167,11 @@ function ResetPassword() {
             </div>
 
             <div className="form-footer">
-              <button type="button" className="toggle-link" onClick={() => navigate("/login")}>
+              <button
+                type="button"
+                className="toggle-link"
+                onClick={() => navigate("/login")}
+              >
                 ← Back to Login
               </button>
             </div>
@@ -267,8 +287,12 @@ function BrandPanel() {
 
 function TypingText() {
   const phrases = useMemo(
-    () => ["Access past papers & study materials", "Built for RCA students", "Your archive, anytime, anywhere"],
-    []
+    () => [
+      "Access past papers & study materials",
+      "Built for RCA students",
+      "Your archive, anytime, anywhere",
+    ],
+    [],
   );
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
@@ -300,13 +324,19 @@ function TypingText() {
     return () => clearTimeout(timeout);
   }, [charIndex, deleting, phraseIndex, phrases]);
 
-  return <div className="typing-text">{phrases[phraseIndex].slice(0, charIndex)}</div>;
+  return (
+    <div className="typing-text">
+      {phrases[phraseIndex].slice(0, charIndex)}
+    </div>
+  );
 }
 
 function SubmitButton({ children, loading }) {
   return (
     <button className="login-btn" type="submit" disabled={loading}>
-      <span className={loading ? "button-text hidden" : "button-text"}>{children}</span>
+      <span className={loading ? "button-text hidden" : "button-text"}>
+        {children}
+      </span>
       {loading && <span className="button-spinner" />}
     </button>
   );
@@ -339,14 +369,28 @@ function StatCard({ value, label }) {
 function CheckIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M2 7l3.5 3.5L11 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2 7l3.5 3.5L11 3"
+        stroke="white"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function DocumentIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
     </svg>
@@ -355,7 +399,15 @@ function DocumentIcon() {
 
 function ClockIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
@@ -364,7 +416,15 @@ function ClockIcon() {
 
 function StarIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   );
@@ -372,7 +432,16 @@ function StarIcon() {
 
 function EyeIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -381,7 +450,16 @@ function EyeIcon() {
 
 function EyeOffIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
       <line x1="1" y1="1" x2="23" y2="23" />
     </svg>

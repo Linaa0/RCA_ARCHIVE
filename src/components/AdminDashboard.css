@@ -5,7 +5,7 @@
   min-height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
 }
 
 /* ─── Sidebar ─── */
@@ -64,12 +64,15 @@ a.admin-nav-item {
   border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
   font-size: 0.92rem;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
   text-decoration: none;
   box-sizing: border-box;
 }
@@ -149,11 +152,14 @@ a.admin-nav-item {
   border: 1px solid var(--border-color);
   background: transparent;
   color: var(--text-muted);
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .admin-logout-btn:hover {
@@ -219,11 +225,13 @@ a.admin-nav-item {
   border: 1px solid var(--border-color);
   background: transparent;
   color: var(--text-muted);
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .btn-secondary:hover {
@@ -237,7 +245,7 @@ a.admin-nav-item {
   border: 0;
   background: var(--accent-primary);
   color: #fff;
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -273,7 +281,10 @@ a.admin-nav-item {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
 }
 
 .summary-card:hover {
@@ -427,7 +438,7 @@ a.admin-nav-item {
   border-radius: 6px;
   background: rgba(37, 99, 235, 0.1);
   color: var(--accent-light);
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -444,7 +455,7 @@ a.admin-nav-item {
   border-radius: 6px;
   background: rgba(239, 68, 68, 0.08);
   color: #f87171;
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -516,6 +527,58 @@ a.admin-nav-item {
   gap: 8px;
 }
 
+.resource-role-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.resource-role-tab {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+.resource-role-tab:hover,
+.resource-role-tab.active {
+  border-color: var(--accent-primary);
+  background: rgba(37, 99, 235, 0.16);
+  color: var(--accent-light);
+}
+
+.permissions-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent-primary);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.permissions-summary strong {
+  color: var(--text-primary);
+  font-size: 0.86rem;
+}
+
+.permissions-summary span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.resource-user-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .resource-item {
   padding: 12px 14px;
   border-radius: 10px;
@@ -564,7 +627,7 @@ a.admin-nav-item {
   border: 1.5px solid var(--border-color);
   background: var(--bg-tertiary);
   color: var(--text-secondary);
-  font-family: 'Quicksand', sans-serif;
+  font-family: "Quicksand", sans-serif;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -585,6 +648,62 @@ a.admin-nav-item {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.stats-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stats-highlight-card {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.stats-highlight-card span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-highlight-card strong {
+  display: block;
+  margin: 10px 0 14px;
+  color: var(--text-primary);
+  font-size: 1.8rem;
+}
+
+.stats-meter {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border-color);
+}
+
+.stats-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    var(--accent-primary),
+    var(--accent-light)
+  );
+}
+
+.stats-insight {
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 .stats-row {
@@ -667,6 +786,10 @@ a.admin-nav-item {
   .quick-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .stats-highlight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
@@ -707,7 +830,8 @@ a.admin-nav-item {
 
 @media (max-width: 500px) {
   .summary-grid,
-  .quick-actions {
+  .quick-actions,
+  .stats-highlight-grid {
     grid-template-columns: 1fr;
   }
 
