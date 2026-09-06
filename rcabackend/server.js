@@ -145,10 +145,13 @@ async function createMailTransporter() {
 
 async function sendVerificationEmail(email, otp) {
   const { transporter, isReal } = await createMailTransporter();
+  const sender =
+    process.env.EMAIL_FROM || `"RCA Archive" <${process.env.SMTP_USER}>`;
   const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM || '"RCA Archive" <no-reply@rcarchive.local>',
+    from: sender,
+    replyTo: process.env.SMTP_USER,
     to: email,
-    subject: "RCA Archive Teacher Verification Code",
+    subject: "Your RCA Archive verification code",
     text: `Your RCA teacher verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
     html: `
       <p>Your RCA teacher verification code is: <strong>${otp}</strong></p>
@@ -198,21 +201,31 @@ function buildPasswordSetupUrl(frontendBaseUrl, token) {
   return `${baseUrl}/reset-password/${encodeURIComponent(token)}`;
 }
 
-async function sendTeacherInviteEmail(email, username, token, frontendBaseUrl) {
+async function sendAccountInviteEmail(
+  email,
+  username,
+  token,
+  frontendBaseUrl,
+  role,
+) {
   const { transporter, isReal } = await createMailTransporter();
   const setupUrl = buildPasswordSetupUrl(frontendBaseUrl, token);
+  const roleLabel = role === "student" ? "student" : "teacher";
+  const sender =
+    process.env.EMAIL_FROM || `"RCA Archive" <${process.env.SMTP_USER}>`;
   const info = await transporter.sendMail({
-    from: `"RCA Archive" <${process.env.SMTP_FROM || "no-reply@rca.ac.rw"}>`,
+    from: sender,
+    replyTo: process.env.SMTP_USER,
     to: email,
-    subject: "Welcome to RCA Archive — Set up your teacher account",
+    subject: `Welcome to RCA Archive - Set up your ${roleLabel} account`,
     text:
-      `Hello ${username || "Teacher"},\n\n` +
-      `An RCA Archive teacher account has been created for you.\n` +
+      `Hello ${username || roleLabel},\n\n` +
+      `An RCA Archive ${roleLabel} account has been created for you.\n` +
       `Please set your password using the link below (valid for 24 hours):\n\n${setupUrl}\n\n` +
       `After setting your password you can log in with your email and the password you chose.`,
     html: `
-      <p>Hello <strong>${username || "Teacher"}</strong>,</p>
-      <p>An <strong>RCA Archive</strong> teacher account has been created for you.</p>
+      <p>Hello <strong>${username || roleLabel}</strong>,</p>
+      <p>An <strong>RCA Archive</strong> ${roleLabel} account has been created for you.</p>
       <p>Please set your password using the button below (link valid for 24 hours):</p>
       <p><a href="${setupUrl}" style="display:inline-block;padding:10px 18px;background:#0a7;color:#fff;border-radius:6px;text-decoration:none">Set your password</a></p>
       <p>Or open this link: <br><a href="${setupUrl}">${setupUrl}</a></p>
@@ -220,8 +233,18 @@ async function sendTeacherInviteEmail(email, username, token, frontendBaseUrl) {
     `,
   });
   const previewUrl = !isReal ? nodemailer.getTestMessageUrl(info) : null;
-  if (previewUrl) console.log("📧 Teacher invite preview:", previewUrl);
+  if (previewUrl) console.log(`📧 ${roleLabel} invite preview:`, previewUrl);
   return { previewUrl };
+}
+
+async function sendTeacherInviteEmail(email, username, token, frontendBaseUrl) {
+  return sendAccountInviteEmail(
+    email,
+    username,
+    token,
+    frontendBaseUrl,
+    "teacher",
+  );
 }
 
 async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
@@ -343,24 +366,13 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
         `,
   };
 
-  const timestamp = new Date().toLocaleTimeString();
   const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM || "RCA Archive <no-reply@rcarchive.local>",
+    from: process.env.EMAIL_FROM || `"RCA Archive" <${process.env.SMTP_USER}>`,
     to: email,
-    subject: `Reset Your RCA Archive Password - ${timestamp}`,
-    replyTo: process.env.EMAIL_FROM || "no-reply@rcarchive.local",
+    subject: "Reset your RCA Archive password",
+    replyTo: process.env.SMTP_USER,
     text: emailContent.text,
     html: emailContent.html,
-    headers: {
-      "X-Priority": "1",
-      "X-MSMail-Priority": "High",
-      Importance: "High",
-      "List-Unsubscribe":
-        "<mailto:isabelleutuje12@gmail.com?subject=Unsubscribe>",
-      Precedence: "bulk",
-      "X-Mailer": "Node.js",
-      "Content-Type": "text/html; charset=utf-8",
-    },
   });
 
   const previewUrl = !isReal ? nodemailer.getTestMessageUrl(info) : null;
@@ -919,14 +931,11 @@ app.post("/api/send-otp", async (req, res) => {
     // Determine subject and generate email content
     let subject;
     if (operation === "signup") {
-      const timestamp = new Date().toLocaleTimeString();
-      subject = `Verify your RCA Archive account - ${timestamp}`;
+      subject = "Verify your RCA Archive account";
     } else if (operation === "login") {
-      const timestamp = new Date().toLocaleTimeString();
-      subject = `Your RCA Archive login code - ${timestamp}`;
+      subject = "Your RCA Archive login code";
     } else if (operation === "reset-password") {
-      const timestamp = new Date().toLocaleTimeString();
-      subject = `Your RCA Archive password reset code - ${timestamp}`;
+      subject = "Your RCA Archive password reset code";
     }
     console.log("📧 Email subject:", subject);
 
@@ -938,22 +947,13 @@ app.post("/api/send-otp", async (req, res) => {
     console.log("📧 Transporter obtained. isReal:", isReal);
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || "RCA Archive <no-reply@rcarchive.local>",
+      from:
+        process.env.EMAIL_FROM || `"RCA Archive" <${process.env.SMTP_USER}>`,
       to: email,
       subject: subject,
-      replyTo: process.env.EMAIL_FROM || "no-reply@rcarchive.local",
+      replyTo: process.env.SMTP_USER,
       text: emailContent.text,
       html: emailContent.html,
-      headers: {
-        "X-Priority": "1",
-        "X-MSMail-Priority": "High",
-        Importance: "High",
-        "List-Unsubscribe":
-          "<mailto:isabelleutuje12@gmail.com?subject=Unsubscribe>",
-        Precedence: "bulk",
-        "X-Mailer": "Node.js",
-        "Content-Type": "text/html; charset=utf-8",
-      },
     };
     console.log("📧 Mail options:", mailOptions);
 
@@ -1083,7 +1083,11 @@ app.post("/api/forgot-password", async (req, res) => {
 });
 
 app.post("/api/reset-password", async (req, res) => {
-  const { token, newPassword, otp } = req.body;
+  const { token: rawToken, newPassword, otp } = req.body;
+  const token =
+    typeof rawToken === "string"
+      ? decodeURIComponent(rawToken).trim()
+      : rawToken;
 
   // Allow both token-based and OTP-based reset
   if ((!token && !otp) || !newPassword) {
@@ -1681,6 +1685,178 @@ app.delete(
     );
 
     return res.json({ message: "Teacher account deleted successfully." });
+  },
+);
+
+app.post("/api/admin/students", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name, email } = req.body || {};
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    const normalizedEmail =
+      typeof email === "string" ? normalizeEmail(email) : "";
+
+    if (!normalizedName || !normalizedEmail) {
+      return res.status(400).json({
+        message: "Name and email are required to invite a student.",
+      });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ message: "Invalid email format." });
+    }
+
+    if (await findUserByEmail(normalizedEmail)) {
+      return res.status(409).json({
+        message: "A user with this email already exists.",
+      });
+    }
+
+    const now = new Date().toISOString();
+    const student = {
+      id: Date.now().toString(),
+      name: normalizedName,
+      username: normalizedName,
+      email: normalizedEmail,
+      password: null,
+      role: "student",
+      status: "pending_password_setup",
+      createdAt: now,
+      updatedAt: now,
+      createdBy: req.user.email,
+    };
+
+    await getUsersCollection().insertOne(student);
+    try {
+      const { token } = await upsertTeacherInvite(
+        normalizedEmail,
+        "student_setup",
+      );
+      const { previewUrl } = await sendAccountInviteEmail(
+        normalizedEmail,
+        normalizedName,
+        token,
+        getFrontendBaseUrl(req),
+        "student",
+      );
+      return res.status(201).json({
+        message: "Student invitation sent.",
+        student: safeUserFields(student),
+        previewUrl,
+      });
+    } catch (error) {
+      console.error("Student invitation email failed:", error);
+      return res.status(500).json({
+        error:
+          "Student created but the invitation email failed. Use Resend invite to retry.",
+      });
+    }
+  } catch (error) {
+    console.error("Failed to create student:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to create student account." });
+  }
+});
+
+app.get("/api/admin/students", requireAuth, requireAdmin, async (_req, res) => {
+  const students = await getUsersCollection()
+    .find({ role: "student" }, { projection: { password: 0 } })
+    .sort({ createdAt: -1 })
+    .toArray();
+  res.json({ students: students.map(safeUserFields) });
+});
+
+app.post(
+  "/api/admin/students/resend-invite",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const normalizedEmail = normalizeEmail(req.body?.email || "");
+    const student = await findUserByEmail(normalizedEmail);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ error: "Student not found." });
+    }
+    if (student.status !== "pending_password_setup") {
+      return res
+        .status(400)
+        .json({ error: "Student account is already active." });
+    }
+    const { token } = await upsertTeacherInvite(
+      normalizedEmail,
+      "student_setup",
+    );
+    const { previewUrl } = await sendAccountInviteEmail(
+      normalizedEmail,
+      student.name || student.username || "Student",
+      token,
+      getFrontendBaseUrl(req),
+      "student",
+    );
+    return res.json({ message: "Student invitation resent.", previewUrl });
+  },
+);
+
+app.put(
+  "/api/admin/students/:id",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const student = await findUserById(req.params.id);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ error: "Student not found." });
+    }
+
+    const update = {};
+    if (typeof req.body.name === "string") {
+      const name = req.body.name.trim();
+      if (!name)
+        return res.status(400).json({ error: "Student name cannot be empty." });
+      update.name = name;
+      update.username = name;
+    }
+    if (typeof req.body.email === "string") {
+      const email = normalizeEmail(req.body.email);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: "Invalid email format." });
+      }
+      const existing = await findUserByEmail(email);
+      if (existing && existing.id !== student.id) {
+        return res
+          .status(409)
+          .json({ error: "A user with this email already exists." });
+      }
+      update.email = email;
+    }
+    if (typeof req.body.status === "string") {
+      if (
+        !["active", "disabled", "pending_password_setup"].includes(
+          req.body.status,
+        )
+      ) {
+        return res.status(400).json({ error: "Invalid student status." });
+      }
+      update.status = req.body.status;
+    }
+    update.updatedAt = new Date().toISOString();
+    await getUsersCollection().updateOne({ id: student.id }, { $set: update });
+    return res.json({
+      message: "Student updated successfully.",
+      student: safeUserFields(await findUserById(student.id)),
+    });
+  },
+);
+
+app.delete(
+  "/api/admin/students/:id",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const student = await findUserById(req.params.id);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ error: "Student not found." });
+    }
+    await getUsersCollection().deleteOne({ id: student.id });
+    return res.json({ message: "Student account deleted successfully." });
   },
 );
 

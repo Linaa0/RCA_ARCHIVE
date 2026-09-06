@@ -39,7 +39,7 @@ function ReportIssue() {
 
     setSubmitted(true);
 
-    const mailto = `mailto:chretiensano@gmail.com,isabelleutuje78@gmail.com?subject=${subject}&body=${body}`;
+    const mailto = `mailto:chretiensano@gmail.com,isabelleutuje78@gmail.com,mucyoasifiwe80@gmail.com?subject=${subject}&body=${body}`;
     setTimeout(() => {
       window.location.href = mailto;
     }, 500);
