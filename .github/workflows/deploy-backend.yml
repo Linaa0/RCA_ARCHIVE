@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "rcabackend/**"
+      - "server/**"
       - "scripts/deploy-backend.sh"
-      - "ecosystem.config.cjs"
+      - "server/ecosystem.config.cjs"
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 

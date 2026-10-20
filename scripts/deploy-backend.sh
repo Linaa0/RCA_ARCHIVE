@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_DIR="${RCA_ARCHIVE_APP_DIR:-/opt/apps/rca_archive}"
 CONFIG_ENV="${RCA_ARCHIVE_CONFIG_ENV:-/opt/configs/rca_archive/.env}"
-BACKEND_DIR="$APP_DIR/rcabackend"
+BACKEND_DIR="$APP_DIR/server"
 PM2_NAME="${RCA_ARCHIVE_PM2_NAME:-rca-archive-backend}"
 REPO_ROOT="${GITHUB_WORKSPACE:-$(cd "$(dirname "$0")/.." && pwd)}"
 
@@ -59,9 +59,9 @@ mkdir -p "$BACKEND_DIR" "$BACKEND_DIR/uploads"
 rsync -a --delete \
   --exclude node_modules \
   --exclude uploads \
-  "$REPO_ROOT/rcabackend/" "$BACKEND_DIR/"
+  "$REPO_ROOT/server/" "$BACKEND_DIR/"
 
-cp "$REPO_ROOT/ecosystem.config.cjs" "$APP_DIR/ecosystem.config.cjs"
+cp "$REPO_ROOT/server/ecosystem.config.cjs" "$APP_DIR/ecosystem.config.cjs"
 
 ln -sf "$CONFIG_ENV" "$APP_DIR/.env"
 ln -sf "$CONFIG_ENV" "$BACKEND_DIR/.env"

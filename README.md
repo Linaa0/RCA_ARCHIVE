@@ -1,70 +1,201 @@
-# Getting Started with Create React App
+# RCA Archive (Rwanda Coding Academy Past-Papers Portal)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A full-stack past-papers and learning resources portal for Rwanda Coding Academy students and faculty.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Architecture & Project Structure
 
-### `npm start`
+The repository is organized into a clean decoupled monorepo:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```
+rca-archive/
+├── client/                  # Frontend (React 19, Vite, React Router 7, Vanilla CSS)
+│   ├── src/
+│   │   ├── assets/          # Static branding assets and images
+│   │   ├── components/      # UI components (Admin, Login, Search, Papers, etc.)
+│   │   ├── context/         # React Context providers
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── layouts/         # Layout components
+│   │   ├── pages/           # Route views / page components
+│   │   ├── services/        # Centralized Axios API instance (api.js)
+│   │   ├── styles/          # Vanilla CSS stylesheets
+│   │   └── utils/           # Auth storage and API helpers
+│   ├── public/              # Static public web assets and icons
+│   ├── index.html           # HTML entry point
+│   ├── vite.config.js       # Vite configuration with API reverse proxy
+│   ├── package.json         # Frontend-only dependencies
+│   └── .env.example         # Client environment template
+├── server/                  # Backend (Node.js 20, Express, MongoDB, Multer)
+│   ├── src/
+│   │   ├── config/          # Environment loading and constants
+│   │   ├── controllers/     # Route group controllers (auth, papers, admin, etc.)
+│   │   ├── middleware/      # Auth (JWT), role guards, upload, rate limiting
+│   │   ├── models/          # MongoDB collections and index definitions
+│   │   ├── routes/          # Express route definitions
+│   │   ├── services/        # Email/OTP, stream-based SHA-256 hashing, storage
+│   │   ├── utils/           # String, URL, and user normalization utilities
+│   │   ├── app.js           # Express application setup
+│   │   └── server.js        # Server entry point
+│   ├── scripts/             # Admin creation, seeding, and database checks
+│   │   ├── create-admin.js  # Bootstrap admin user from environment
+│   │   ├── check-db.js      # Diagnostic script for database connectivity
+│   │   └── seedDatabase.js  # Seed initial test data
+│   ├── uploads/             # Document storage directory (.gitkeep)
+│   ├── ecosystem.config.cjs # PM2 production process configuration
+│   ├── package.json         # Backend-only dependencies
+│   └── .env.example         # Server environment template
+├── nginx/                   # Production Nginx site configurations
+│   ├── api.archive.innov.rw.conf
+│   └── rcaarchive.innov.rw.conf
+├── scripts/
+│   └── deploy-backend.sh    # Production deployment shell script
+├── .gitignore               # Root git ignore
+├── package.json             # Root monorepo dev runner scripts
+└── README.md                # Documentation
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Node.js**: >= 20.0.0
+- **npm**: >= 10.0.0
+- **MongoDB**: >= 6.0 running locally or accessible via URI
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Quick Start (Local Development)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 1. Install Dependencies
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+You can install all dependencies from the root directory:
 
-### `npm run eject`
+```bash
+npm run install:all
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Or install in each directory individually:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+# Root
+npm install
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# Client
+cd client && npm install
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# Server
+cd server && npm install
+```
 
-## Learn More
+### 2. Configure Environment Variables
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+#### Frontend (`client/.env`)
+Copy `client/.env.example` to `client/.env`:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+cp client/.env.example client/.env
+```
 
-### Code Splitting
+| Variable | Description | Default |
+|---|---|---|
+| `VITE_API_URL` | Base URL for API requests | `http://localhost:5077/api` |
+| `VITE_BACKEND_URL` | Dev proxy destination URL | `http://localhost:5077` |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+#### Backend (`server/.env`)
+Copy `server/.env.example` to `server/.env`:
 
-### Analyzing the Bundle Size
+```bash
+cp server/.env.example server/.env
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+| Variable | Description | Default |
+|---|---|---|
+| `PORT` | Backend HTTP port | `5077` (Local) / `5009` (Production) |
+| `NODE_ENV` | Runtime environment | `development` |
+| `MONGO_URI` | MongoDB connection string | `mongodb://127.0.0.1:27017` |
+| `MONGO_DB_NAME` | Database name | `rca_past_papers` / `rca_archive_db` |
+| `JWT_SECRET` | Secret key for JWT signing | `rca_secret_key_2024` |
+| `ADMIN_BOOTSTRAP_EMAILS` | Comma-separated admin emails | `deenovdunya01@gmail.com,chretiensano@gmail.com,mucyoasifiwe80@gmail.com` |
+| `ADMIN_BOOTSTRAP_EMAIL` | Admin email for `create-admin.js` | `mucyoasifiwe80@gmail.com` |
+| `ADMIN_BOOTSTRAP_PASSWORD` | Admin password for `create-admin.js` | (Your secure password) |
+| `BASE_URL` | Backend public base URL | `http://localhost:5077` |
+| `FRONTEND_BASE_URL` | Frontend URL for links in emails | `http://localhost:3074` |
+| `CORS_ORIGINS` | Additional allowed CORS origins | `https://rcaarchive.innov.rw,...` |
+| `SMTP_HOST` | SMTP server host | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP port | `587` |
+| `SMTP_USER` | SMTP username / email address | |
+| `SMTP_PASS` | SMTP application password | |
+| `EMAIL_FROM` | Sender identity in emails | `"RCA Archive" <email>` |
 
-### Making a Progressive Web App
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### 3. Run the Application
 
-### Advanced Configuration
+#### Run both Frontend & Backend concurrently:
+```bash
+npm run dev
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- **Frontend**: [http://localhost:3074](http://localhost:3074)
+- **Backend API**: [http://localhost:5077/api](http://localhost:5077/api)
+- **Health Check**: [http://localhost:5077/api/health](http://localhost:5077/api/health)
 
-### Deployment
+#### Run individually:
+```bash
+# Frontend only
+npm run dev:client
+# or: cd client && npm run dev
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+# Backend only
+npm run dev:server
+# or: cd server && npm run dev
+```
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Utility Scripts
+
+### Create / Update Admin Account
+Bootstrap or reset an administrator account:
+```bash
+node server/scripts/create-admin.js
+```
+*(Reads `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD` from `server/.env`, or pass as arguments: `node server/scripts/create-admin.js <email> <password> [name]`)*
+
+### Diagnostic Database Check
+Check MongoDB connection and record counts:
+```bash
+node server/scripts/check-db.js
+```
+
+### Seed Initial Sample Data
+```bash
+node server/scripts/seedDatabase.js
+```
+
+---
+
+## Production Deployment
+
+### Production Domains
+- **Frontend SPA**: `https://rcaarchive.innov.rw`
+- **Backend API**: `https://api.archive.innov.rw` (runs on port `5009` behind Nginx)
+
+### PM2 Process Manager
+The backend is managed with PM2 using `server/ecosystem.config.cjs`:
+```bash
+cd /opt/apps/rca_archive
+pm2 startOrReload server/ecosystem.config.cjs --update-env
+pm2 save
+```
+
+### Automated CI/CD
+Deployment is automated via GitHub Actions in `.github/workflows/deploy-backend.yml` executing `scripts/deploy-backend.sh`.
+
+---
+
+## Security Best Practices
+- Real credentials and secrets are kept in `.env` files and **never** committed to version control.
+- All file uploads are hashed using stream-based SHA-256 for instant deduplication.
+- Login endpoints enforce failed attempt rate limiting with automated security email notifications.
