@@ -1,0 +1,68 @@
+const app = require("./app");
+const {
+  PORT,
+  SMTP_HOST,
+  SMTP_PORT,
+  SMTP_USER,
+  SMTP_PASS,
+  EMAIL_FROM,
+} = require("./config/env");
+const { connectToMongo } = require("./models");
+const {
+  isRealSmtpConfigured,
+  createMailTransporter,
+} = require("./services/emailService");
+
+async function startServer() {
+  try {
+    await connectToMongo();
+    console.log("Connected to MongoDB successfully!");
+
+    console.log("📋 Server Configuration:");
+    console.log(`   - PORT: ${PORT}`);
+    console.log(`   - SMTP_HOST: ${SMTP_HOST || "(not set)"}`);
+    console.log(`   - SMTP_PORT: ${SMTP_PORT}`);
+    console.log(`   - SMTP_USER: ${SMTP_USER || "(not set)"}`);
+    console.log(`   - SMTP_PASS: ${SMTP_PASS ? "(set)" : "(not set)"}`);
+    console.log(`   - EMAIL_FROM: ${EMAIL_FROM}`);
+    console.log(
+      `   - Real SMTP configured: ${isRealSmtpConfigured() ? "✅ Yes" : "❌ No"}`
+    );
+
+    if (isRealSmtpConfigured()) {
+      try {
+        console.log("🔍 Testing SMTP connection...");
+        const { transporter } = await createMailTransporter();
+        await transporter.verify();
+        console.log("✅ SMTP test passed! Server is ready to send emails!");
+      } catch (smtpErr) {
+        console.error("❌ SMTP Test FAILED:", smtpErr.message);
+      }
+    }
+
+    const server = app.listen(PORT, () => {
+      console.log(`\n✅ RCA Backend running on http://localhost:${PORT}`);
+    });
+
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`\n❌ Port ${PORT} is already in use.`);
+        console.error(
+          `   Stop the existing process first, then restart the backend.`
+        );
+        console.error(`   Tip: Run this to free the port on Windows:`);
+        console.error(
+          `   for /f "tokens=5" %a in ('netstat -aon ^| findstr :${PORT}') do taskkill /F /PID %a\n`
+        );
+        process.exit(1);
+      } else {
+        throw err;
+      }
+    });
+  } catch (err) {
+    console.error("❌ Fatal startup error:", err);
+    process.exit(1);
+  }
+}
+
+startServer();
