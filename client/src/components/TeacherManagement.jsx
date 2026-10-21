@@ -1,19 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { authDelete, authGet, authPost, authPut } from "../utils/apiClient";
+import Table from "./ui/Table";
+import Badge from "./ui/Badge";
+import Button from "./ui/Button";
+import IconButton from "./ui/IconButton";
+import Input from "./ui/Input";
+import Modal from "./ui/Modal";
+import Avatar from "./ui/Avatar";
+import { EditIcon, TrashIcon, SearchIcon, CloseIcon } from "./ui/Icons";
 import "./TeacherManagement.css";
 
 const EMPTY_FORM = { name: "", email: "" };
 
-const TeacherManagement = ({ onUpdated }) => {
-  const [teachers, setTeachers]         = useState([]);
-  const [formData, setFormData]         = useState(EMPTY_FORM);
+export default function TeacherManagement({ onUpdated }) {
+  const [teachers, setTeachers] = useState([]);
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [editingTeacher, setEditingTeacher] = useState(null);
-  const [searchTerm, setSearchTerm]     = useState("");
-  const [loading, setLoading]           = useState(true);
-  const [saving, setSaving]             = useState(false);
-  const [error, setError]               = useState("");
-  const [success, setSuccess]           = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -29,29 +39,50 @@ const TeacherManagement = ({ onUpdated }) => {
     }
   };
 
-  useEffect(() => { loadTeachers(); }, []);
+  useEffect(() => {
+    loadTeachers();
+
+    const handleOpenModal = () => {
+      setEditingTeacher(null);
+      setFormData(EMPTY_FORM);
+      setError("");
+      setSuccess("");
+      setIsModalOpen(true);
+    };
+
+    window.addEventListener("open-invite-teacher-modal", handleOpenModal);
+    return () => {
+      window.removeEventListener("open-invite-teacher-modal", handleOpenModal);
+    };
+  }, []);
 
   const filteredTeachers = useMemo(() => {
     const kw = searchTerm.trim().toLowerCase();
     if (!kw) return teachers;
     return teachers.filter((t) => {
-      const name   = (t.name || t.username || "").toLowerCase();
-      const email  = (t.email || "").toLowerCase();
+      const name = (t.name || t.username || "").toLowerCase();
+      const email = (t.email || "").toLowerCase();
       const status = (t.status || "").toLowerCase();
       return name.includes(kw) || email.includes(kw) || status.includes(kw);
     });
   }, [searchTerm, teachers]);
 
-  const resetForm = () => {
-    setFormData(EMPTY_FORM);
-    setEditingTeacher(null);
-    setSuccess("");
+  const handleOpenEdit = (teacher) => {
+    setEditingTeacher(teacher);
+    setFormData({
+      name: teacher.name || teacher.username || "",
+      email: teacher.email || "",
+    });
     setError("");
+    setSuccess("");
+    setIsModalOpen(true);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingTeacher(null);
+    setFormData(EMPTY_FORM);
+    setError("");
   };
 
   const handleSubmit = async (e) => {
@@ -62,9 +93,8 @@ const TeacherManagement = ({ onUpdated }) => {
 
     try {
       if (editingTeacher) {
-        // Edit name/email only
         const payload = {
-          name:  formData.name.trim(),
+          name: formData.name.trim(),
           email: formData.email.trim(),
         };
         const updated = await authPut(
@@ -80,63 +110,22 @@ const TeacherManagement = ({ onUpdated }) => {
           )
         );
         setSuccess("Teacher updated successfully.");
-        setEditingTeacher(null);
-        setFormData(EMPTY_FORM);
+        handleCloseModal();
       } else {
-        // Create teacher — backend sends invite email with password-setup link
         const created = await authPost("/api/admin/teachers", {
-          name:  formData.name.trim(),
+          name: formData.name.trim(),
           email: formData.email.trim(),
         });
         const newTeacher = created.teacher || created;
         setTeachers((prev) => [newTeacher, ...prev]);
-
-        const previewUrl = created.previewUrl;
-        if (previewUrl) {
-          setSuccess(
-            `Invite sent! (dev preview) → ${previewUrl}`
-          );
-        } else {
-          setSuccess(
-            `Teacher account created. An invitation email has been sent to ${formData.email}.`
-          );
-        }
-        setFormData(EMPTY_FORM);
+        setSuccess("Teacher invitation sent successfully.");
+        handleCloseModal();
       }
-
       if (onUpdated) onUpdated();
     } catch (err) {
-      setError(err.data?.message || err.message || "Unable to save teacher.");
+      setError(err.message || "Failed to save teacher.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleEdit = (teacher) => {
-    setEditingTeacher(teacher);
-    setFormData({
-      name:  teacher.name  || teacher.username || "",
-      email: teacher.email || "",
-    });
-    setError("");
-    setSuccess("");
-  };
-
-  const handleResendInvite = async (teacher) => {
-    setError("");
-    setSuccess("");
-    try {
-      const res = await authPost("/api/admin/teachers/resend-invite", {
-        email: teacher.email,
-      });
-      const previewUrl = res.previewUrl;
-      if (previewUrl) {
-        setSuccess(`Invite resent! (dev preview) → ${previewUrl}`);
-      } else {
-        setSuccess(`Invitation email resent to ${teacher.email}.`);
-      }
-    } catch (err) {
-      setError(err.message || "Unable to resend invite.");
     }
   };
 
@@ -144,7 +133,7 @@ const TeacherManagement = ({ onUpdated }) => {
     const newStatus = teacher.status === "disabled" ? "active" : "disabled";
     try {
       const updated = await authPut(
-        `/api/admin/teachers/${teacher.id || teacher._id}`,
+        `/api/admin/teachers/${teacher.id || teacher._id}/status`,
         { status: newStatus }
       );
       const updatedTeacher = updated.teacher || updated;
@@ -166,8 +155,20 @@ const TeacherManagement = ({ onUpdated }) => {
     }
   };
 
+  const handleResendInvite = async (teacher) => {
+    try {
+      await authPost("/api/admin/teachers/resend-invite", {
+        email: teacher.email,
+      });
+      setSuccess(`Invitation email resent to ${teacher.email}.`);
+    } catch (err) {
+      setError(err.message || "Unable to resend invite.");
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    setDeleting(true);
     try {
       await authDelete(
         `/api/admin/teachers/${deleteTarget.id || deleteTarget._id}`
@@ -182,199 +183,306 @@ const TeacherManagement = ({ onUpdated }) => {
     } catch (err) {
       setError(err.message || "Unable to delete teacher.");
     } finally {
+      setDeleting(false);
       setDeleteTarget(null);
     }
   };
 
-  return (
-    <section className="teacher-management">
-      {/* Top bar */}
-      <div className="teacher-topbar">
-        <div>
-          <p className="section-kicker">Teacher management</p>
-          <h2>{editingTeacher ? "Edit teacher" : "Create & manage teachers"}</h2>
+  const columns = [
+    {
+      title: "Teacher",
+      key: "name",
+      render: (_, t) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <Avatar name={t.name || t.username || t.email} size="sm" variant="initials" />
+          <div>
+            <strong style={{ display: "block", color: "var(--color-ink, #1B2142)", fontSize: "0.92rem" }}>
+              {t.name || t.username || "Unnamed Teacher"}
+            </strong>
+            <span style={{ fontSize: "0.78rem", color: "var(--color-muted, #6A7399)" }}>
+              Faculty Member
+            </span>
+          </div>
         </div>
+      ),
+    },
+    {
+      title: "Email Address",
+      key: "email",
+      render: (email) => (
+        <span style={{ color: "var(--color-ink, #1B2142)", fontFamily: "monospace", fontSize: "0.86rem" }}>
+          {email}
+        </span>
+      ),
+    },
+    {
+      title: "Account Status",
+      key: "status",
+      render: (status) => {
+        const isPending = status === "pending_password_setup";
+        const isDisabled = status === "disabled";
+        return (
+          <Badge
+            variant={isDisabled ? "neutral" : isPending ? "warning" : "success"}
+            dot
+            size="sm"
+          >
+            {isPending ? "Pending Password Setup" : isDisabled ? "Disabled" : "Active"}
+          </Badge>
+        );
+      },
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      align: "right",
+      render: (_, teacher) => {
+        const isPending = teacher.status === "pending_password_setup";
+        const isDisabled = teacher.status === "disabled";
+        return (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
+            <IconButton
+              icon={<EditIcon size={15} />}
+              title="Edit teacher details"
+              size="sm"
+              onClick={() => handleOpenEdit(teacher)}
+            />
 
-        <div className="teacher-tools">
-          <input
-            type="search"
-            placeholder="Search teachers..."
+            {isPending && (
+              <IconButton
+                icon={
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                }
+                title="Resend invitation link"
+                size="sm"
+                variant="subtle"
+                onClick={() => handleResendInvite(teacher)}
+              />
+            )}
+
+            <IconButton
+              icon={
+                isDisabled ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 14 14" />
+                  </svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                  </svg>
+                )
+              }
+              title={isDisabled ? "Re-enable account" : "Disable account"}
+              size="sm"
+              variant={isDisabled ? "subtle" : "ghost"}
+              onClick={() => handleToggleStatus(teacher)}
+            />
+
+            <IconButton
+              icon={<TrashIcon size={15} />}
+              title="Delete teacher"
+              variant="danger"
+              size="sm"
+              onClick={() => setDeleteTarget(teacher)}
+            />
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <section
+      style={{
+        background: "#FFFFFF",
+        borderRadius: "var(--radius-card, 24px)",
+        padding: "32px",
+        border: "1px solid var(--color-border, rgba(63, 79, 168, 0.08))",
+        boxShadow: "var(--shadow-card, 0 8px 24px -4px rgba(35, 44, 107, 0.06))",
+      }}
+    >
+      {/* Top Bar with Search & Invite Button */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "24px",
+          flexWrap: "wrap",
+          gap: "16px",
+        }}
+      >
+        <div style={{ flex: 1, maxWidth: "340px" }}>
+          <Input
+            icon={<SearchIcon size={16} />}
+            placeholder="Search teachers by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ margin: 0 }}
           />
-          <button type="button" className="ghost-btn" onClick={loadTeachers} disabled={loading}>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadTeachers}
+            disabled={loading}
+          >
             {loading ? "Loading..." : "Reload"}
-          </button>
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setEditingTeacher(null);
+              setFormData(EMPTY_FORM);
+              setIsModalOpen(true);
+            }}
+          >
+            + Invite Teacher
+          </Button>
         </div>
       </div>
 
-      <div className="teacher-layout">
-        {/* Create / Edit form */}
-        <article className="teacher-card">
-          <div className="card-header">
-            <h3>{editingTeacher ? "Edit teacher" : "Invite teacher"}</h3>
-            {editingTeacher && (
-              <button type="button" className="text-button" onClick={resetForm}>
-                Cancel
-              </button>
-            )}
-          </div>
-
-          {/* Invite notice — only shown when creating */}
-          {!editingTeacher && (
-            <div className="invite-notice">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              The teacher will receive an email with a secure link to set their own password. No password is created here.
-            </div>
-          )}
-
-          <form className="teacher-form" onSubmit={handleSubmit}>
-            <label>
-              <span>Full name</span>
-              <input
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Teacher's full name"
-                required
-              />
-            </label>
-
-            <label>
-              <span>Email address</span>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="teacher@rca.ac.rw"
-                required
-              />
-            </label>
-
-            {error   && <div className="feedback error">{error}</div>}
-            {success && <div className="feedback success">{success}</div>}
-
-            <button type="submit" className="primary-btn" disabled={saving}>
-              {saving
-                ? "Saving..."
-                : editingTeacher
-                ? "Update teacher"
-                : "Send invitation"}
-            </button>
-          </form>
-        </article>
-
-        {/* Teacher list */}
-        <article className="teacher-card teacher-list-card">
-          <div className="card-header">
-            <h3>All teachers</h3>
-            <span>{filteredTeachers.length} found</span>
-          </div>
-
-          {loading ? (
-            <div className="empty-panel">Loading teachers...</div>
-          ) : filteredTeachers.length ? (
-            <div className="teacher-list">
-              {filteredTeachers.map((teacher) => (
-                <div className="teacher-row" key={teacher.id || teacher._id || teacher.email}>
-                  <div className="teacher-meta">
-                    <strong>{teacher.name || teacher.username || "Unnamed teacher"}</strong>
-                    <span>{teacher.email}</span>
-                    <small
-                      className={`status-chip ${
-                        teacher.status === "active"
-                          ? "status-active"
-                          : teacher.status === "disabled"
-                          ? "status-disabled"
-                          : "status-pending"
-                      }`}
-                    >
-                      {teacher.status === "pending_password_setup"
-                        ? "Pending setup"
-                        : teacher.status || "active"}
-                    </small>
-                  </div>
-
-                  <div className="teacher-actions">
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => handleEdit(teacher)}
-                    >
-                      Edit
-                    </button>
-
-                    {/* Resend invite only for pending teachers */}
-                    {teacher.status === "pending_password_setup" && (
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => handleResendInvite(teacher)}
-                      >
-                        Resend invite
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => handleToggleStatus(teacher)}
-                    >
-                      {teacher.status === "disabled" ? "Enable" : "Disable"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={() => setDeleteTarget(teacher)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-panel">
-              {searchTerm
-                ? "No teachers match your search."
-                : "No teachers yet. Send an invitation above."}
-            </div>
-          )}
-        </article>
-      </div>
-
-      {/* Delete confirmation modal */}
-      {deleteTarget && (
-        <div className="modal-overlay">
-          <div className="confirm-modal">
-            <h3>Delete teacher?</h3>
-            <p>
-              This will permanently remove{" "}
-              <strong>{deleteTarget.name || deleteTarget.email}</strong> from the system.
-              This cannot be undone.
-            </p>
-            <div className="modal-actions">
-              <button type="button" className="ghost-btn" onClick={() => setDeleteTarget(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="danger-button"
-                style={{ padding: "10px 18px", fontSize: "0.88rem" }}
-                onClick={handleDelete}
-              >
-                Delete teacher
-              </button>
-            </div>
-          </div>
+      {success && (
+        <div
+          style={{
+            padding: "12px 18px",
+            background: "rgba(16, 185, 129, 0.10)",
+            border: "1px solid rgba(16, 185, 129, 0.25)",
+            color: "#10B981",
+            borderRadius: "14px",
+            marginBottom: "20px",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+          }}
+        >
+          {success}
         </div>
       )}
+
+      {error && (
+        <div
+          style={{
+            padding: "12px 18px",
+            background: "rgba(239, 68, 68, 0.10)",
+            border: "1px solid rgba(239, 68, 68, 0.25)",
+            color: "#EF4444",
+            borderRadius: "14px",
+            marginBottom: "20px",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Teachers Table */}
+      <Table
+        columns={columns}
+        data={filteredTeachers}
+        loading={loading}
+        emptyMessage={
+          searchTerm
+            ? "No teachers match your search query."
+            : "No teachers enrolled yet. Click '+ Invite Teacher' to send an invitation."
+        }
+      />
+
+      {/* Invite / Edit Teacher Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={editingTeacher ? "Edit Teacher Account" : "Invite Faculty Member"}
+      >
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+          {!editingTeacher && (
+            <div
+              style={{
+                padding: "12px 16px",
+                background: "var(--color-indigo-50, #F4F6FD)",
+                borderRadius: "14px",
+                fontSize: "0.85rem",
+                color: "var(--color-indigo-900, #232C6B)",
+                lineHeight: 1.45,
+                border: "1px solid rgba(91, 115, 224, 0.18)",
+              }}
+            >
+              The teacher will receive an email with a secure link to set their own password.
+            </div>
+          )}
+
+          <Input
+            label="Full Name"
+            name="name"
+            placeholder="e.g. John Doe"
+            value={formData.name}
+            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+            required
+          />
+
+          <Input
+            label="Email Address"
+            type="email"
+            name="email"
+            placeholder="teacher@rca.ac.rw"
+            value={formData.email}
+            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+            required
+          />
+
+          {error && (
+            <span style={{ color: "#EF4444", fontSize: "0.82rem", fontWeight: 500 }}>
+              {error}
+            </span>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" loading={saving}>
+              {editingTeacher ? "Update Teacher" : "Send Invitation"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Teacher"
+      >
+        <p style={{ color: "var(--color-ink-subtle, #3A4269)", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "20px" }}>
+          Are you sure you want to delete teacher{" "}
+          <strong>{deleteTarget?.name || deleteTarget?.email}</strong>?
+          Their uploaded past papers will remain in the archive under faculty records.
+        </p>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+          <Button
+            variant="secondary"
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleDelete}
+            loading={deleting}
+          >
+            Delete Teacher
+          </Button>
+        </div>
+      </Modal>
     </section>
   );
-};
-
-export default TeacherManagement;
+}

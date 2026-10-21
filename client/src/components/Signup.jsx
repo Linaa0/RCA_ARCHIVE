@@ -1,450 +1,472 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { clearAuthStorage, getStoredUser, isAuthenticated } from "../utils/auth";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import AuthBrandPanel from "./ui/AuthBrandPanel";
+import Input from "./ui/Input";
+import Select from "./ui/Select";
+import Button from "./ui/Button";
+import { RCA_CLASSES } from "./ui/ClassChips";
+import { CheckIcon, EyeIcon } from "./ui/Icons";
 import api from "../services/api";
 import "./Login.css";
-import rcaLogo from "../assets/rca.png";
 
-// ─── Small reusable pieces ─────────────────────────────────────────────────────
-
-function ParticleCanvas() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    const ctx = canvas.getContext("2d");
-    let animId;
-    let points = [];
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-      points = Array.from({ length: 50 }, () => ({
-        x: Math.random() * canvas.width * 0.45,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.28,
-        vy: (Math.random() - 0.5) * 0.28,
-        r: Math.random() * 1.4 + 0.4,
-      }));
-    };
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      points.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0 || p.x > canvas.width * 0.45) p.vx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(96,165,250,.3)";
-        ctx.fill();
-      });
-      points.forEach((a, i) => {
-        points.slice(i + 1).forEach((b) => {
-          const d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (d < 75) {
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(96,165,250,${0.1 * (1 - d / 75)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        });
-      });
-      animId = requestAnimationFrame(draw);
-    };
-
-    resize();
-    draw();
-    window.addEventListener("resize", resize);
-    return () => {
-      window.removeEventListener("resize", resize);
-      cancelAnimationFrame(animId);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="particle-canvas" style={{ position: "absolute", inset: 0 }} />;
-}
-
-function TypingText() {
-  const phrases = useMemo(
-    () => ["Join the RCA Archive community", "Access all study materials", "Your academic journey starts here"],
-    []
-  );
-  const [phraseIndex, setPhraseIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    const current = phrases[phraseIndex];
-    let delay = deleting ? 38 : 58;
-    if (!deleting && charIndex === current.length) delay = 1800;
-    const t = setTimeout(() => {
-      if (!deleting && charIndex === current.length) { setDeleting(true); return; }
-      if (deleting && charIndex === 0) { setDeleting(false); setPhraseIndex((v) => (v + 1) % phrases.length); return; }
-      setCharIndex((v) => v + (deleting ? -1 : 1));
-    }, delay);
-    return () => clearTimeout(t);
-  }, [charIndex, deleting, phraseIndex, phrases]);
-
-  return <div className="typing-text">{phrases[phraseIndex].slice(0, charIndex)}</div>;
-}
-
-function Feature({ icon, text }) {
-  return (
-    <div className="feature">
-      <span>{icon}</span>
-      {text}
-    </div>
-  );
-}
-
-function StatCard({ value, label }) {
-  return (
-    <div className="stat-card">
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function BrandPanel() {
-  return (
-    <section className="brand-panel" aria-label="RCA Archive">
-      <div className="brand-logo">
-        <img src={rcaLogo} alt="RCA Logo" />
-      </div>
-      <div className="brand-name">RCA ARCHIVE+</div>
-      <div className="brand-school">RWANDA CODING ACADEMY</div>
-      <TypingText />
-      <div className="feature-list">
-        <Feature icon={<DocumentIcon />} text="Complete study materials" />
-        <Feature icon={<ClockIcon />} text="Past exam papers" />
-        <Feature icon={<StarIcon />} text="Quality resources" />
-      </div>
-      <div className="stat-row">
-        <StatCard value="200+" label="Students" />
-        <StatCard value="300+" label="Papers" />
-        <StatCard value="24+" label="Subjects" />
-      </div>
-    </section>
-  );
-}
-
-// ─── Main Signup component ──────────────────────────────────────────────────────
-
-const Signup = () => {
+export default function Signup() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ 
-    username: "", 
-    email: "", 
-    password: "", 
+
+  // Step 1: name + email
+  // Step 2: password + confirmPassword + class
+  // Step 3: 6-digit OTP
+  const [step, setStep] = useState(1);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
     confirmPassword: "",
-    otp: ""
+    class: "Y1A",
   });
+
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resendTimer, setResendTimer] = useState(60);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
-  // Redirect if already logged in
+  const otpInputsRef = useRef([]);
+
+  // Resend countdown timer for Step 3
   useEffect(() => {
-    if (isAuthenticated()) {
-      const { role } = getStoredUser();
-      navigate(role === "admin" ? "/admin" : "/home", { replace: true });
-    } else {
-      clearAuthStorage();
+    let interval;
+    if (step === 3 && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
     }
-  }, [navigate]);
+    return () => clearInterval(interval);
+  }, [step, resendTimer]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setError("");
   };
 
-  const sendOtp = async () => {
+  // Password strength meter
+  const passwordStrength = useMemo(() => {
+    const pwd = formData.password;
+    if (!pwd) return { score: 0, label: "Too short", color: "#EF4444" };
+    let s = 0;
+    if (pwd.length >= 8) s += 1;
+    if (/[A-Z]/.test(pwd)) s += 1;
+    if (/[0-9]/.test(pwd)) s += 1;
+    if (/[^A-Za-z0-9]/.test(pwd)) s += 1;
+
+    if (s <= 1) return { score: 25, label: "Weak", color: "#EF4444" };
+    if (s === 2) return { score: 50, label: "Fair", color: "#F59E0B" };
+    if (s === 3) return { score: 75, label: "Good", color: "#3B82F6" };
+    return { score: 100, label: "Strong", color: "#10B981" };
+  }, [formData.password]);
+
+  // Advance from Step 1 to Step 2
+  const handleNextStep1 = (e) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!formData.email.trim() || !formData.email.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setError("");
-    setInfo("");
+    setStep(2);
+  };
+
+  // Advance from Step 2 to Step 3: Send OTP
+  const handleSendOtpStep2 = async (e) => {
+    e.preventDefault();
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
+    setError("");
     try {
-      const { data } = await api.post("/send-otp", { 
-        email: formData.email, 
-        operation: "signup" 
+      const { data } = await api.post("/send-otp", {
+        email: formData.email.trim(),
+        operation: "signup",
       });
-      setOtpSent(true);
-      let infoMsg = "Verification code sent to your email!";
-      if (data.previewUrl) {
-        infoMsg += ` Preview URL: ${data.previewUrl}`;
+      setResendTimer(60);
+      setStep(3);
+      if (data?.previewUrl) {
+        setInfo(`Dev OTP preview available at console.`);
       }
-      setInfo(infoMsg);
-      console.log("📧 Send OTP response data:", data);
-    } catch (e) {
-      setError(e.response?.data?.error || e.message || "Failed to send verification code");
-      console.error("❌ Send OTP error:", e);
+    } catch (err) {
+      setError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to send verification code."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (resendTimer > 0 || loading) return;
+    setLoading(true);
     setError("");
-    setInfo("");
-
-    if (!otpSent) {
-      await sendOtp();
-      return;
+    try {
+      await api.post("/send-otp", {
+        email: formData.email.trim(),
+        operation: "signup",
+      });
+      setResendTimer(60);
+      setInfo("A new verification code has been dispatched.");
+    } catch (err) {
+      setError(err.response?.data?.error || "Unable to resend OTP.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+  // Handle segmented OTP input
+  const handleOtpDigitChange = (index, value) => {
+    if (!/^[0-9]?$/.test(value)) return;
+    const newDigits = [...otpDigits];
+    newDigits[index] = value;
+    setOtpDigits(newDigits);
+    setError("");
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      otpInputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpInputsRef.current[index - 1]?.focus();
+    }
+  };
+
+  // Submit Step 3: Complete Registration
+  const handleCompleteSignup = async (e) => {
+    e.preventDefault();
+    const otpCode = otpDigits.join("");
+    if (otpCode.length < 6) {
+      setError("Please enter the complete 6-digit code.");
       return;
     }
 
     setLoading(true);
+    setError("");
     try {
-      const { data } = await api.post("/signup", {
-        username: formData.username,
-        email: formData.email,
+      await api.post("/signup", {
+        username: formData.name.trim(),
+        email: formData.email.trim(),
         password: formData.password,
-        otp: formData.otp
+        class: formData.class,
+        otp: otpCode,
       });
 
-      setInfo(data.message || "Account created! Redirecting to login...");
-      setTimeout(() => navigate("/login"), 1500);
+      setSignupSuccess(true);
+      setTimeout(() => {
+        navigate("/login");
+      }, 1600);
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Unable to create account. Please try again.");
+      setError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Verification failed. Please check the code."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="login-page">
-      <div className="archive-auth-shell">
-        <ParticleCanvas />
-        <BrandPanel />
+    <div className="auth-split-layout">
+      {/* ── Left Premium Indigo Mesh Panel ── */}
+      <AuthBrandPanel />
 
-        <section className="auth-panel" aria-label="Sign up form">
-          <div className="auth-card">
-            {/* Back to home link */}
-            <button
-              type="button"
-              className="toggle-link"
-              onClick={() => navigate("/")}
-              style={{ marginBottom: "16px", display: "inline-flex", alignItems: "center", gap: "4px" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-              Back to Home
-            </button>
-            <h1 className="form-title">Create account</h1>
-            <p className="form-subtitle">
-              Join the RCA Archive and start accessing study materials today.
-            </p>
+      {/* ── Right Auth Form Panel (Strict 100dvh, Compact, No Scroll) ── */}
+      <section className="auth-form-pane">
+        <div className="auth-form-card">
+          {/* Back Link */}
+          <Link to="/" className="auth-back-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Back to Portal</span>
+          </Link>
 
-            {error ? <div className="error-msg">{error}</div> : null}
-            {info ? <div className="success-msg">{info}</div> : null}
-
-            <form className="login-form" onSubmit={handleSignup}>
-              <div className="form-group">
-                <label className="auth-label active" htmlFor="username">Username</label>
-                <div className="input-shell">
-                  <input
-                    id="username"
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Enter your username"
-                    autoComplete="username"
-                    required
-                  />
-                  <span className="input-icon"><UserIcon /></span>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="auth-label active" htmlFor="signup-email">Email</label>
-                <div className="input-shell">
-                  <input
-                    id="signup-email"
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="your@email.com"
-                    autoComplete="email"
-                    required
-                    disabled={otpSent}
-                  />
-                  <span className="input-icon"><MailIcon /></span>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="auth-label active" htmlFor="signup-password">Password</label>
-                <div className="input-shell">
-                  <input
-                    id="signup-password"
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Enter your password"
-                    autoComplete="new-password"
-                    required
-                  />
-                  <span 
-                    className="input-icon" 
-                    style={{ cursor: "pointer" }} 
-                    onClick={() => setShowPassword(!showPassword)}
-                    title={showPassword ? "Hide password" : "Show password"}
+          {/* Wizard Step Progress Indicator */}
+          <div className="wizard-progress-bar">
+            {[1, 2, 3].map((s) => {
+              const isPassed = step > s || signupSuccess;
+              const isCurrent = step === s && !signupSuccess;
+              return (
+                <div key={s} className="wizard-step-node">
+                  <div
+                    className={`step-bubble ${
+                      isPassed ? "completed" : isCurrent ? "active" : ""
+                    }`}
                   >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.8rem', color: 'rgba(30,64,175,0.7)', marginTop: '0.25rem' }}>
-                  Password must be at least 8 characters, include one letter, one number, and one special character
-                </p>
-              </div>
-
-              <div className="form-group">
-                <label className="auth-label active" htmlFor="confirm-password">Confirm Password</label>
-                <div className="input-shell">
-                  <input
-                    id="confirm-password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Confirm your password"
-                    autoComplete="new-password"
-                    required
-                  />
-                  <span 
-                    className="input-icon" 
-                    style={{ cursor: "pointer" }} 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    title={showConfirmPassword ? "Hide password" : "Show password"}
-                  >
-                    {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </span>
-                </div>
-              </div>
-
-              {otpSent && (
-                <div className="form-group">
-                  <label className="auth-label active" htmlFor="otp">Verification Code</label>
-                  <div className="input-shell">
-                    <input
-                      id="otp"
-                      type="text"
-                      name="otp"
-                      value={formData.otp}
-                      onChange={handleChange}
-                      placeholder="Enter code from email"
-                      autoComplete="one-time-code"
-                      required
-                    />
+                    {isPassed ? <CheckIcon size={12} /> : s}
                   </div>
+                  <span className="step-label">
+                    {s === 1 ? "Identity" : s === 2 ? "Security" : "Verify"}
+                  </span>
+                  {s < 3 && <div className={`step-line ${step > s ? "filled" : ""}`} />}
                 </div>
-              )}
+              );
+            })}
+          </div>
 
-              <button type="submit" className="login-btn" disabled={loading}>
-                <span className={loading ? "button-text hidden" : "button-text"}>
-                  {otpSent ? "Create account" : "Send verification code"}
-                </span>
-                {loading && <span className="button-spinner" />}
-              </button>
+          <h2 className="auth-form-title">
+            {signupSuccess
+              ? "Account Created!"
+              : step === 1
+              ? "Create your account"
+              : step === 2
+              ? "Set password & class"
+              : "Enter verification code"}
+          </h2>
+          <p className="auth-form-subtitle">
+            {signupSuccess
+              ? "Redirecting you to login..."
+              : step === 1
+              ? "Step 1 of 3: Provide your academy student identity."
+              : step === 2
+              ? "Step 2 of 3: Choose your cohort class and security."
+              : `Step 3 of 3: 6-digit OTP sent to ${formData.email}`}
+          </p>
+
+          {error && <div className="auth-alert-error">{error}</div>}
+          {info && !error && <div className="auth-alert-info">{info}</div>}
+
+          {/* ── STEP 1: Name + Email ── */}
+          {step === 1 && !signupSuccess && (
+            <form onSubmit={handleNextStep1} className="compact-auth-form">
+              <Input
+                label="Full Name"
+                name="name"
+                placeholder="e.g. Grace Stanley"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                autoFocus
+              />
+
+              <Input
+                label="Email Address"
+                type="email"
+                name="email"
+                placeholder="student@rca.ac.rw"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+
+              <Button
+                variant="primary"
+                size="md"
+                type="submit"
+                style={{ width: "100%", marginTop: "8px" }}
+              >
+                Continue to Password →
+              </Button>
+
+              <div className="auth-switch-prompt">
+                Already registered? <Link to="/login">Sign In</Link>
+              </div>
             </form>
-            <div className="form-footer">
-              <p style={{ color: "rgba(30,64,175,0.7)", fontSize: "0.85rem", margin: 0 }}>
-                Already have an account?{" "}
-                <button
+          )}
+
+          {/* ── STEP 2: Password, Confirm, Class Selector ── */}
+          {step === 2 && !signupSuccess && (
+            <form onSubmit={handleSendOtpStep2} className="compact-auth-form">
+              <div style={{ position: "relative" }}>
+                <Input
+                  label="Password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="At least 6 characters"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  autoFocus
+                  iconRight={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#6A7399" }}
+                    >
+                      <EyeIcon size={16} />
+                    </button>
+                  }
+                />
+                {/* Password strength meter */}
+                {formData.password && (
+                  <div style={{ marginTop: "6px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#6A7399", marginBottom: "3px" }}>
+                      <span>Strength</span>
+                      <strong style={{ color: passwordStrength.color }}>{passwordStrength.label}</strong>
+                    </div>
+                    <div style={{ height: "4px", width: "100%", background: "#E7EBF5", borderRadius: "999px", overflow: "hidden" }}>
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${passwordStrength.score}%`,
+                          background: passwordStrength.color,
+                          transition: "width 0.25s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Input
+                label="Confirm Password"
+                type={showPassword ? "text" : "password"}
+                name="confirmPassword"
+                placeholder="Re-enter password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+              />
+
+              <Select
+                label="Assigned Cohort Class"
+                name="class"
+                value={formData.class}
+                onChange={handleChange}
+                options={RCA_CLASSES.map((c) => ({
+                  value: c.id,
+                  label: `${c.label} (Year ${c.year})`,
+                }))}
+              />
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                <Button
+                  variant="secondary"
+                  size="md"
                   type="button"
-                  className="toggle-link"
-                  onClick={() => navigate("/login")}
+                  onClick={() => setStep(1)}
+                  style={{ flex: 1 }}
                 >
-                  Sign in
-                </button>
+                  ← Back
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  loading={loading}
+                  style={{ flex: 2 }}
+                >
+                  Send OTP Code
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* ── STEP 3: Segmented 6-digit OTP Input ── */}
+          {step === 3 && !signupSuccess && (
+            <form onSubmit={handleCompleteSignup} className="compact-auth-form">
+              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-ink, #1B2142)", display: "block", marginBottom: "8px" }}>
+                6-Digit Verification Code
+              </label>
+
+              {/* Segmented Inputs */}
+              <div className="segmented-otp-row">
+                {otpDigits.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => (otpInputsRef.current[idx] = el)}
+                    type="text"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    className="otp-digit-box"
+                    autoFocus={idx === 0}
+                  />
+                ))}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "#6A7399", margin: "10px 0" }}>
+                <span>Didn't receive code?</span>
+                {resendTimer > 0 ? (
+                  <span>Resend in {resendTimer}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    style={{ background: "none", border: "none", color: "#3F4FA8", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Resend Code
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  type="button"
+                  onClick={() => setStep(2)}
+                  style={{ flex: 1 }}
+                >
+                  ← Back
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  loading={loading}
+                  style={{ flex: 2 }}
+                >
+                  Complete Registration
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* Success State */}
+          {signupSuccess && (
+            <div style={{ textAlign: "center", padding: "28px 0" }}>
+              <div
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background: "rgba(16, 185, 129, 0.12)",
+                  color: "#10B981",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "16px",
+                }}
+              >
+                <CheckIcon size={28} />
+              </div>
+              <p style={{ color: "#6A7399", fontSize: "0.92rem" }}>
+                Your account is ready! Taking you to the sign-in screen...
               </p>
             </div>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
-};
-
-// ─── Icon helpers ─────────────────────────────────────────────────────────────
-
-function MailIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-      <polyline points="22,6 12,13 2,6" />
-    </svg>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
-
-function UserIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
-function DocumentIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
-}
-
-function StarIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  );
-}
-
-export default Signup;

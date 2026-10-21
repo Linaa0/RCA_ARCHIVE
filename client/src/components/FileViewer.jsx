@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { API_ROOT } from "../services/api";
+import { ArrowLeftIcon, DownloadIcon, EyeIcon } from "./ui/Icons";
 
 export default function FileViewer() {
   const navigate = useNavigate();
@@ -80,59 +81,124 @@ export default function FileViewer() {
       .finally(() => setTextLoading(false));
   }, [fileUrl, paper, canRenderText]);
 
-  if (error)
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", background: "#1a1a1a" }}>
-        <p style={{ color: "#ccc" }}>{error}</p>
-      </div>
-    );
-
-  if (!paper)
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", background: "#1a1a1a" }}>
-        <p style={{ color: "#ccc" }}>Loading...</p>
-      </div>
-    );
-
   const handleClose = () => {
     const historyIndex = window.history.state?.idx;
     if (typeof historyIndex === "number" && historyIndex > 0) {
       navigate(-1);
     } else {
-      navigate("/", { replace: true });
+      navigate("/home", { replace: true });
     }
   };
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "sans-serif", background: "#1a1a1a" }}>
 
-      {/* Top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", background: "#111", borderBottom: "1px solid #333", flexShrink: 0 }}>
+  if (error) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--canvas-bg)", color: "var(--text-primary)" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--danger)", marginBottom: "16px" }}>{error}</p>
         <button
           onClick={handleClose}
-          style={{ background: "none", border: "1px solid #555", color: "#ccc", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "14px" }}
+          style={{ padding: "10px 24px", borderRadius: "999px", background: "var(--sidebar-bg)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}
         >
-          ✕ Close
+          Return to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  if (!paper) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--canvas-bg)" }}>
+        <div style={{ width: "40px", height: "40px", border: "3px solid #E2E8F0", borderTopColor: "var(--primary-accent)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ marginTop: "16px", color: "var(--text-secondary)", fontWeight: 500 }}>Loading document viewer...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--canvas-bg)", fontFamily: "var(--font-family)" }}>
+      {/* Modern Topbar matching Smart Dashboard */}
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 28px",
+          background: "#ffffff",
+          borderBottom: "1px solid var(--border-subtle)",
+          boxShadow: "0 2px 8px rgba(30, 37, 71, 0.04)",
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={handleClose}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "var(--canvas-bg)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-primary)",
+            padding: "8px 18px",
+            borderRadius: "999px",
+            cursor: "pointer",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--primary-accent)";
+            e.currentTarget.style.color = "var(--primary-accent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-subtle)";
+            e.currentTarget.style.color = "var(--text-primary)";
+          }}
+        >
+          <ArrowLeftIcon size={16} />
+          <span>Back</span>
         </button>
 
-        <div style={{ textAlign: "center" }}>
-          <p style={{ margin: 0, color: "#fff", fontWeight: 600, fontSize: "15px" }}>{paper.title}</p>
-          <p style={{ margin: 0, color: "#888", fontSize: "12px" }}>
+        <div style={{ textAlign: "center", maxWidth: "600px" }}>
+          <h1 style={{ margin: 0, color: "var(--text-primary)", fontWeight: 700, fontSize: "1.05rem" }}>
+            {paper.title}
+          </h1>
+          <p style={{ margin: "2px 0 0", color: "var(--text-tertiary)", fontSize: "0.8rem", fontWeight: 500 }}>
             {paper.subject} • Year {paper.year} • {paper.type}
           </p>
         </div>
 
-        {/* FIX 1: Added missing '<a' opening tag here */}
         <a
           href={downloadUrl}
           download={paper.originalName}
-          style={{ background: "#2563eb", color: "#fff", padding: "6px 14px", borderRadius: "6px", textDecoration: "none", fontSize: "14px" }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "var(--sidebar-bg)",
+            color: "#ffffff",
+            padding: "9px 22px",
+            borderRadius: "999px",
+            textDecoration: "none",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+            boxShadow: "0 4px 12px rgba(59, 76, 163, 0.25)",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#313f8c";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--sidebar-bg)";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
         >
-          Download
+          <DownloadIcon size={16} />
+          <span>Download</span>
         </a>
-      </div>
+      </header>
 
       {/* File display */}
-      <div style={{ flex: 1, overflow: "hidden" }}>
+      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
         {canEmbedInIframe ? (
           <iframe
             src={officeViewerUrl || fileUrl}
@@ -147,46 +213,51 @@ export default function FileViewer() {
           />
         ) : canRenderAudio ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-            <audio controls src={fileUrl} style={{ width: "100%" }} />
+            <audio controls src={fileUrl} style={{ width: "80%", maxWidth: "600px" }} />
           </div>
         ) : canRenderText ? (
-          <div style={{ padding: "24px", overflowY: "auto", height: "100%", background: "#0f172a", color: "#e2e8f0" }}>
+          <div style={{ padding: "32px", overflowY: "auto", height: "100%", background: "#ffffff", color: "var(--text-primary)" }}>
             {textLoading ? (
               <p>Loading text preview...</p>
             ) : textError ? (
-              <p>{textError}</p>
+              <p style={{ color: "var(--danger)" }}>{textError}</p>
             ) : (
-              <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "Consolas, monospace", fontSize: "13px" }}>
+              <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "Consolas, monospace", fontSize: "13px", lineHeight: "1.6" }}>
                 {textContent}
               </pre>
             )}
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "16px", padding: "20px" }}>
-            <p style={{ color: "#ccc", fontSize: "16px", maxWidth: "520px", textAlign: "center" }}>
-              This file type is not directly embeddable, but you can still download it or open it in a new tab.
-            </p>
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
-              <a
-                href={downloadUrl}
-                download={paper.originalName}
-                style={{ background: "#2563eb", color: "#fff", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", fontSize: "15px" }}
-              >
-                Download
-              </a>
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ background: "#10b981", color: "#fff", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", fontSize: "15px" }}
-              >
-                Open in new tab
-              </a>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "16px", padding: "24px" }}>
+            <div style={{ background: "#ffffff", borderRadius: "24px", padding: "40px", textAlign: "center", maxWidth: "500px", boxShadow: "0 6px 20px rgba(30, 37, 71, 0.06)", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ width: "56px", height: "56px", borderRadius: "18px", background: "rgba(91, 115, 224, 0.12)", color: "var(--primary-accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <EyeIcon size={26} />
+              </div>
+              <h3 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "8px" }}>File Preview Not Supported</h3>
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: "1.5", marginBottom: "24px" }}>
+                This file format is not directly embeddable in the web viewer, but you can download it or open it directly in a new tab.
+              </p>
+              <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                <a
+                  href={downloadUrl}
+                  download={paper.originalName}
+                  style={{ background: "var(--sidebar-bg)", color: "#ffffff", padding: "10px 24px", borderRadius: "999px", textDecoration: "none", fontSize: "0.9rem", fontWeight: 600 }}
+                >
+                  Download File
+                </a>
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ background: "var(--canvas-bg)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", padding: "10px 24px", borderRadius: "999px", textDecoration: "none", fontSize: "0.9rem", fontWeight: 600 }}
+                >
+                  Open in New Tab
+                </a>
+              </div>
             </div>
           </div>
         )}
       </div>
-
     </div>
   );
 }

@@ -1,625 +1,734 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import rcaLogo from "../assets/rca.png";
+import { useNavigate, Link } from "react-router-dom";
+import "./Landing.css";
+import Logo from "./ui/Logo";
+import ClassChips, { RCA_CLASSES } from "./ui/ClassChips";
+import StatRing from "./ui/StatRing";
+import Button from "./ui/Button";
+import {
+  SearchIcon,
+  LessonsIcon,
+  MaterialsIcon,
+  CalendarIcon,
+  StarIcon,
+  DownloadIcon,
+  EyeIcon,
+  UploadIcon,
+  CheckIcon,
+  UsersIcon,
+  UserIcon,
+  ShieldIcon,
+  ArrowRightIcon,
+  MenuIcon,
+  CloseIcon,
+} from "./ui/Icons";
+import api from "../services/api";
 
-function Landing() {
+const SUBJECTS_BY_YEAR = {
+  1: [
+    "Fundamentals of Programming",
+    "Mathematics I",
+    "Database Management",
+    "Networking Essentials",
+    "Web User Interface",
+    "Physics & Mechanics",
+    "Embedded Systems",
+    "JavaScript Core",
+    "Communication & English",
+  ],
+  2: [
+    "Data Structures & Algorithms (C++)",
+    "OOP & Web Development (Java)",
+    "Software Engineering Principles",
+    "Advanced Database Systems",
+    "Enterprise Networking",
+    "Web3 & Smart Contracts",
+    "3D Modelling & Computer Graphics",
+    "Discrete Mathematics",
+  ],
+  3: [
+    "Machine Learning & AI (Python)",
+    "Cybersecurity & Threat Defense",
+    "DevOps & Infrastructure Automation",
+    "Intelligent Robotics Systems",
+    "Mobile Applications (React Native)",
+    "IT Project Management",
+    "Microcontroller Architecture",
+  ],
+};
+
+const MARQUEE_SUBJECTS = [
+  "Data Structures & C++",
+  "OOP & Java",
+  "Machine Learning",
+  "DevOps & CI/CD",
+  "Cybersecurity",
+  "Web3 & Solidity",
+  "Embedded Systems",
+  "Database Systems",
+  "Mobile Apps",
+  "Computer Networks",
+  "Software Engineering",
+  "Mathematics",
+];
+
+export default function Landing() {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved !== null ? JSON.parse(saved) : true;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("Y2A");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [realStats, setRealStats] = useState({
+    papers: 0,
+    users: 0,
+    subjects: 34,
   });
+  const [statsLoaded, setStatsLoaded] = useState(false);
 
+  // Fetch real statistics from API
   useEffect(() => {
-    document.body.classList.toggle("light-mode", !isDarkMode);
-    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
+    let isMounted = true;
+    api
+      .get("/stats")
+      .then(({ data }) => {
+        if (!isMounted) return;
+        const totalPapers = Number(data?.totalPapers ?? 0);
+        const totalUsers = Number(data?.totalUsers ?? 0);
+        setRealStats({
+          papers: totalPapers,
+          users: totalUsers,
+          subjects: 34,
+        });
+        setStatsLoaded(true);
+      })
+      .catch(() => {
+        // Fallback to papers list count
+        api
+          .get("/papers?limit=100")
+          .then(({ data }) => {
+            if (!isMounted) return;
+            const count = Array.isArray(data) ? data.length : 0;
+            setRealStats((prev) => ({ ...prev, papers: count }));
+            setStatsLoaded(true);
+          })
+          .catch(() => {
+            setStatsLoaded(false);
+          });
+      });
 
-  const toggleDarkMode = () => setIsDarkMode((d) => !d);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  const features = [
-    {
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
-      ),
-      title: "Easy Access",
-      description: "Find past papers quickly with intuitive search and filters by year and subject"
-    },
-    {
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 10v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6" />
-          <polyline points="3.9 15 8 19 12.1 15" />
-        </svg>
-      ),
-      title: "Download & View",
-      description: "View papers directly in your browser or download them for offline study"
-    },
-    {
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-      ),
-      title: "Secure & Reliable",
-      description: "Your account is protected with email verification and strong security measures"
-    },
-    {
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-        </svg>
-      ),
-      title: "Organized by Year",
-      description: "Browse through Year 1, Year 2, and Year 3 materials with ease"
+  const handleHeroSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/login?redirect=/home&search=${encodeURIComponent(searchTerm.trim())}`);
+    } else {
+      navigate("/login");
     }
-  ];
+  };
 
-  const steps = [
-    {
-      number: "01",
-      title: "Create Your Account",
-      description: "Sign up with your email and verify it to get full access"
-    },
-    {
-      number: "02",
-      title: "Explore Subjects",
-      description: "Browse through the organized list of subjects for your year"
-    },
-    {
-      number: "03",
-      title: "Find & Download",
-      description: "Search or filter to find exactly what you need, then view or download"
-    }
-  ];
+  const currentClassObj = RCA_CLASSES.find((c) => c.id === selectedClassId) || RCA_CLASSES[4];
+  const classSubjects = SUBJECTS_BY_YEAR[currentClassObj.year] || SUBJECTS_BY_YEAR[2];
 
   return (
-    <div className="landing-page" style={{ minHeight: "100vh" }}>
-      {/* Header */}
-      <header style={{
-        padding: "16px 32px",
-        borderBottom: "1px solid var(--border-color)",
-        backgroundColor: "var(--bg-secondary)",
-        position: "sticky",
-        top: 0,
-        zIndex: 1000
-      }}>
-        <div style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <img src={rcaLogo} alt="RCA" style={{
-            width: "64px",
-            height: "64px",
-            objectFit: "contain",
-            display: "block",
-            filter: isDarkMode 
-              ? "drop-shadow(0 8px 20px rgba(0, 0, 0, 0.3))" 
-              : "invert(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.15))",
-            transform: "scale(1.3)",
-            transformOrigin: "center"
-          }} />
-          <div>
-              <h1 style={{
-                fontSize: "1.25rem",
-                fontWeight: 700,
-                margin: 0,
-                color: "#2563eb"
-              }}>RCA Archive+</h1>
-            </div>
+    <div className="landing-page-root">
+      {/* ── Sticky Glass Navbar ── */}
+      <nav className="landing-nav-glass">
+        <div className="landing-nav-inner">
+          <div className="landing-nav-brand">
+            <Logo variant="light" size="sm" showWordmark wordmarkColor="#1B2142" />
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button
-              onClick={toggleDarkMode}
-              style={{
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border-color)",
-                borderRadius: "10px",
-                padding: "8px 14px",
-                cursor: "pointer",
-                color: "var(--text-primary)",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "0.875rem",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--accent-primary)";
-                e.currentTarget.style.boxShadow = "var(--shadow-hover)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border-color)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              {isDarkMode ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5" />
-                  <line x1="12" y1="1" x2="12" y2="3" />
-                  <line x1="12" y1="21" x2="12" y2="23" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                  <line x1="1" y1="12" x2="3" y2="12" />
-                  <line x1="21" y1="12" x2="23" y2="12" />
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              )}
-              {isDarkMode ? "Light" : "Dark"}
-            </button>
+          {/* Desktop Nav Links with Animated Underline */}
+          <div className="landing-nav-links">
+            <a href="#shelf" className="landing-nav-link">Class Shelf</a>
+            <a href="#features" className="landing-nav-link">Features</a>
+            <a href="#how-it-works" className="landing-nav-link">Workflow</a>
+            <a href="#roles" className="landing-nav-link">Roles</a>
+          </div>
 
+          <div className="landing-nav-actions">
             <button
+              type="button"
+              className="nav-btn-signin"
               onClick={() => navigate("/login")}
-              style={{
-                background: "transparent",
-                border: "2px solid var(--accent-primary)",
-                color: "var(--accent-primary)",
-                borderRadius: "10px",
-                padding: "10px 20px",
-                fontSize: "0.9375rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--accent-primary)";
-                e.currentTarget.style.color = "white";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "var(--accent-primary)";
-              }}
             >
-              Log In
+              Sign In
             </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section style={{
-        maxWidth: "1200px",
-        margin: "0 auto",
-        padding: "56px 32px",
-        textAlign: "center"
-      }}>
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "16px",
-          maxWidth: "750px",
-          margin: "0 auto"
-        }}>
-          <img src={rcaLogo} alt="RCA" style={{
-            width: "128px",
-            height: "128px",
-            objectFit: "contain",
-            marginBottom: "8px",
-            display: "block",
-            filter: isDarkMode 
-              ? "drop-shadow(0 15px 35px rgba(0, 0, 0, 0.5))" 
-              : "invert(0.9) drop-shadow(0 4px 8px rgba(0,0,0,0.2))",
-            transform: "scale(1.3)",
-            transformOrigin: "center"
-          }} />
-
-          <h1 style={{
-            fontSize: "2.5rem",
-            fontWeight: 700,
-            lineHeight: "1.2",
-            margin: 0,
-            background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-light) 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text"
-          }}>
-            Your Study Hub Awaits
-          </h1>
-
-          <p style={{
-            fontSize: "1.0625rem",
-            color: "var(--text-secondary)",
-            margin: "4px 0 24px",
-            lineHeight: "1.6",
-            maxWidth: "650px"
-          }}>
-            Access a comprehensive archive of RCA past papers and study materials, organized and ready for your success
-          </p>
-
-          <div style={{
-            display: "flex",
-            gap: "12px",
-            flexWrap: "wrap",
-            justifyContent: "center"
-          }}>
             <button
+              type="button"
+              className="nav-btn-getstarted"
               onClick={() => navigate("/signup")}
-              style={{
-                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
-                border: "none",
-                color: "white",
-                borderRadius: "12px",
-                padding: "12px 32px",
-                fontSize: "1rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.35)",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(37, 99, 235, 0.45)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.35)";
-              }}
             >
               Get Started
             </button>
 
+            {/* Mobile Hamburger Button */}
             <button
-              onClick={() => navigate("/login")}
-              style={{
-                background: "var(--bg-secondary)",
-                border: "2px solid var(--border-color)",
-                color: "var(--text-primary)",
-                borderRadius: "12px",
-                padding: "12px 32px",
-                fontSize: "1rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--accent-primary)";
-                e.currentTarget.style.boxShadow = "var(--shadow-hover)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border-color)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
+              type="button"
+              className="nav-mobile-hamburger"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle navigation menu"
             >
-              Log In
+              {mobileMenuOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}
             </button>
           </div>
         </div>
-      </section>
 
-      {/* Features Section */}
-      <section id="features" style={{
-        maxWidth: "1200px",
-        margin: "0 auto",
-        padding: "48px 32px",
-        backgroundColor: "var(--bg-secondary)",
-        borderRadius: "28px 28px 0 0"
-      }}>
-        <div style={{
-          textAlign: "center",
-          marginBottom: "40px"
-        }}>
-          <h2 style={{
-            fontSize: "1.875rem",
-            fontWeight: 700,
-            margin: "0 0 8px",
-            color: "var(--text-primary)"
-          }}>
-            Why Choose RCA Archive?
-          </h2>
-          <p style={{
-            fontSize: "1rem",
-            color: "var(--text-muted)",
-            margin: 0
-          }}>
-            Everything you need for a seamless study experience
-          </p>
-        </div>
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="mobile-nav-drawer">
+            <a href="#shelf" onClick={() => setMobileMenuOpen(false)}>Class Shelf</a>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>Workflow</a>
+            <a href="#roles" onClick={() => setMobileMenuOpen(false)}>Roles</a>
+            <div className="mobile-nav-drawer-actions">
+              <Button variant="secondary" onClick={() => navigate("/login")}>
+                Sign In
+              </Button>
+              <Button variant="primary" onClick={() => navigate("/signup")}>
+                Get Started
+              </Button>
+            </div>
+          </div>
+        )}
+      </nav>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "20px"
-        }}>
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              style={{
-                background: "var(--bg-primary)",
-                border: "1px solid var(--border-color)",
-                borderRadius: "16px",
-                padding: "24px",
-                transition: "all 0.3s ease"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-4px)";
-                e.currentTarget.style.boxShadow = "var(--shadow-hover)";
-                e.currentTarget.style.borderColor = "var(--accent-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.borderColor = "var(--border-color)";
-              }}
-            >
-              <div style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-light) 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                marginBottom: "16px"
-              }}>
-                {feature.icon}
+      {/* ── Hero Section with Animated Gradient Mesh ── */}
+      <section className="landing-hero-section">
+        <div className="landing-hero-container">
+          {/* Left Column: Bold Headline & Search */}
+          <div className="landing-hero-left">
+            <div className="hero-kicker-pill">
+              <span className="hero-kicker-dot" />
+              <span>Official Rwanda Coding Academy Portal</span>
+            </div>
+
+            <h1 className="hero-title">
+              Past Papers, Exams & Notes for Future Tech Leaders.
+            </h1>
+
+            <p className="hero-subtitle">
+              The dedicated curriculum archive for RCA students and educators.
+              Instantly preview, search, and download exam schemes, CATs, and lecture notes
+              across all terms and cohorts.
+            </p>
+
+            <div className="hero-cta-row">
+              <Button
+                variant="primary"
+                size="lg"
+                iconRight={<ArrowRightIcon size={18} />}
+                onClick={() => navigate("/signup")}
+              >
+                Access Past Papers
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate("/login")}
+              >
+                Sign In to Archive
+              </Button>
+            </div>
+
+            {/* Pill Search */}
+            <form className="hero-pill-search" onSubmit={handleHeroSearch}>
+              <SearchIcon size={18} className="hero-search-icon" />
+              <input
+                type="text"
+                placeholder="Search by topic, subject or year (e.g. Data Structures)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <button type="submit" className="hero-search-button">
+                Search
+              </button>
+            </form>
+          </div>
+
+          {/* Right Column: Layered Product Mockup with Safe Clearances & Rendered Bars */}
+          <div className="landing-hero-right">
+            {/* Safe Orbiting Chip Left: Clear 20px outside mockup frame */}
+            <div className="hero-orbit-chip chip-preview">
+              <div className="orbit-chip-icon" style={{ background: "#5B73E0" }}>
+                <EyeIcon size={16} />
               </div>
-              <h3 style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: "0 0 8px",
-                color: "var(--text-primary)"
-              }}>
-                {feature.title}
-              </h3>
-              <p style={{
-                margin: 0,
-                color: "var(--text-muted)",
-                lineHeight: "1.6",
-                fontSize: "0.9375rem"
-              }}>
-                {feature.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how-it-works" style={{
-        maxWidth: "1200px",
-        margin: "0 auto",
-        padding: "48px 32px"
-      }}>
-        <div style={{
-          textAlign: "center",
-          marginBottom: "40px"
-        }}>
-          <h2 style={{
-            fontSize: "1.875rem",
-            fontWeight: 700,
-            margin: "0 0 8px",
-            color: "var(--text-primary)"
-          }}>
-            How to Get Started
-          </h2>
-          <p style={{
-            fontSize: "1rem",
-            color: "var(--text-muted)",
-            margin: 0
-          }}>
-            Three simple steps to access all materials
-          </p>
-        </div>
-
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "24px"
-        }}>
-          {steps.map((step, index) => (
-            <div key={index} style={{
-              textAlign: "center",
-              padding: "28px 20px",
-              background: "var(--card-bg)",
-              borderRadius: "20px",
-              border: "1px solid var(--border-color)"
-            }}>
-              <div style={{
-                fontSize: "3rem",
-                fontWeight: 700,
-                color: "var(--accent-primary)",
-                lineHeight: "1",
-                marginBottom: "12px"
-              }}>
-                {step.number}
+              <div>
+                <strong className="orbit-chip-title">Browser PDF Preview</strong>
+                <span className="orbit-chip-sub">Direct in-browser reading</span>
               </div>
-              <h3 style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: "0 0 8px",
-                color: "var(--text-primary)"
-              }}>
-                {step.title}
-              </h3>
-              <p style={{
-                margin: 0,
-                color: "var(--text-muted)",
-                lineHeight: "1.6",
-                fontSize: "0.9375rem"
-              }}>
-                {step.description}
-              </p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* About Section */}
-      <section id="about" style={{
-        maxWidth: "1200px",
-        margin: "0 auto",
-        padding: "48px 32px",
-        backgroundColor: "var(--bg-secondary)"
-      }}>
-        <div style={{
-          maxWidth: "900px",
-          margin: "0 auto"
-        }}>
-          <h2 style={{
-            fontSize: "1.875rem",
-            fontWeight: 700,
-            margin: "0 0 24px",
-            color: "var(--text-primary)",
-            textAlign: "center"
-          }}>
-            About the RCA Archive+
-          </h2>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
-            gap: "32px"
-          }}>
-            <div>
-              <h3 style={{
-                fontSize: "1.25rem",
-                fontWeight: 600,
-                margin: "0 0 12px",
-                color: "var(--text-primary)"
-              }}>
-                Why It Exists
-              </h3>
-              <p style={{
-                color: "var(--text-secondary)",
-                lineHeight: "1.7",
-                margin: 0,
-                fontSize: "0.9375rem"
-              }}>
-                The RCA Past Papers Archive was created to give every student easy access to previous exam papers and study materials. 
-                By organizing materials by year and subject, we make studying efficient and stress-free, helping you prepare better for your exams.
-              </p>
+            {/* Safe Orbiting Chip Right: Clear 20px outside mockup frame */}
+            <div className="hero-orbit-chip chip-curriculum">
+              <div className="orbit-chip-icon" style={{ background: "#10B981" }}>
+                <MaterialsIcon size={16} />
+              </div>
+              <div>
+                <strong className="orbit-chip-title">Curriculum Aligned</strong>
+                <span className="orbit-chip-sub">Year 1, 2 & 3 modules</span>
+              </div>
             </div>
-            <div>
-              <h3 style={{
-                fontSize: "1.25rem",
-                fontWeight: 600,
-                margin: "0 0 12px",
-                color: "var(--text-primary)"
-              }}>
-                Our Purpose
-              </h3>
-              <p style={{
-                color: "var(--text-secondary)",
-                lineHeight: "1.7",
-                margin: 0,
-                fontSize: "0.9375rem"
-              }}>
-                We believe in accessible education. This platform ensures that all RCA students have equal opportunity to use past papers 
-                as a learning resource, helping them understand exam patterns and prepare effectively.
-              </p>
+
+            {/* Main Mockup Frame */}
+            <div className="hero-product-frame">
+              {/* Mockup Sidebar */}
+              <div className="mockup-sidebar">
+                <div className="mockup-sidebar-logo">
+                  <Logo variant="knockout" size="xs" showWordmark={false} />
+                  <span>RCA Archive</span>
+                </div>
+                <div className="mockup-nav-item active">
+                  <LessonsIcon size={16} />
+                  <span>Dashboard</span>
+                </div>
+                <div className="mockup-nav-item">
+                  <MaterialsIcon size={16} />
+                  <span>Past Papers</span>
+                </div>
+                <div className="mockup-nav-item">
+                  <CalendarIcon size={16} />
+                  <span>Subjects</span>
+                </div>
+              </div>
+
+              {/* Mockup Canvas */}
+              <div className="mockup-canvas">
+                <div className="mockup-canvas-header">
+                  <div>
+                    <span className="mockup-welcome">Academic Portal</span>
+                    <strong className="mockup-name">Student Dashboard</strong>
+                  </div>
+                  <span className="mockup-pill-badge">Term Active</span>
+                </div>
+
+                {/* Rendered Bar Chart with explicit heights and two-tone fills */}
+                <div className="mockup-chart-card">
+                  <div className="mockup-chart-header">
+                    <div>
+                      <span className="mockup-stat-label">Archive by Module</span>
+                      <strong className="mockup-stat-num">Curriculum Coverage</strong>
+                    </div>
+                    <span className="mockup-filter-pill">All Streams ▾</span>
+                  </div>
+
+                  <div className="mockup-bar-chart-container">
+                    <div className="mockup-bar-item">
+                      <div className="mockup-bar-pillar" style={{ height: "72px" }} />
+                      <span className="mockup-bar-label">DSA</span>
+                    </div>
+                    <div className="mockup-bar-item">
+                      <div className="mockup-bar-pillar" style={{ height: "94px" }} />
+                      <span className="mockup-bar-label">OOP</span>
+                    </div>
+                    <div className="mockup-bar-item">
+                      <div className="mockup-bar-pillar" style={{ height: "58px" }} />
+                      <span className="mockup-bar-label">DBMS</span>
+                    </div>
+                    <div className="mockup-bar-item">
+                      <div className="mockup-bar-pillar" style={{ height: "82px" }} />
+                      <span className="mockup-bar-label">AI</span>
+                    </div>
+                    <div className="mockup-bar-item">
+                      <div className="mockup-bar-pillar" style={{ height: "64px" }} />
+                      <span className="mockup-bar-label">NET</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Rings Card */}
+                <div className="mockup-rings-card">
+                  <span className="mockup-stat-label">Coverage by Year</span>
+                  <div className="mockup-rings-row">
+                    <StatRing percentage={88} label="Year 1" size={54} color="#3F4FA8" strokeWidth={5} />
+                    <StatRing percentage={92} label="Year 2" size={54} color="#5B73E0" strokeWidth={5} />
+                    <StatRing percentage={79} label="Year 3" size={54} color="#232C6B" strokeWidth={5} />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section style={{
-        background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
-        padding: "48px 32px",
-        textAlign: "center"
-      }}>
-        <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-          <h2 style={{
-            fontSize: "1.875rem",
-            fontWeight: 700,
-            margin: "0 0 12px",
-            color: "white"
-          }}>
-            Ready to Excel?
-          </h2>
-          <p style={{
-            fontSize: "1rem",
-            margin: "0 0 24px",
-            color: "rgba(255, 255, 255, 0.9)"
-          }}>
-            Join thousands of RCA students using this archive for their studies
+      {/* ── Smooth Marquee Strip of Subject Names ── */}
+      <section className="marquee-section">
+        <div className="marquee-track">
+          <div className="marquee-content">
+            {MARQUEE_SUBJECTS.map((sub, idx) => (
+              <span key={idx} className="marquee-item">
+                <span className="marquee-dot" />
+                {sub}
+              </span>
+            ))}
+          </div>
+          <div className="marquee-content" aria-hidden="true">
+            {MARQUEE_SUBJECTS.map((sub, idx) => (
+              <span key={`clone-${idx}`} className="marquee-item">
+                <span className="marquee-dot" />
+                {sub}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Real Stats Row (Driven by Real API Data) ── */}
+      {statsLoaded && (
+        <section className="landing-stats-row">
+          <div className="stats-container">
+            <div className="stat-unit">
+              <strong className="stat-big-num num-stat">
+                {realStats.papers > 0 ? `${realStats.papers}+` : "Live"}
+              </strong>
+              <span className="stat-unit-title">Archived Past Papers</span>
+              <span className="stat-unit-desc">Available for direct study</span>
+            </div>
+
+            <div className="stat-unit">
+              <strong className="stat-big-num num-stat">
+                {realStats.users > 0 ? `${realStats.users}+` : "Active"}
+              </strong>
+              <span className="stat-unit-title">Registered Accounts</span>
+              <span className="stat-unit-desc">RCA students and faculty</span>
+            </div>
+
+            <div className="stat-unit">
+              <strong className="stat-big-num num-stat">34+</strong>
+              <span className="stat-unit-title">Curriculum Modules</span>
+              <span className="stat-unit-desc">Year 1, Year 2 & Year 3</span>
+            </div>
+
+            <div className="stat-unit">
+              <strong className="stat-big-num num-stat">100%</strong>
+              <span className="stat-unit-title">Institutional Focus</span>
+              <span className="stat-unit-desc">Tailored to Rwanda Coding Academy</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Interactive Campus "Archive Shelf" Class Selector Motif ── */}
+      <section id="shelf" className="campus-shelf-section">
+        <div className="section-head-wrap">
+          <span className="section-eyebrow">Campus Archive Shelf</span>
+          <h2 className="section-main-title">Select your cohort shelf</h2>
+          <p className="section-main-sub">
+            Browse through RCA cohorts to discover modules, lecture guides, CATs, and final examination archives.
           </p>
-          <div style={{
-            display: "flex",
-            gap: "12px",
-            justifyContent: "center",
-            flexWrap: "wrap"
-          }}>
-            <button
-              onClick={() => navigate("/signup")}
-              style={{
-                background: "white",
-                border: "none",
-                color: "var(--accent-primary)",
-                borderRadius: "12px",
-                padding: "12px 32px",
-                fontSize: "1rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
-              }}
-            >
-              Create Your Account
-            </button>
-            <button
-              onClick={() => navigate("/login")}
-              style={{
-                background: "transparent",
-                border: "2px solid white",
-                color: "white",
-                borderRadius: "12px",
-                padding: "12px 32px",
-                fontSize: "1rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "white";
-                e.currentTarget.style.color = "var(--accent-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "white";
-              }}
-            >
-              Log In
-            </button>
+        </div>
+
+        <div className="shelf-chips-wrap">
+          <ClassChips
+            selectedClass={selectedClassId}
+            onSelectClass={setSelectedClassId}
+            size="md"
+          />
+        </div>
+
+        {/* Shelf Content Panel (Animated when class changes) */}
+        <div className="shelf-display-card">
+          <div className="shelf-display-header">
+            <div>
+              <span className="shelf-cohort-tag">Cohort Focus</span>
+              <h3 className="shelf-cohort-title">
+                {currentClassObj.label} — Year {currentClassObj.year} Stream {currentClassObj.stream}
+              </h3>
+            </div>
+            <div className="shelf-types-badge-row">
+              <span className="shelf-type-pill">Past Papers</span>
+              <span className="shelf-type-pill">Marking Schemes</span>
+              <span className="shelf-type-pill">Lecture Slides</span>
+            </div>
+          </div>
+
+          <div className="shelf-subjects-grid">
+            {classSubjects.map((subject, idx) => (
+              <div
+                key={idx}
+                className="shelf-subject-item"
+                onClick={() =>
+                  navigate(`/login?redirect=/subject/${currentClassObj.year}/${encodeURIComponent(subject)}`)
+                }
+              >
+                <div className="shelf-subject-icon">
+                  <MaterialsIcon size={18} />
+                </div>
+                <div className="shelf-subject-info">
+                  <strong>{subject}</strong>
+                  <span>Year {currentClassObj.year} • View past exams →</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{
-        padding: "32px",
-        textAlign: "center",
-        color: "var(--text-muted)",
-        borderTop: "1px solid var(--border-color)",
-        fontSize: "0.875rem"
-      }}>
-        <p style={{ margin: 0 }}>
-          © {new Date().getFullYear()} RCA Archive+. All rights reserved.
-        </p>
+      {/* ── Features Bento Grid (Strict Grid-Template-Areas, NO Empty Cells) ── */}
+      <section id="features" className="bento-features-section">
+        <div className="section-head-wrap">
+          <span className="section-eyebrow">Engineered for RCA</span>
+          <h2 className="section-main-title">Modern academic tools that work</h2>
+          <p className="section-main-sub">
+            Built from scratch to give RCA students and teachers clean, fast, and structured revision workflows.
+          </p>
+        </div>
+
+        <div className="bento-strict-grid">
+          {/* Card 1: Search & Filtering */}
+          <div className="bento-item bento-area-search">
+            <div className="bento-item-icon" style={{ background: "#3F4FA8", color: "#FFFFFF" }}>
+              <SearchIcon size={22} />
+            </div>
+            <h3 className="bento-item-title">Instant Search & Class Filters</h3>
+            <p className="bento-item-desc">
+              Filter by cohort class (Y1A through Y3C), subject module, and exam type. Locate exact past exams within seconds.
+            </p>
+            <div className="bento-visual-search-demo">
+              <span className="demo-chip">Y2A</span>
+              <span className="demo-chip active">Data Structures</span>
+              <span className="demo-chip">Exam Paper</span>
+            </div>
+          </div>
+
+          {/* Card 2: In-Browser Document Preview */}
+          <div className="bento-item bento-area-preview">
+            <div className="bento-item-icon" style={{ background: "#5B73E0", color: "#FFFFFF" }}>
+              <EyeIcon size={22} />
+            </div>
+            <h3 className="bento-item-title">In-Browser Document Preview</h3>
+            <p className="bento-item-desc">
+              View PDF question papers, DOCX solutions, and PPTX notes seamlessly directly in the application without download delays.
+            </p>
+            <div className="bento-visual-preview-demo">
+              <div className="preview-doc-card">
+                <span className="doc-icon">PDF</span>
+                <span>CAT_1_Algorithms_2025.pdf</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Cryptographic Deduplication */}
+          <div className="bento-item bento-area-upload">
+            <div className="bento-item-icon" style={{ background: "#10B981", color: "#FFFFFF" }}>
+              <UploadIcon size={22} />
+            </div>
+            <h3 className="bento-item-title">SHA-256 Deduplication</h3>
+            <p className="bento-item-desc">
+              Automated cryptographic file hashing checks uploads for identical content, preventing repeated duplicates in the repository.
+            </p>
+            <div className="bento-visual-hash-demo">
+              <span className="hash-code">sha256: 7f83b165... verified</span>
+            </div>
+          </div>
+
+          {/* Card 4: Peer Ratings */}
+          <div className="bento-item bento-area-ratings">
+            <div className="bento-item-icon" style={{ background: "#F59E0B", color: "#FFFFFF" }}>
+              <StarIcon size={22} />
+            </div>
+            <h3 className="bento-item-title">Verified Peer Ratings</h3>
+            <p className="bento-item-desc">
+              Students and teachers rate papers to highlight high-yield examination questions and comprehensive solution keys.
+            </p>
+            <div className="bento-visual-stars-demo">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <StarIcon key={s} size={18} filled />
+              ))}
+              <span className="star-rating-text">Peer-reviewed</span>
+            </div>
+          </div>
+
+          {/* Card 5: Class-Based Organisation */}
+          <div className="bento-item bento-area-classes">
+            <div className="bento-item-icon" style={{ background: "#232C6B", color: "#FFFFFF" }}>
+              <MaterialsIcon size={22} />
+            </div>
+            <h3 className="bento-item-title">Campus Cohort Organisation</h3>
+            <p className="bento-item-desc">
+              All 10 campus classes (Y1A, Y1B, Y1C, Y1GenAI, Y2A, Y2B, Y2C, Y3A, Y3B, Y3C) have dedicated archive shelf spaces.
+            </p>
+            <div className="bento-visual-classes-demo">
+              <span className="cohort-mini-tag">10 Campus Cohorts</span>
+              <span className="cohort-mini-tag">Structured Terms</span>
+            </div>
+          </div>
+
+          {/* Card 6: Role-Based Access Control */}
+          <div className="bento-item bento-area-rbac">
+            <div className="bento-item-icon" style={{ background: "#3F4FA8", color: "#FFFFFF" }}>
+              <ShieldIcon size={22} />
+            </div>
+            <h3 className="bento-item-title">Role-Based Access & Moderation</h3>
+            <p className="bento-item-desc">
+              Distinct permissions for Students, Teachers, and Administrators, with a formal deletion request queue for content moderation.
+            </p>
+            <div className="bento-visual-rbac-demo">
+              <span className="role-pill-student">Student</span>
+              <span className="role-pill-teacher">Teacher</span>
+              <span className="role-pill-admin">Administrator</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How It Works (3 Steps with Connected Line) ── */}
+      <section id="how-it-works" className="how-it-works-section">
+        <div className="section-head-wrap">
+          <span className="section-eyebrow">Straightforward Workflow</span>
+          <h2 className="section-main-title">How to get started in 3 steps</h2>
+          <p className="section-main-sub">
+            Designed to fit directly into your daily revision habits and exam preparations.
+          </p>
+        </div>
+
+        <div className="steps-connected-grid">
+          <div className="step-card-box">
+            <div className="step-circle-badge">01</div>
+            <h3 className="step-heading">Create Account or Sign In</h3>
+            <p className="step-description">
+              Sign in with your verified RCA credentials, or register with 6-digit email OTP verification.
+            </p>
+          </div>
+
+          <div className="step-card-box">
+            <div className="step-circle-badge">02</div>
+            <h3 className="step-heading">Select Year or Class Shelf</h3>
+            <p className="step-description">
+              Choose your cohort stream or search across all curriculum modules to pinpoint relevant materials.
+            </p>
+          </div>
+
+          <div className="step-card-box">
+            <div className="step-circle-badge">03</div>
+            <h3 className="step-heading">Preview, Study & Download</h3>
+            <p className="step-description">
+              Study directly in the responsive viewer, download files for offline study, and rate helpful solutions.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Roles Section (3 Distinct Cards) ── */}
+      <section id="roles" className="roles-overview-section">
+        <div className="section-head-wrap">
+          <span className="section-eyebrow">Tailored Experience</span>
+          <h2 className="section-main-title">Built for the entire RCA community</h2>
+          <p className="section-main-sub">
+            Distinct tools and permissions designed for learners, instructors, and academy administration.
+          </p>
+        </div>
+
+        <div className="roles-cards-container">
+          {/* Student Card */}
+          <div className="role-user-card">
+            <div className="role-card-icon" style={{ background: "#E4E8FA", color: "#3F4FA8" }}>
+              <UserIcon size={24} />
+            </div>
+            <h3 className="role-card-title">Students</h3>
+            <p className="role-card-summary">
+              Prepare effectively with previous term examination papers, quizzes, notes, and peer solution guides.
+            </p>
+            <ul className="role-bullets">
+              <li><CheckIcon size={14} /> Cohort-filtered past exams</li>
+              <li><CheckIcon size={14} /> Full in-browser PDF preview</li>
+              <li><CheckIcon size={14} /> Upload paper contributions</li>
+            </ul>
+          </div>
+
+          {/* Teacher Card */}
+          <div className="role-user-card">
+            <div className="role-card-icon" style={{ background: "#EEF0F6", color: "#5B73E0" }}>
+              <UsersIcon size={24} />
+            </div>
+            <h3 className="role-card-title">Teachers</h3>
+            <p className="role-card-summary">
+              Publish official past exams, curriculum slides, and lesson supplements to your cohort effortlessly.
+            </p>
+            <ul className="role-bullets">
+              <li><CheckIcon size={14} /> Upload past papers with metadata</li>
+              <li><CheckIcon size={14} /> Verified faculty contributor tag</li>
+              <li><CheckIcon size={14} /> Review student engagement</li>
+            </ul>
+          </div>
+
+          {/* Administrator Card */}
+          <div className="role-user-card">
+            <div className="role-card-icon" style={{ background: "#F4F6FD", color: "#232C6B" }}>
+              <ShieldIcon size={24} />
+            </div>
+            <h3 className="role-card-title">Administrators</h3>
+            <p className="role-card-summary">
+              Maintain institutional standards with moderation queues, user directories, and system audit logs.
+            </p>
+            <ul className="role-bullets">
+              <li><CheckIcon size={14} /> Paper deletion moderation queue</li>
+              <li><CheckIcon size={14} /> Teacher and student account management</li>
+              <li><CheckIcon size={14} /> Live repository analytics</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA Band ── */}
+      <section className="landing-final-cta">
+        <div className="final-cta-card">
+          <h2 className="final-cta-heading">Ready to start preparing for exams?</h2>
+          <p className="final-cta-subtitle">
+            Join Rwanda Coding Academy students and educators sharing past papers and curriculum solutions.
+          </p>
+          <Button
+            variant="glass"
+            size="lg"
+            onClick={() => navigate("/signup")}
+            style={{ fontWeight: 700 }}
+          >
+            Create Your Account
+          </Button>
+        </div>
+      </section>
+
+      {/* ── Modern Clean Footer ── */}
+      <footer className="landing-footer-clean">
+        <div className="footer-grid">
+          <div className="footer-brand-pane">
+            <Logo variant="light" size="sm" showWordmark wordmarkColor="#1B2142" />
+            <p className="footer-tagline">
+              Official past papers and academic study repository for Rwanda Coding Academy.
+            </p>
+          </div>
+
+          <div className="footer-links-col">
+            <h4>Portal</h4>
+            <a href="#shelf">Class Shelf</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#roles">Role Access</a>
+          </div>
+
+          <div className="footer-links-col">
+            <h4>Cohorts</h4>
+            <Link to="/login?redirect=/home?year=1">Year 1 Curriculum</Link>
+            <Link to="/login?redirect=/home?year=2">Year 2 Curriculum</Link>
+            <Link to="/login?redirect=/home?year=3">Year 3 Curriculum</Link>
+          </div>
+
+          <div className="footer-links-col">
+            <h4>Account</h4>
+            <Link to="/login">Sign In</Link>
+            <Link to="/signup">Register</Link>
+            <Link to="/reset-password">Reset Password</Link>
+          </div>
+        </div>
+
+        <div className="footer-bottom-bar">
+          <span>© {new Date().getFullYear()} Rwanda Coding Academy. All rights reserved.</span>
+          <span>Academic Knowledge Repository</span>
+        </div>
       </footer>
     </div>
   );
 }
-
-export default Landing;

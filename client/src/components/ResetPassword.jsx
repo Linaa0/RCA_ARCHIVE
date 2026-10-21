@@ -1,73 +1,91 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
+import AuthBrandPanel from "./ui/AuthBrandPanel";
+import Input from "./ui/Input";
+import Button from "./ui/Button";
+import { EyeIcon } from "./ui/Icons";
 import api from "../services/api";
 import "./Login.css";
-import rcaLogo from "../assets/rca.png";
 
-function ResetPassword() {
+export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const { token: routeToken = "" } = useParams();
   const navigate = useNavigate();
+
   const [token, setToken] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const tokenParam = searchParams.get("token") || routeToken || "";
     setToken(tokenParam);
   }, [searchParams, routeToken]);
 
-  // If a token is in the URL it's a setup/reset link — detect if it's a teacher setup
-  const isSetupFlow = Boolean(routeToken || searchParams.get("token"));
-  const pageTitle = isSetupFlow ? "Set Password" : "Reset Password";
-  const pageSubtitle = isSetupFlow
-    ? "Welcome to RCA Archive. Create a password to activate your account."
-    : "Set a new password to restore access to your account.";
-  const buttonLabel = isSetupFlow ? "Set Password" : "Reset Password";
+  const isTokenFlow = Boolean(token);
 
-  const handleSubmit = async (e) => {
+  // Request reset link (when no token)
+  const handleRequestResetLink = async (e) => {
     e.preventDefault();
+    if (!email.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setLoading(true);
     setError("");
     setSuccess("");
 
-    if (!token) {
-      setError("Reset token is missing. Check your reset link.");
-      return;
+    try {
+      const { data } = await api.post("/forgot-password", {
+        email: email.trim(),
+      });
+      setSuccess(
+        data?.message ||
+        "A password reset link has been dispatched to your email address."
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Unable to send reset link."
+      );
+    } finally {
+      setLoading(false);
     }
+  };
 
+  // Set new password (when token is provided)
+  const handleSetNewPassword = async (e) => {
+    e.preventDefault();
     if (!password || !confirmPassword) {
       setError("Please enter and confirm your new password.");
       return;
     }
-
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
 
     setLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
       const { data } = await api.post("/reset-password", {
         token,
         newPassword: password,
       });
-      setSuccess(data.message || "Password reset successfully.");
-      setPassword("");
-      setConfirmPassword("");
+      setSuccess(data?.message || "Password updated successfully!");
       setTimeout(() => navigate("/login"), 1800);
     } catch (err) {
       setError(
         err.response?.data?.error ||
-          err.response?.data?.message ||
-          (typeof err.response?.data === "string" ? err.response.data : "") ||
-          err.message ||
-          "Unable to reset password.",
+        err.response?.data?.message ||
+        "Password reset token is invalid or has expired."
       );
     } finally {
       setLoading(false);
@@ -75,395 +93,110 @@ function ResetPassword() {
   };
 
   return (
-    <main className="login-page">
-      <div className="archive-auth-shell">
-        <ParticleCanvas />
+    <div className="auth-split-layout">
+      {/* ── Left Premium Indigo Mesh Panel ── */}
+      <AuthBrandPanel />
 
-        <div className={`auth-toast ${success ? "visible" : ""}`}>
-          <CheckIcon />
-          {success || "Password reset successfully!"}
-        </div>
+      {/* ── Right Auth Form Panel (Compact, 100dvh) ── */}
+      <section className="auth-form-pane">
+        <div className="auth-form-card">
+          <Link to="/login" className="auth-back-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Back to Sign In</span>
+          </Link>
 
-        <BrandPanel />
+          <h2 className="auth-form-title">
+            {isTokenFlow ? "Set New Password" : "Reset Password"}
+          </h2>
+          <p className="auth-form-subtitle">
+            {isTokenFlow
+              ? "Create a secure password to restore access to your account."
+              : "Enter your registered email address and we'll send you a password recovery link."}
+          </p>
 
-        <section className="auth-panel" aria-label="Reset password form">
-          <div className="auth-card">
-            <h1 className="form-title">{pageTitle}</h1>
-            <p className="form-subtitle">{pageSubtitle}</p>
+          {error && <div className="auth-alert-error">{error}</div>}
+          {success && <div className="auth-alert-info">{success}</div>}
 
-            <Message
-              error={error}
-              success={success && !loading ? success : ""}
-            />
+          {!isTokenFlow ? (
+            <form onSubmit={handleRequestResetLink} className="compact-auth-form">
+              <Input
+                label="Registered Email Address"
+                type="email"
+                placeholder="student@rca.ac.rw"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                }}
+                required
+                autoFocus
+              />
 
-            <form className="login-form" onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="auth-label active" htmlFor="password">
-                  New password
-                </label>
-                <div className="input-shell">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter new password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <span
-                    className="input-icon"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => setShowPassword(!showPassword)}
-                    title={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </span>
-                </div>
-                <p
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "rgba(30,64,175,0.7)",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  Password must be at least 8 characters, include one letter,
-                  one number, and one special character
-                </p>
-              </div>
-
-              <div className="form-group">
-                <label className="auth-label active" htmlFor="confirmPassword">
-                  Confirm new password
-                </label>
-                <div className="input-shell">
-                  <input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Re-enter new password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                  <span
-                    className="input-icon"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    title={
-                      showConfirmPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </span>
-                </div>
-              </div>
-
-              <SubmitButton loading={loading}>{buttonLabel}</SubmitButton>
-            </form>
-
-            <div className="auth-divider">
-              <span />
-              <small>or</small>
-              <span />
-            </div>
-
-            <div className="form-footer">
-              <button
-                type="button"
-                className="toggle-link"
-                onClick={() => navigate("/login")}
+              <Button
+                variant="primary"
+                size="md"
+                type="submit"
+                loading={loading}
+                style={{ width: "100%", marginTop: "12px" }}
               >
-                ← Back to Login
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
-}
+                Send Password Reset Link
+              </Button>
 
-function ParticleCanvas() {
-  const canvasRef = useRef(null);
-  const shellRef = useRef(null);
+              <div className="auth-switch-prompt">
+                Remember your password? <Link to="/login">Sign In</Link>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleSetNewPassword} className="compact-auth-form">
+              <Input
+                label="New Password"
+                type={showPassword ? "text" : "password"}
+                placeholder="At least 6 characters"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError("");
+                }}
+                required
+                autoFocus
+                iconRight={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#6A7399" }}
+                  >
+                    <EyeIcon size={16} />
+                  </button>
+                }
+              />
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const shell = shellRef.current?.parentElement;
-    if (!canvas || !shell) return undefined;
+              <Input
+                label="Confirm New Password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Re-enter new password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setError("");
+                }}
+                required
+              />
 
-    const ctx = canvas.getContext("2d");
-    let width = 0;
-    let height = 0;
-    let animationId = 0;
-    let points = [];
-
-    const resize = () => {
-      width = canvas.width = shell.offsetWidth;
-      height = canvas.height = shell.offsetHeight;
-      points = Array.from({ length: 50 }, () => ({
-        x: Math.random() * width * 0.45,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.28,
-        vy: (Math.random() - 0.5) * 0.28,
-        r: Math.random() * 1.4 + 0.4,
-      }));
-    };
-
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      points.forEach((point) => {
-        point.x += point.vx;
-        point.y += point.vy;
-
-        if (point.x < 0 || point.x > width * 0.45) point.vx *= -1;
-        if (point.y < 0 || point.y > height) point.vy *= -1;
-
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, point.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(96,165,250,.3)";
-        ctx.fill();
-      });
-
-      points.forEach((a, index) => {
-        points.slice(index + 1).forEach((b) => {
-          const distance = Math.hypot(a.x - b.x, a.y - b.y);
-          if (distance < 75) {
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(96,165,250,${0.1 * (1 - distance / 75)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        });
-      });
-
-      animationId = requestAnimationFrame(draw);
-    };
-
-    resize();
-    draw();
-    window.addEventListener("resize", resize);
-
-    return () => {
-      window.removeEventListener("resize", resize);
-      cancelAnimationFrame(animationId);
-    };
-  }, []);
-
-  return (
-    <span ref={shellRef} className="particle-anchor" aria-hidden="true">
-      <canvas ref={canvasRef} className="particle-canvas" />
-    </span>
-  );
-}
-
-function BrandPanel() {
-  return (
-    <section className="brand-panel" aria-label="RCA Archive">
-      <div className="brand-logo">
-        <img src={rcaLogo} alt="RCA Logo" />
-      </div>
-
-      <div className="brand-name">RCA ARCHIVE+</div>
-      <div className="brand-school">RWANDA CODING ACADEMY</div>
-      <TypingText />
-
-      <div className="feature-list">
-        <Feature icon={<DocumentIcon />} text="Complete study materials" />
-        <Feature icon={<ClockIcon />} text="Past exam papers" />
-        <Feature icon={<StarIcon />} text="Quality resources" />
-      </div>
-
-      <div className="stat-row">
-        <StatCard value="1200k+" label="Students" />
-        <StatCard value="340+" label="Papers" />
-        <StatCard value="24+" label="Subjects" />
-      </div>
-    </section>
-  );
-}
-
-function TypingText() {
-  const phrases = useMemo(
-    () => [
-      "Access past papers & study materials",
-      "Built for RCA students",
-      "Your archive, anytime, anywhere",
-    ],
-    [],
-  );
-  const [phraseIndex, setPhraseIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    const current = phrases[phraseIndex];
-    let delay = deleting ? 38 : 58;
-
-    if (!deleting && charIndex === current.length) {
-      delay = 1800;
-    }
-
-    const timeout = setTimeout(() => {
-      if (!deleting && charIndex === current.length) {
-        setDeleting(true);
-        return;
-      }
-
-      if (deleting && charIndex === 0) {
-        setDeleting(false);
-        setPhraseIndex((value) => (value + 1) % phrases.length);
-        return;
-      }
-
-      setCharIndex((value) => value + (deleting ? -1 : 1));
-    }, delay);
-
-    return () => clearTimeout(timeout);
-  }, [charIndex, deleting, phraseIndex, phrases]);
-
-  return (
-    <div className="typing-text">
-      {phrases[phraseIndex].slice(0, charIndex)}
+              <Button
+                variant="primary"
+                size="md"
+                type="submit"
+                loading={loading}
+                style={{ width: "100%", marginTop: "12px" }}
+              >
+                Set New Password
+              </Button>
+            </form>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
-
-function SubmitButton({ children, loading }) {
-  return (
-    <button className="login-btn" type="submit" disabled={loading}>
-      <span className={loading ? "button-text hidden" : "button-text"}>
-        {children}
-      </span>
-      {loading && <span className="button-spinner" />}
-    </button>
-  );
-}
-
-function Message({ error, success }) {
-  if (error) return <div className="error-msg">{error}</div>;
-  if (success) return <div className="success-msg">{success}</div>;
-  return null;
-}
-
-function Feature({ icon, text }) {
-  return (
-    <div className="feature">
-      <span>{icon}</span>
-      {text}
-    </div>
-  );
-}
-
-function StatCard({ value, label }) {
-  return (
-    <div className="stat-card">
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path
-        d="M2 7l3.5 3.5L11 3"
-        stroke="white"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function DocumentIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
-}
-
-function StarIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  );
-}
-
-export default ResetPassword;

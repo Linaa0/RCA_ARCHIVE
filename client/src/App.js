@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
-import Sidebar from "./components/Sidebar";
-import SearchBar from "./components/SearchBar";
-import Stats from "./components/Stats";
+import { Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
+import DashboardShell from "./layouts/DashboardShell";
+import DashboardHome from "./components/DashboardHome";
 import SubjectsList from "./components/SubjectsList";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
@@ -11,9 +10,9 @@ import AdminDashboard from "./components/AdminDashboard";
 import SubjectPage from "./components/SubjectPage";
 import PrivateRoute from "./components/PrivateRoute";
 import FileViewer from "./components/FileViewer";
-import Footer from "./components/Footer";
 import ReportIssue from "./components/ReportIssue";
 import Landing from "./components/Landing";
+import NotFound from "./components/NotFound";
 import "./styles/App.css";
 import api from "./services/api";
 import { isAuthenticated, getStoredRole } from "./utils/auth";
@@ -68,139 +67,60 @@ const allSubjectsByYear = {
   3: year3Subjects,
 };
 
-const typeColors = {
-  pdf: { bg: "#2563eb", label: "PDF" },
-  docx: { bg: "#2563eb", label: "DOCX" },
-  pptx: { bg: "#f97316", label: "PPTX" },
-  doc: { bg: "#2563eb", label: "DOC" },
-};
-
-function getTypeInfo(filename = "") {
-  const ext = filename.split(".").pop().toLowerCase();
-  return typeColors[ext] || { bg: "#6b7280", label: ext.toUpperCase() };
-}
-
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Today";
-  if (days === 1) return "1 day ago";
-  if (days < 7) return `${days} days ago`;
-  const weeks = Math.floor(days / 7);
-  return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
-}
-
-function RecentlyAdded() {
-  const [papers, setPapers] = useState([]);
-
-  useEffect(() => {
-    api
-      .get("/papers?sort=recent&limit=5")
-      .then(({ data }) =>
-        setPapers(Array.isArray(data) ? data.slice(0, 5) : []),
-      )
-      .catch(() => setPapers([]));
-  }, []);
-
-  if (papers.length === 0) return null;
-
-  return (
-    <div className="recently-added-section">
-      <div className="recently-added-inner">
-        <div className="recently-added-header">
-          <div>
-            <div
-              className="recently-added-title-row"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "4px",
-              }}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-              </svg>
-              <h2 className="recently-added-title">Recently Added</h2>
-            </div>
-            <p className="recently-added-sub">
-              Latest materials uploaded by RCA
-            </p>
-          </div>
-          <a
-            href="#subjects"
-            className="view-all-link"
-            style={{
-              color: "#2563eb",
-              textDecoration: "none",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-            }}
-          >
-            View all →
-          </a>
-        </div>
-
-        <div className="recently-added-grid">
-          {papers.map((paper) => {
-            const typeInfo = getTypeInfo(paper.filename || paper.title || "");
-            return (
-              <a
-                key={paper.id}
-                href={`/view/${paper.id}`}
-                className="recent-card"
-              >
-                <div
-                  className="recent-card-icon"
-                  style={{ background: typeInfo.bg }}
-                >
-                  {typeInfo.label}
-                </div>
-                <div className="recent-card-title">{paper.title}</div>
-                <div className="recent-card-meta">
-                  {typeInfo.label} · Year {paper.year}
-                </div>
-                <div className="recent-card-age">
-                  {timeAgo(paper.uploadedAt)}
-                </div>
-              </a>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PaperCard({ paper }) {
+function PaperResultCard({ paper }) {
   const date = new Date(paper.uploadedAt).toLocaleDateString();
-  const meta = `${paper.subject} • Year ${paper.year} • ${paper.type} • Uploaded by ${paper.uploadedBy} • ${date}`;
+  const meta = `${paper.subject} • Year ${paper.year} • ${paper.type} • Uploaded by ${paper.uploadedBy || "Faculty"} • ${date}`;
 
   return (
-    <div className="paper-card">
-      <div className="paper-info">
-        <strong>{paper.title}</strong>
-        <span className="paper-meta">{meta}</span>
+    <div
+      style={{
+        background: "#ffffff",
+        borderRadius: "18px",
+        padding: "20px 24px",
+        border: "1px solid var(--card-border)",
+        boxShadow: "var(--shadow-sm)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "16px",
+        flexWrap: "wrap",
+      }}
+    >
+      <div style={{ flex: 1, minWidth: "240px" }}>
+        <strong style={{ fontSize: "1.05rem", color: "var(--text-primary)", display: "block", marginBottom: "4px" }}>
+          {paper.title}
+        </strong>
+        <span style={{ fontSize: "0.825rem", color: "var(--text-tertiary)" }}>{meta}</span>
       </div>
-      <div className="paper-actions">
+      <div style={{ display: "flex", gap: "10px" }}>
         <a
           href={`/view/${paper.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="view-btn"
+          style={{
+            padding: "8px 22px",
+            borderRadius: "999px",
+            background: "var(--primary-accent)",
+            color: "#ffffff",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            textDecoration: "none",
+            boxShadow: "0 4px 12px rgba(91, 115, 224, 0.25)",
+          }}
         >
           View
         </a>
-        <a href={`/api/papers/${paper.id}/download`} className="download-btn">
+        <a
+          href={`/api/papers/${paper.id}/download`}
+          style={{
+            padding: "8px 22px",
+            borderRadius: "999px",
+            background: "var(--canvas-bg)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-subtle)",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            textDecoration: "none",
+          }}
+        >
           Download
         </a>
       </div>
@@ -208,102 +128,172 @@ function PaperCard({ paper }) {
   );
 }
 
-function HomeContent({
+function AuthenticatedHome({
   search,
   setSearch,
-  onSearch,
+  handleSearch,
   results,
   loading,
   clearSearch,
   activeYear,
   setActiveYear,
-  isDarkMode,
-  toggleDarkMode,
+  papers,
 }) {
   return (
-    <div className="page-layout-with-sidebar" id="years">
-      <Sidebar
-        activeYear={activeYear}
-        onYearChange={setActiveYear}
-        allYears={[1, 2, 3]}
-        isDarkMode={isDarkMode}
-        toggleDarkMode={toggleDarkMode}
-      />
-      <div className="main-content-panel">
-        {results !== null ? (
-          <>
-            <SearchBar
-              search={search}
-              setSearch={setSearch}
-              onSearch={onSearch}
-            />
-            <div className="search-results-section">
-              <div className="search-results-header">
-                <h3>
-                  {loading
-                    ? "Searching..."
-                    : `${results.length} result(s) for "${search}"`}
+    <DashboardShell onSearch={handleSearch} currentSearch={search}>
+      {results !== null ? (
+        <div
+          style={{
+            background: "#ffffff",
+            borderRadius: "24px",
+            padding: "32px",
+            boxShadow: "var(--shadow-card)",
+            border: "1px solid var(--card-border)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "24px",
+              flexWrap: "wrap",
+              gap: "12px",
+            }}
+          >
+            <div>
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  color: "var(--primary-accent)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                Search Results
+              </span>
+              <h2 style={{ fontSize: "1.45rem", fontWeight: 800, marginTop: "2px" }}>
+                {loading ? "Searching archive..." : `${results.length} result(s) for "${search}"`}
+              </h2>
+            </div>
+            <button
+              onClick={clearSearch}
+              style={{
+                padding: "8px 20px",
+                borderRadius: "999px",
+                background: "var(--canvas-bg)",
+                border: "1px solid var(--border-subtle)",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+              }}
+            >
+              Clear search
+            </button>
+          </div>
+
+          {results.length === 0 ? (
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+              No papers found matching "{search}". Try searching by subject or exam type.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {results.map((paper) => (
+                <PaperResultCard key={paper.id} paper={paper} />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <DashboardHome papers={papers} />
+
+          {/* Subjects explorer section */}
+          <div
+            id="subjects"
+            style={{
+              marginTop: "36px",
+              background: "#ffffff",
+              borderRadius: "24px",
+              padding: "32px",
+              boxShadow: "var(--shadow-card)",
+              border: "1px solid var(--card-border)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "24px",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: "var(--primary-accent)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Curriculum Repository
+                </span>
+                <h3 style={{ fontSize: "1.35rem", fontWeight: 800, marginTop: "2px" }}>
+                  Explore Subjects by Cohort
                 </h3>
-                <button className="clear-search-btn" onClick={clearSearch}>
-                  Clear search
-                </button>
               </div>
-              {results.length === 0 ? (
-                <p className="no-results">No papers found for "{search}".</p>
-              ) : (
-                <div>
-                  {results.map((paper) => (
-                    <PaperCard key={paper.id} paper={paper} />
-                  ))}
-                </div>
-              )}
+              <div style={{ display: "flex", gap: "8px" }}>
+                {[1, 2, 3].map((y) => (
+                  <button
+                    key={y}
+                    onClick={() => setActiveYear(y)}
+                    style={{
+                      padding: "8px 22px",
+                      borderRadius: "999px",
+                      fontSize: "0.88rem",
+                      fontWeight: 600,
+                      border: "1px solid var(--border-subtle)",
+                      background: activeYear === y ? "var(--sidebar-bg)" : "#ffffff",
+                      color: activeYear === y ? "#ffffff" : "var(--text-secondary)",
+                      cursor: "pointer",
+                      boxShadow: activeYear === y ? "0 4px 12px rgba(59, 76, 163, 0.25)" : "none",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    Year {y}
+                  </button>
+                ))}
+              </div>
             </div>
-          </>
-        ) : (
-          <>
-            <div className="home-hero">
-              <SearchBar
-                search={search}
-                setSearch={setSearch}
-                onSearch={onSearch}
-              />
-              <Stats />
-            </div>
-            <div className="home-after-hero">
-              <SubjectsList
-                subjects={allSubjectsByYear[activeYear]}
-                activeYear={activeYear}
-              />
-              <RecentlyAdded />
-            </div>
-          </>
-        )}
-        <Footer />
-      </div>
-    </div>
+
+            <SubjectsList subjects={allSubjectsByYear[activeYear]} activeYear={activeYear} />
+          </div>
+        </>
+      )}
+    </DashboardShell>
   );
 }
-
-// ─── Main App ─────────────────────────────────────────────────────────────────
 
 function App() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeYear, setActiveYear] = useState(2);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-
+  const [papers, setPapers] = useState([]);
   const location = useLocation();
 
   useEffect(() => {
-    document.body.classList.toggle("light-mode", !isDarkMode);
-    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
-
-  const toggleDarkMode = () => setIsDarkMode((d) => !d);
+    // Fetch papers for dashboard widgets
+    api
+      .get("/papers?sort=recent&limit=12")
+      .then(({ data }) => setPapers(Array.isArray(data) ? data : []))
+      .catch(() => setPapers([]));
+  }, []);
 
   useEffect(() => {
     if (location.pathname !== "/" && location.pathname !== "/home") return;
@@ -320,13 +310,13 @@ function App() {
     }
   }, [location, activeYear]);
 
-  const handleSearch = async () => {
-    if (!search.trim()) return;
+  const handleSearch = async (term) => {
+    const query = typeof term === "string" ? term : search;
+    if (!query || !query.trim()) return;
     setLoading(true);
+    setSearch(query);
     try {
-      const { data } = await api.get(
-        "/papers?search=" + encodeURIComponent(search),
-      );
+      const { data } = await api.get("/papers?search=" + encodeURIComponent(query));
       setResults(data);
     } catch (err) {
       console.error("Search failed", err);
@@ -342,22 +332,19 @@ function App() {
   return (
     <div className="app-container">
       <Routes>
-        {/* Landing page (public) - redirect authenticated users */}
+        {/* Landing page (public) */}
         <Route
           path="/"
           element={
             isAuthenticated() ? (
-              <Navigate
-                to={getStoredRole() === "admin" ? "/admin" : "/home"}
-                replace
-              />
+              <Navigate to={getStoredRole() === "admin" ? "/admin" : "/home"} replace />
             ) : (
               <Landing />
             )
           }
         />
 
-        {/* Public routes */}
+        {/* Auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -373,26 +360,49 @@ function App() {
           }
         />
 
-        {/* Authenticated routes */}
+        {/* Authenticated routes in DashboardShell */}
         <Route
           path="/home"
           element={
             <PrivateRoute>
-              <HomeContent
+              <AuthenticatedHome
                 search={search}
                 setSearch={setSearch}
-                onSearch={handleSearch}
+                handleSearch={handleSearch}
                 results={results}
                 loading={loading}
                 clearSearch={clearSearch}
                 activeYear={activeYear}
                 setActiveYear={setActiveYear}
-                isDarkMode={isDarkMode}
-                toggleDarkMode={toggleDarkMode}
+                papers={papers}
               />
             </PrivateRoute>
           }
         />
+
+        <Route
+          path="/subject/:year/:subject"
+          element={
+            <PrivateRoute>
+              <DashboardShell>
+                <SubjectPage />
+              </DashboardShell>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/report-issue"
+          element={
+            <PrivateRoute>
+              <DashboardShell>
+                <ReportIssue />
+              </DashboardShell>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Dedicated File Viewer (full-screen focus) */}
         <Route
           path="/view/:id"
           element={
@@ -401,46 +411,9 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/subject/:year/:subject"
-          element={
-            <PrivateRoute>
-              <div className="page-layout-with-sidebar">
-                <Sidebar
-                  activeYear={activeYear}
-                  onYearChange={setActiveYear}
-                  allYears={[1, 2, 3]}
-                  isDarkMode={isDarkMode}
-                  toggleDarkMode={toggleDarkMode}
-                />
-                <div className="main-content-panel">
-                  <SubjectPage />
-                  <Footer />
-                </div>
-              </div>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/report-issue"
-          element={
-            <PrivateRoute>
-              <div className="page-layout-with-sidebar">
-                <Sidebar
-                  activeYear={activeYear}
-                  onYearChange={setActiveYear}
-                  allYears={[1, 2, 3]}
-                  isDarkMode={isDarkMode}
-                  toggleDarkMode={toggleDarkMode}
-                />
-                <div className="main-content-panel">
-                  <ReportIssue />
-                  <Footer />
-                </div>
-              </div>
-            </PrivateRoute>
-          }
-        />
+
+        {/* Fallback 404 */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
   );
