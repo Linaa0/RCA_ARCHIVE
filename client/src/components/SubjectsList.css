@@ -1,0 +1,126 @@
+/* SubjectsList - Smart Dashboard Style */
+
+.subjects-wrapper-grid-only {
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.subjects-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.subjects-section-title {
+  font-family: var(--font-family);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.subjects-section-sub {
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.view-all-link {
+  font-family: var(--font-family);
+  font-size: 0.88rem;
+  color: var(--primary-accent);
+  text-decoration: none;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: gap var(--transition-fast);
+}
+
+.view-all-link:hover {
+  gap: 8px;
+}
+
+/* Subject Grid */
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.subject-card {
+  background: var(--card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card-sm);
+  padding: 20px 18px;
+  text-decoration: none;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-fast);
+}
+
+.subject-card:hover {
+  background: #ffffff;
+  border-color: var(--primary-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.subject-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.subject-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(91, 115, 224, 0.12) !important;
+  color: var(--primary-accent) !important;
+  flex-shrink: 0;
+}
+
+.subject-card-top h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.subject-card p {
+  font-size: 0.825rem;
+  color: var(--text-tertiary);
+  margin: 0 0 16px;
+  font-weight: 500;
+}
+
+.subject-card-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--divider);
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--primary-accent);
+}
+
+.subject-arrow {
+  transition: transform var(--transition-fast);
+}
+
+.subject-card:hover .subject-arrow {
+  transform: translateX(4px);
+}

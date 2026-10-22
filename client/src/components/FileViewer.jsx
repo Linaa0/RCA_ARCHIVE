@@ -1,0 +1,263 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import api, { API_ROOT } from "../services/api";
+import { ArrowLeftIcon, DownloadIcon, EyeIcon } from "./ui/Icons";
+
+export default function FileViewer() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [paper, setPaper] = useState(null);
+  const [error, setError] = useState(null);
+  const [textContent, setTextContent] = useState("");
+  const [textLoading, setTextLoading] = useState(false);
+  const [textError, setTextError] = useState(null);
+
+  const fileUrl = paper ? `${API_ROOT}/api/papers/${paper.id}/view` : null;
+  const downloadUrl = paper ? `${API_ROOT}/api/papers/${paper.id}/download` : null;
+  const ext = paper?.originalName?.split(".").pop().toLowerCase();
+
+  const iframeExtensions = [
+    "pdf",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "svg",
+    "html",
+    "htm",
+  ];
+  const audioExtensions = ["mp3", "wav", "ogg"];
+  const videoExtensions = ["mp4", "mov", "avi", "webm"];
+  const textExtensions = ["txt", "md", "csv", "json"];
+  const officeExtensions = [
+    "doc",
+    "docx",
+    "ppt",
+    "pptx",
+    "xls",
+    "xlsx",
+    "odt",
+    "ods",
+    "odp",
+  ];
+
+  const officeViewerUrl = officeExtensions.includes(ext)
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`
+    : null;
+
+  const canEmbedInIframe = iframeExtensions.includes(ext) || Boolean(officeViewerUrl);
+  const canRenderText = textExtensions.includes(ext);
+  const canRenderAudio = audioExtensions.includes(ext);
+  const canRenderVideo = videoExtensions.includes(ext);
+
+  useEffect(() => {
+    api.get("/papers")
+      .then(({ data: papers }) => {
+        const found = papers.find((p) => p.id === id);
+        if (found) setPaper(found);
+        else setError("Paper not found");
+      })
+      .catch(() => setError("Failed to load paper"));
+  }, [id]);
+
+  useEffect(() => {
+    if (!paper || !canRenderText) {
+      setTextContent("");
+      setTextError(null);
+      setTextLoading(false);
+      return;
+    }
+
+    setTextLoading(true);
+    setTextError(null);
+
+    fetch(fileUrl)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Preview failed");
+        return res.text();
+      })
+      .then((text) => setTextContent(text))
+      .catch(() => setTextError("Preview not available"))
+      .finally(() => setTextLoading(false));
+  }, [fileUrl, paper, canRenderText]);
+
+  const handleClose = () => {
+    const historyIndex = window.history.state?.idx;
+    if (typeof historyIndex === "number" && historyIndex > 0) {
+      navigate(-1);
+    } else {
+      navigate("/home", { replace: true });
+    }
+  };
+
+  if (error) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--canvas-bg)", color: "var(--text-primary)" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--danger)", marginBottom: "16px" }}>{error}</p>
+        <button
+          onClick={handleClose}
+          style={{ padding: "10px 24px", borderRadius: "999px", background: "var(--sidebar-bg)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}
+        >
+          Return to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  if (!paper) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--canvas-bg)" }}>
+        <div style={{ width: "40px", height: "40px", border: "3px solid #E2E8F0", borderTopColor: "var(--primary-accent)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ marginTop: "16px", color: "var(--text-secondary)", fontWeight: 500 }}>Loading document viewer...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--canvas-bg)", fontFamily: "var(--font-family)" }}>
+      {/* Modern Topbar matching Smart Dashboard */}
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 28px",
+          background: "#ffffff",
+          borderBottom: "1px solid var(--border-subtle)",
+          boxShadow: "0 2px 8px rgba(30, 37, 71, 0.04)",
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={handleClose}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "var(--canvas-bg)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-primary)",
+            padding: "8px 18px",
+            borderRadius: "999px",
+            cursor: "pointer",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--primary-accent)";
+            e.currentTarget.style.color = "var(--primary-accent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-subtle)";
+            e.currentTarget.style.color = "var(--text-primary)";
+          }}
+        >
+          <ArrowLeftIcon size={16} />
+          <span>Back</span>
+        </button>
+
+        <div style={{ textAlign: "center", maxWidth: "600px" }}>
+          <h1 style={{ margin: 0, color: "var(--text-primary)", fontWeight: 700, fontSize: "1.05rem" }}>
+            {paper.title}
+          </h1>
+          <p style={{ margin: "2px 0 0", color: "var(--text-tertiary)", fontSize: "0.8rem", fontWeight: 500 }}>
+            {paper.subject} • Year {paper.year} • {paper.type}
+          </p>
+        </div>
+
+        <a
+          href={downloadUrl}
+          download={paper.originalName}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "var(--sidebar-bg)",
+            color: "#ffffff",
+            padding: "9px 22px",
+            borderRadius: "999px",
+            textDecoration: "none",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+            boxShadow: "0 4px 12px rgba(59, 76, 163, 0.25)",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#313f8c";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--sidebar-bg)";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          <DownloadIcon size={16} />
+          <span>Download</span>
+        </a>
+      </header>
+
+      {/* File display */}
+      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+        {canEmbedInIframe ? (
+          <iframe
+            src={officeViewerUrl || fileUrl}
+            title={paper.title}
+            style={{ width: "100%", height: "100%", border: "none" }}
+          />
+        ) : canRenderVideo ? (
+          <video
+            controls
+            src={fileUrl}
+            style={{ width: "100%", height: "100%", background: "#000" }}
+          />
+        ) : canRenderAudio ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+            <audio controls src={fileUrl} style={{ width: "80%", maxWidth: "600px" }} />
+          </div>
+        ) : canRenderText ? (
+          <div style={{ padding: "32px", overflowY: "auto", height: "100%", background: "#ffffff", color: "var(--text-primary)" }}>
+            {textLoading ? (
+              <p>Loading text preview...</p>
+            ) : textError ? (
+              <p style={{ color: "var(--danger)" }}>{textError}</p>
+            ) : (
+              <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "Consolas, monospace", fontSize: "13px", lineHeight: "1.6" }}>
+                {textContent}
+              </pre>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "16px", padding: "24px" }}>
+            <div style={{ background: "#ffffff", borderRadius: "24px", padding: "40px", textAlign: "center", maxWidth: "500px", boxShadow: "0 6px 20px rgba(30, 37, 71, 0.06)", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ width: "56px", height: "56px", borderRadius: "18px", background: "rgba(91, 115, 224, 0.12)", color: "var(--primary-accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <EyeIcon size={26} />
+              </div>
+              <h3 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "8px" }}>File Preview Not Supported</h3>
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: "1.5", marginBottom: "24px" }}>
+                This file format is not directly embeddable in the web viewer, but you can download it or open it directly in a new tab.
+              </p>
+              <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                <a
+                  href={downloadUrl}
+                  download={paper.originalName}
+                  style={{ background: "var(--sidebar-bg)", color: "#ffffff", padding: "10px 24px", borderRadius: "999px", textDecoration: "none", fontSize: "0.9rem", fontWeight: 600 }}
+                >
+                  Download File
+                </a>
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ background: "var(--canvas-bg)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", padding: "10px 24px", borderRadius: "999px", textDecoration: "none", fontSize: "0.9rem", fontWeight: 600 }}
+                >
+                  Open in New Tab
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

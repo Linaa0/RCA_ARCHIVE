@@ -1,0 +1,147 @@
+/* Teacher Management - Smart Dashboard Style */
+
+.teacher-management {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.teacher-topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.section-kicker {
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary-accent);
+}
+
+.teacher-topbar h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.teacher-tools {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.teacher-tools input {
+  border: 1px solid var(--border-subtle);
+  background: #ffffff;
+  color: var(--text-primary);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  outline: none;
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  min-width: 240px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.teacher-tools input:focus {
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+}
+
+.ghost-btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: #ffffff;
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.ghost-btn:hover {
+  border-color: var(--primary-accent);
+  color: var(--primary-accent);
+}
+
+.btn-primary {
+  padding: 10px 22px;
+  border-radius: var(--radius-pill);
+  background: var(--sidebar-bg);
+  color: #ffffff;
+  font-family: var(--font-family);
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 76, 163, 0.25);
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover {
+  background: #313f8c;
+  transform: translateY(-1px);
+}
+
+/* Modals & Dialogs */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 37, 71, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: #ffffff;
+  border-radius: var(--radius-card);
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: var(--shadow-dropdown);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.modal-content h3 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.modal-content input,
+.modal-content select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-subtle);
+  background: var(--card-subtle);
+  font-size: 0.925rem;
+  color: var(--text-primary);
+  outline: none;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+.modal-content input:focus,
+.modal-content select:focus {
+  border-color: var(--primary-accent);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+}

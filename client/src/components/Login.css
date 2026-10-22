@@ -1,0 +1,405 @@
+/* ==========================================================================
+   RCA ARCHIVE - AUTHENTICATION STYLESHEET
+   100dvh Fixed-Height Split Screen (No Desktop Page Scroll)
+   ========================================================================== */
+
+.auth-split-layout {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background-color: var(--color-bg, #EEF0F6);
+  font-family: var(--font-family, 'Inter', sans-serif);
+}
+
+/* ── Left Premium Indigo Mesh Panel ── */
+.auth-brand-pane {
+  background: radial-gradient(circle at 10% 15%, rgba(91, 115, 224, 0.45) 0%, transparent 45%),
+              radial-gradient(circle at 90% 85%, rgba(35, 44, 107, 0.6) 0%, transparent 50%),
+              linear-gradient(145deg, #232C6B 0%, #303E8A 50%, #3F4FA8 100%);
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-brand-header {
+  display: flex;
+  align-items: center;
+}
+
+.auth-brand-center {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 480px;
+}
+
+.auth-headline-box {
+  animation: authFadeIn 0.4s ease-out;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-kicker {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #C7D2FE;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.auth-headline-title {
+  font-size: 2.15rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: #FFFFFF;
+  margin-bottom: 12px;
+}
+
+.auth-headline-sub {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Animated Showcase: Stacked Archive Shelf Cards */
+.auth-showcase-stack {
+  position: relative;
+  height: 130px;
+  margin-top: 8px;
+}
+
+.showcase-card {
+  position: absolute;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 18px;
+  padding: 16px 20px;
+  box-shadow: 0 14px 34px rgba(27, 33, 66, 0.28);
+  transition: all 0.3s ease;
+}
+
+.showcase-card-back {
+  top: 0px;
+  left: 24px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transform: scale(0.92);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.showcase-card-mid {
+  top: 14px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transform: scale(0.96);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.showcase-card-front {
+  top: 28px;
+  left: 0px;
+  background: #FFFFFF;
+  border: 1px solid rgba(63, 79, 168, 0.12);
+  z-index: 3;
+  animation: cardSlideFloat 5s ease-in-out infinite alternate;
+}
+
+@keyframes cardSlideFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-6px); }
+}
+
+.card-tab-edge {
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  width: 50px;
+  height: 8px;
+  background: #D8DFFA;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  border: 1px solid rgba(63, 79, 168, 0.12);
+  border-bottom: none;
+}
+
+.doc-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+}
+
+.doc-pill-primary {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--color-indigo-100, #E4E8FA);
+  color: var(--color-indigo-700, #3F4FA8);
+}
+
+.doc-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* 3 Honest Trust Chips */
+.auth-trust-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-trust-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+/* ── Right Auth Form Panel (Compact, 100dvh) ── */
+.auth-form-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: var(--color-bg, #EEF0F6);
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.auth-form-card {
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: var(--radius-card, 24px);
+  padding: 36px 38px;
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--color-border, rgba(63, 79, 168, 0.08));
+}
+
+.auth-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted, #6A7399);
+  text-decoration: none;
+  margin-bottom: 16px;
+  transition: color 0.2s ease;
+}
+
+.auth-back-link:hover {
+  color: var(--color-indigo-700, #3F4FA8);
+}
+
+.auth-form-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-ink, #1B2142);
+  letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+
+.auth-form-subtitle {
+  font-size: 0.88rem;
+  color: var(--color-muted, #6A7399);
+  line-height: 1.45;
+  margin-bottom: 20px;
+}
+
+.auth-alert-error {
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.10);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #EF4444;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.auth-alert-info {
+  padding: 10px 14px;
+  background: rgba(16, 185, 129, 0.10);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #10B981;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.compact-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-switch-prompt {
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--color-muted, #6A7399);
+  margin-top: 10px;
+}
+
+.auth-switch-prompt a {
+  color: var(--color-indigo-700, #3F4FA8);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-switch-prompt a:hover {
+  text-decoration: underline;
+}
+
+/* ── Wizard Progress Bar ── */
+.wizard-progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 4px;
+}
+
+.wizard-step-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  flex: 1;
+}
+
+.wizard-step-node:last-child {
+  flex: 0;
+}
+
+.step-bubble {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-bg, #EEF0F6);
+  border: 1px solid rgba(63, 79, 168, 0.16);
+  color: var(--color-muted, #6A7399);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.step-bubble.active {
+  background: var(--color-indigo-700, #3F4FA8);
+  border-color: var(--color-indigo-700, #3F4FA8);
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(63, 79, 168, 0.3);
+}
+
+.step-bubble.completed {
+  background: #10B981;
+  border-color: #10B981;
+  color: #FFFFFF;
+}
+
+.step-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-ink-subtle, #3A4269);
+  white-space: nowrap;
+}
+
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: #E7EBF5;
+  margin: 0 10px;
+  transition: background 0.25s ease;
+}
+
+.step-line.filled {
+  background: #10B981;
+}
+
+/* ── Segmented OTP Row ── */
+.segmented-otp-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 12px;
+}
+
+.otp-digit-box {
+  width: 48px;
+  height: 54px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(63, 79, 168, 0.18);
+  background: #FFFFFF;
+  text-align: center;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--color-indigo-700, #3F4FA8);
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-xs);
+}
+
+.otp-digit-box:focus {
+  border-color: var(--color-indigo-500, #5B73E0);
+  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.25);
+  transform: translateY(-1px);
+}
+
+/* ── Responsive Breakpoints ── */
+@media (max-width: 900px) {
+  .auth-split-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .auth-brand-pane {
+    display: none;
+  }
+
+  .auth-form-pane {
+    height: auto;
+    min-height: 100vh;
+    padding: 32px 20px;
+  }
+
+  .auth-form-card {
+    padding: 28px 24px;
+  }
+}

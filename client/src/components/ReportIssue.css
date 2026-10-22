@@ -1,0 +1,102 @@
+/* Report Issue - Smart Dashboard Aesthetic */
+
+.report-issue-page {
+  flex: 1;
+  background: var(--canvas-bg);
+  padding: 32px 40px;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  font-family: var(--font-family);
+}
+
+.report-issue-panel {
+  width: 100%;
+  max-width: 780px;
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  padding: 40px;
+  box-shadow: var(--shadow-card);
+}
+
+.report-issue-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.report-issue-kicker {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--primary-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.report-issue-header h1 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.report-issue-header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.report-issue-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.report-issue-form input,
+.report-issue-form select,
+.report-issue-form textarea {
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-subtle);
+  background: var(--card-subtle);
+  font-family: var(--font-family);
+  font-size: 0.925rem;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: all var(--transition-fast);
+}
+
+.report-issue-form input:focus,
+.report-issue-form select:focus,
+.report-issue-form textarea:focus {
+  background: #ffffff;
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+}
+
+.report-issue-submit {
+  padding: 14px 32px;
+  border-radius: var(--radius-pill);
+  background: var(--sidebar-bg);
+  color: #ffffff;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  box-shadow: 0 4px 14px rgba(59, 76, 163, 0.25);
+  transition: all var(--transition-fast);
+}
+
+.report-issue-submit:hover {
+  background: #313f8c;
+  transform: translateY(-1px);
+}

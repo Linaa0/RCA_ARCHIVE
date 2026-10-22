@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+client/.env
+server/.env
+rcabackend/.env
+
+# Build outputs
+dist/
+client/dist/
+build/
+
+# Uploaded files
+server/uploads/*
+!server/uploads/.gitkeep
+rcabackend/uploads/*
+!rcabackend/uploads/.gitkeep
+downloaded_*.pdf
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+submissions/
