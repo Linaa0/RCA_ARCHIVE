@@ -22,7 +22,7 @@ const {
   validatePasswordStrength,
   isValidEmail,
 } = require("../middleware/validation");
-const { normalizeEmail } = require("../utils/userUtils");
+const { normalizeEmail, escapeRegExp } = require("../utils/userUtils");
 const { getFrontendBaseUrl, buildPasswordSetupUrl } = require("../utils/urlUtils");
 const {
   generateOtp,
@@ -373,13 +373,24 @@ async function signup(req, res) {
 }
 
 async function login(req, res) {
-  const { email, password } = req.body;
+  const identifier = (req.body.email || req.body.identifier || req.body.username || "").trim();
+  const { password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+  if (!identifier || !password) {
+    return res.status(400).json({ error: "Email or username and password are required" });
   }
 
-  const user = await findUserByEmail(email);
+  const normalizedInput = normalizeEmail(identifier);
+  const users = getUsersCollection();
+  let user = await users.findOne({
+    $or: [
+      { email: normalizedInput },
+      { email: { $regex: new RegExp(`^${escapeRegExp(normalizedInput)}$`, "i") } },
+      { username: { $regex: new RegExp(`^${escapeRegExp(identifier)}$`, "i") } },
+      { name: { $regex: new RegExp(`^${escapeRegExp(identifier)}$`, "i") } },
+    ],
+  });
+
   if (!user) {
     return res.status(400).json({ error: "User not found" });
   }
@@ -394,7 +405,7 @@ async function login(req, res) {
     });
   }
 
-  const normalizedEmail = normalizeEmail(email);
+  const normalizedEmail = normalizeEmail(user.email);
   const initialAttempts = await checkFailedAttempts(normalizedEmail);
 
   if (initialAttempts >= 3) {
@@ -423,7 +434,6 @@ async function login(req, res) {
 
   let role = user.role;
   if (ADMIN_BOOTSTRAP_EMAILS.includes(normalizedEmail) && role !== "admin") {
-    const users = getUsersCollection();
     await users.updateOne(
       { email: normalizedEmail },
       { $set: { role: "admin", updatedAt: new Date().toISOString() } }
@@ -433,7 +443,7 @@ async function login(req, res) {
 
   const token = jwt.sign(
     {
-      id: user.id,
+      id: user.id || user._id?.toString(),
       email: user.email,
       username: user.name || user.username,
       role,
@@ -445,8 +455,14 @@ async function login(req, res) {
   res.json({
     token,
     email: user.email,
-    username: user.username,
+    username: user.name || user.username,
     role,
+    user: {
+      id: user.id || user._id?.toString(),
+      email: user.email,
+      username: user.name || user.username,
+      role,
+    },
   });
 }
 

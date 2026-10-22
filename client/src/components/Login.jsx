@@ -34,22 +34,28 @@ export default function Login() {
     try {
       const { data } = await api.post("/login", {
         identifier: identifier.trim(),
+        email: identifier.trim(),
         password,
       });
 
       // Persist auth tokens & user session
       persistAuth(data);
 
-      if (data.user?.role === "admin") {
+      const userRole = data.user?.role || data.role;
+      if (userRole === "admin") {
         navigate(redirectTarget === "/home" ? "/admin" : redirectTarget, { replace: true });
       } else {
         navigate(redirectTarget, { replace: true });
       }
     } catch (err) {
-      const msg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Invalid email/username or password.";
+      let msg = "Invalid email/username or password.";
+      if (err.code === "ERR_NETWORK" || err.message === "Network Error") {
+        msg = "Network Error: Could not connect to the backend server. Please check your internet connection or verify the API server is reachable.";
+      } else if (err.response?.data?.error) {
+        msg = err.response.data.error;
+      } else if (err.response?.data?.message) {
+        msg = err.response.data.message;
+      }
       setError(msg);
     } finally {
       setLoading(false);
