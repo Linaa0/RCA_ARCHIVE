@@ -224,7 +224,6 @@ export default function TeacherManagement({ onUpdated }) {
             variant="primary"
             size="sm"
             onClick={() => {
-              setEditingTeacher(null);
               setFormData(EMPTY_FORM);
               setIsModalOpen(true);
             }}
