@@ -1172,7 +1172,7 @@
    7. ROLES SECTION (3 CARDS)
    ========================================================================== */
 .landing-roles-section {
-  padding: 96px 0;
+  padding: 96px 0 125px 0;
   background: var(--color-surface, #FFFFFF);
 }
 
@@ -1215,7 +1215,7 @@
 }
 
 .role-card-desc {
-  font-size: 0.925rem;
+  font-size: 0.95rem;
   color: var(--color-muted, #6A7399);
   line-height: 1.6;
   margin-bottom: 24px;
@@ -1251,14 +1251,16 @@
 .landing-cta-section {
   position: relative;
   z-index: 10;
-  margin-bottom: -60px;
+  margin-top: -85px;
+  margin-bottom: -85px;
 }
 
 .cta-overlap-card {
   background: linear-gradient(135deg, #232C6B 0%, #3F4FA8 60%, #5B73E0 100%);
   border-radius: var(--radius-card, 24px);
   padding: 56px 48px;
-  box-shadow: 0 24px 60px rgba(35, 44, 107, 0.35);
+  box-shadow: 0 24px 60px rgba(15, 20, 36, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1298,7 +1300,7 @@
 .landing-footer {
   background-color: var(--color-indigo-950, #191F4D);
   color: #FFFFFF;
-  padding: 120px 0 40px 0;
+  padding: 135px 0 40px 0;
   position: relative;
   z-index: 1;
 }
@@ -1438,6 +1440,33 @@
 }
 
 @media (max-width: 768px) {
+  .landing-roles-section {
+    padding-bottom: 85px;
+  }
+
+  .landing-cta-section {
+    margin-top: -55px;
+    margin-bottom: -55px;
+  }
+
+  .cta-overlap-card {
+    padding: 36px 24px;
+    gap: 24px;
+  }
+
+  .cta-buttons-right {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .cta-buttons-right button {
+    width: 100%;
+  }
+
+  .landing-footer {
+    padding-top: 95px;
+  }
+
   .landing-navbar-links {
     display: none;
   }
