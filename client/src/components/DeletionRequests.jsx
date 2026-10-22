@@ -4,66 +4,9 @@ import Table from "./ui/Table";
 import Badge from "./ui/Badge";
 import Button from "./ui/Button";
 import Tabs from "./ui/Tabs";
-import { CheckIcon, CloseIcon } from "./ui/Icons";
+import EmptyState from "./ui/EmptyState";
+import { CheckIcon, CloseIcon, TrashIcon } from "./ui/Icons";
 import "./DeletionRequests.css";
-
-const DEMO_REQUESTS = [
-  {
-    id: "demo-pending-1",
-    paperId: "PPR-2025-014",
-    paperTitle: "Mathematics — Year 2 Term 1 CAT",
-    requestedBy: "Demo Student",
-    requesterRole: "Student",
-    reason: "This upload is a duplicate of the corrected paper.",
-    requestedAt: "2025-04-12T09:30:00.000Z",
-    status: "Pending",
-    isDemo: true,
-  },
-  {
-    id: "demo-pending-2",
-    paperId: "PPR-2025-008",
-    paperTitle: "Physics — Year 1 End of Term Exam",
-    requestedBy: "Sample Learner",
-    requesterRole: "Student",
-    reason: "The file is unreadable and appears to be the wrong document.",
-    requestedAt: "2025-04-10T14:15:00.000Z",
-    status: "Pending",
-    isDemo: true,
-  },
-  {
-    id: "demo-pending-3",
-    paperId: "PPR-2025-003",
-    paperTitle: "Database — Year 3 Revision Paper",
-    requestedBy: "Test Account",
-    requesterRole: "Teacher",
-    reason: "This resource contains outdated course material.",
-    requestedAt: "2025-04-08T11:00:00.000Z",
-    status: "Pending",
-    isDemo: true,
-  },
-  {
-    id: "demo-processed-1",
-    paperId: "PPR-2025-001",
-    paperTitle: "Programming — Year 1 Practice CAT",
-    requestedBy: "Demo Student",
-    requesterRole: "Student",
-    reason: "Duplicate upload.",
-    requestedAt: "2025-04-02T08:45:00.000Z",
-    status: "Approved",
-    isDemo: true,
-  },
-  {
-    id: "demo-processed-2",
-    paperId: "PPR-2024-022",
-    paperTitle: "Networking — Year 2 Mock Exam",
-    requestedBy: "Sample Learner",
-    requesterRole: "Student",
-    reason: "The paper is still needed by other students.",
-    requestedAt: "2025-03-28T13:20:00.000Z",
-    status: "Rejected",
-    isDemo: true,
-  },
-];
 
 export default function DeletionRequests({ onUpdated }) {
   const [requests, setRequests] = useState([]);
@@ -72,7 +15,6 @@ export default function DeletionRequests({ onUpdated }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
-  const [showingDemoData, setShowingDemoData] = useState(false);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -85,13 +27,8 @@ export default function DeletionRequests({ onUpdated }) {
         response.requests ||
         (Array.isArray(response) ? response : []);
       const list = Array.isArray(responseList) ? responseList : [];
-      const hasRequests = Array.isArray(list) && list.length > 0;
-      setShowingDemoData(import.meta.env.DEV && !hasRequests);
-      setRequests(
-        import.meta.env.DEV && !hasRequests ? DEMO_REQUESTS : list
-      );
+      setRequests(list);
     } catch (requestError) {
-      setShowingDemoData(false);
       setRequests([]);
       setError(requestError.message || "Unable to load deletion requests.");
     } finally {
@@ -114,18 +51,6 @@ export default function DeletionRequests({ onUpdated }) {
   );
 
   const updateRequest = async (requestId, action) => {
-    const request = requests.find((item) => (item.id || item._id) === requestId);
-    if (request?.isDemo) {
-      const status = action === "approve" ? "Approved" : "Rejected";
-      setRequests((currentRequests) =>
-        currentRequests.map((item) =>
-          (item.id || item._id) === requestId ? { ...item, status } : item
-        )
-      );
-      setNotice(`Example request marked ${status.toLowerCase()}; this change is not saved.`);
-      return;
-    }
-
     setActionLoading(requestId + action);
     setError("");
     setNotice("");
@@ -134,7 +59,7 @@ export default function DeletionRequests({ onUpdated }) {
         `/api/admin/deletion-requests/${requestId}/${action}`,
         {}
       );
-      setNotice(result.message || `Deletion request ${action}d.`);
+      setNotice(result.message || `Deletion request ${action}d successfully.`);
       await loadRequests();
       if (onUpdated) onUpdated();
     } catch (updateError) {
@@ -154,12 +79,22 @@ export default function DeletionRequests({ onUpdated }) {
       title: "Target Paper",
       key: "paperTitle",
       render: (title, req) => (
-        <div>
-          <strong style={{ display: "block", color: "var(--color-ink, #1B2142)", fontSize: "0.95rem" }}>
+        <div style={{ maxWidth: "240px", minWidth: 0 }}>
+          <strong
+            title={title || "Untitled Document"}
+            style={{
+              display: "block",
+              color: "var(--color-text-primary)",
+              fontSize: "0.92rem",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {title || "Untitled Document"}
           </strong>
-          <span style={{ fontSize: "0.8rem", color: "var(--color-muted, #6A7399)" }}>
-            Paper ID: {req.paperId || req.paper || "—"}
+          <span style={{ fontSize: "0.78rem", color: "var(--color-text-tertiary)" }}>
+            Paper ID: {req.paperId || req.paper || "N/A"}
           </span>
         </div>
       ),
@@ -168,11 +103,22 @@ export default function DeletionRequests({ onUpdated }) {
       title: "Requester",
       key: "requestedBy",
       render: (by, req) => (
-        <div>
-          <span style={{ display: "block", fontWeight: 600, color: "var(--color-ink, #1B2142)", fontSize: "0.88rem" }}>
+        <div style={{ maxWidth: "180px", minWidth: 0 }}>
+          <span
+            title={by || "Unknown"}
+            style={{
+              display: "block",
+              fontWeight: 600,
+              color: "var(--color-text-primary)",
+              fontSize: "0.88rem",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {by || "Unknown"}
           </span>
-          <span style={{ fontSize: "0.78rem", color: "var(--color-muted, #6A7399)" }}>
+          <span style={{ fontSize: "0.78rem", color: "var(--color-text-secondary)" }}>
             Role: {req.requesterRole || "User"}
           </span>
         </div>
@@ -182,17 +128,29 @@ export default function DeletionRequests({ onUpdated }) {
       title: "Reason Provided",
       key: "reason",
       render: (reason) => (
-        <span style={{ fontSize: "0.86rem", color: "var(--color-ink-subtle, #3A4269)", fontStyle: reason ? "normal" : "italic" }}>
-          {reason || "No specific reason provided."}
-        </span>
+        <div style={{ maxWidth: "260px", minWidth: 0 }}>
+          <span
+            title={reason || "No specific reason provided."}
+            style={{
+              fontSize: "0.85rem",
+              color: "var(--color-text-secondary)",
+              display: "block",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {reason || "No specific reason provided."}
+          </span>
+        </div>
       ),
     },
     {
       title: "Requested Date",
       key: "requestedAt",
       render: (date) => (
-        <span style={{ fontSize: "0.82rem", color: "var(--color-muted, #6A7399)" }}>
-          {date ? new Date(date).toLocaleDateString() : "—"}
+        <span style={{ fontSize: "0.82rem", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+          {date ? new Date(date).toLocaleDateString() : "N/A"}
         </span>
       ),
     },
@@ -208,13 +166,13 @@ export default function DeletionRequests({ onUpdated }) {
             {isPending && (
               <div style={{ display: "flex", flexWrap: "nowrap", gap: "6px" }}>
                 <Button
-                  variant="indigo"
+                  variant="primary"
                   size="sm"
                   icon={<CheckIcon size={14} />}
                   loading={actionLoading === reqId + "approve"}
-                  disabled={!!actionLoading}
+                  disabled={Boolean(actionLoading)}
                   onClick={() => updateRequest(reqId, "approve")}
-                  style={{ padding: "8px 12px" }}
+                  style={{ padding: "6px 14px" }}
                 >
                   Approve
                 </Button>
@@ -223,9 +181,9 @@ export default function DeletionRequests({ onUpdated }) {
                   size="sm"
                   icon={<CloseIcon size={14} />}
                   loading={actionLoading === reqId + "reject"}
-                  disabled={!!actionLoading}
+                  disabled={Boolean(actionLoading)}
                   onClick={() => updateRequest(reqId, "reject")}
-                  style={{ padding: "8px 12px" }}
+                  style={{ padding: "6px 14px" }}
                 >
                   Reject
                 </Button>
@@ -251,11 +209,11 @@ export default function DeletionRequests({ onUpdated }) {
   return (
     <section
       style={{
-        background: "#FFFFFF",
-        borderRadius: "var(--radius-card, 24px)",
+        background: "var(--color-surface)",
+        borderRadius: "var(--radius-card)",
         padding: "32px",
-        border: "1px solid var(--color-border, rgba(63, 79, 168, 0.08))",
-        boxShadow: "var(--shadow-card, 0 8px 24px -4px rgba(35, 44, 107, 0.06))",
+        border: "1px solid var(--color-border)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <div
@@ -284,35 +242,17 @@ export default function DeletionRequests({ onUpdated }) {
         </Button>
       </div>
 
-      {showingDemoData && (
-        <div
-          role="status"
-          style={{
-            padding: "12px 18px",
-            background: "rgba(91, 115, 224, 0.08)",
-            border: "1px solid rgba(91, 115, 224, 0.2)",
-            color: "var(--color-indigo-900, #232C6B)",
-            borderRadius: "14px",
-            marginBottom: "20px",
-            fontSize: "0.88rem",
-            fontWeight: 600,
-          }}
-        >
-          Example requests are for display only. Decisions on examples change this view but are not saved.
-        </div>
-      )}
-
       {notice && (
         <div
           role="status"
           style={{
-            padding: "12px 18px",
+            padding: "10px 16px",
             background: "rgba(16, 185, 129, 0.10)",
             border: "1px solid rgba(16, 185, 129, 0.25)",
-            color: "#047857",
-            borderRadius: "14px",
-            marginBottom: "20px",
-            fontSize: "0.88rem",
+            color: "#10B981",
+            borderRadius: "var(--radius-sm)",
+            marginBottom: "18px",
+            fontSize: "0.85rem",
             fontWeight: 600,
           }}
         >
@@ -322,14 +262,15 @@ export default function DeletionRequests({ onUpdated }) {
 
       {error && (
         <div
+          role="alert"
           style={{
-            padding: "12px 18px",
+            padding: "10px 16px",
             background: "rgba(239, 68, 68, 0.10)",
             border: "1px solid rgba(239, 68, 68, 0.25)",
             color: "#EF4444",
-            borderRadius: "14px",
-            marginBottom: "20px",
-            fontSize: "0.88rem",
+            borderRadius: "var(--radius-sm)",
+            marginBottom: "18px",
+            fontSize: "0.85rem",
             fontWeight: 600,
           }}
         >
@@ -337,16 +278,27 @@ export default function DeletionRequests({ onUpdated }) {
         </div>
       )}
 
-      <Table
-        columns={columns}
-        data={currentData}
-        loading={loading}
-        emptyMessage={
-          activeTab === "pending"
-            ? "No pending deletion requests. The moderation queue is completely clear!"
-            : "No processed deletion requests in history."
-        }
-      />
+      {loading && requests.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 0", color: "var(--color-text-secondary)" }}>
+          Loading deletion queue...
+        </div>
+      ) : currentData.length === 0 ? (
+        <EmptyState
+          icon={<TrashIcon size={36} />}
+          title={activeTab === "pending" ? "No Pending Requests" : "No Processed Requests"}
+          description={
+            activeTab === "pending"
+              ? "All paper deletion requests have been reviewed."
+              : "No historical deletion requests found."
+          }
+        />
+      ) : (
+        <Table
+          columns={columns}
+          data={currentData}
+          rowKey={(r) => r.id || r._id}
+        />
+      )}
     </section>
   );
 }

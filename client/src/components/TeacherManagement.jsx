@@ -7,7 +7,8 @@ import IconButton from "./ui/IconButton";
 import Input from "./ui/Input";
 import Modal from "./ui/Modal";
 import Avatar from "./ui/Avatar";
-import { TrashIcon, SearchIcon, CloseIcon } from "./ui/Icons";
+import EmptyState from "./ui/EmptyState";
+import { TrashIcon, SearchIcon, UsersIcon } from "./ui/Icons";
 import "./TeacherManagement.css";
 
 const EMPTY_FORM = { name: "", email: "" };
@@ -120,25 +121,50 @@ export default function TeacherManagement({ onUpdated }) {
     {
       title: "Teacher",
       key: "name",
-      render: (_, t) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Avatar name={t.name || t.username || t.email} size="sm" variant="initials" />
-          <div>
-            <strong style={{ display: "block", color: "var(--color-ink, #1B2142)", fontSize: "0.92rem" }}>
-              {t.name || t.username || "Unnamed Teacher"}
-            </strong>
-            <span style={{ fontSize: "0.78rem", color: "var(--color-muted, #6A7399)" }}>
-              Faculty Member
-            </span>
+      render: (_, t) => {
+        const displayName = t.name || t.username || "Unnamed Teacher";
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, maxWidth: "240px" }}>
+            <Avatar name={displayName} size="sm" variant="initials" />
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
+              <strong
+                title={displayName}
+                style={{
+                  display: "block",
+                  color: "var(--color-text-primary)",
+                  fontSize: "0.92rem",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "180px",
+                }}
+              >
+                {displayName}
+              </strong>
+              <span style={{ fontSize: "0.78rem", color: "var(--color-text-tertiary)" }}>
+                Faculty Member
+              </span>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: "Email Address",
       key: "email",
       render: (email) => (
-        <span style={{ color: "var(--color-ink, #1B2142)", fontFamily: "monospace", fontSize: "0.86rem" }}>
+        <span
+          title={email}
+          style={{
+            color: "var(--color-text-primary)",
+            fontSize: "0.86rem",
+            display: "block",
+            maxWidth: "220px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           {email}
         </span>
       ),
@@ -164,30 +190,28 @@ export default function TeacherManagement({ onUpdated }) {
       title: "Actions",
       key: "actions",
       align: "right",
-      render: (_, teacher) => {
-        return (
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <IconButton
-              icon={<TrashIcon size={15} />}
-              title="Delete teacher"
-              variant="danger"
-              size="sm"
-              onClick={() => setDeleteTarget(teacher)}
-            />
-          </div>
-        );
-      },
+      render: (_, teacher) => (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <IconButton
+            icon={<TrashIcon size={15} />}
+            title={`Delete ${teacher.name || teacher.email}`}
+            variant="danger"
+            size="sm"
+            onClick={() => setDeleteTarget(teacher)}
+          />
+        </div>
+      ),
     },
   ];
 
   return (
     <section
       style={{
-        background: "#FFFFFF",
-        borderRadius: "var(--radius-card, 24px)",
+        background: "var(--color-surface)",
+        borderRadius: "var(--radius-card)",
         padding: "32px",
-        border: "1px solid var(--color-border, rgba(63, 79, 168, 0.08))",
-        boxShadow: "var(--shadow-card, 0 8px 24px -4px rgba(35, 44, 107, 0.06))",
+        border: "1px solid var(--color-border)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       {/* Top Bar with Search & Invite Button */}
@@ -228,21 +252,22 @@ export default function TeacherManagement({ onUpdated }) {
               setIsModalOpen(true);
             }}
           >
-            + Invite Teacher
+            Invite Teacher
           </Button>
         </div>
       </div>
 
       {success && (
         <div
+          role="status"
           style={{
-            padding: "12px 18px",
+            padding: "10px 16px",
             background: "rgba(16, 185, 129, 0.10)",
             border: "1px solid rgba(16, 185, 129, 0.25)",
             color: "#10B981",
-            borderRadius: "14px",
-            marginBottom: "20px",
-            fontSize: "0.88rem",
+            borderRadius: "var(--radius-sm)",
+            marginBottom: "18px",
+            fontSize: "0.85rem",
             fontWeight: 600,
           }}
         >
@@ -252,14 +277,15 @@ export default function TeacherManagement({ onUpdated }) {
 
       {error && (
         <div
+          role="alert"
           style={{
-            padding: "12px 18px",
+            padding: "10px 16px",
             background: "rgba(239, 68, 68, 0.10)",
             border: "1px solid rgba(239, 68, 68, 0.25)",
             color: "#EF4444",
-            borderRadius: "14px",
-            marginBottom: "20px",
-            fontSize: "0.88rem",
+            borderRadius: "var(--radius-sm)",
+            marginBottom: "18px",
+            fontSize: "0.85rem",
             fontWeight: 600,
           }}
         >
@@ -267,39 +293,36 @@ export default function TeacherManagement({ onUpdated }) {
         </div>
       )}
 
-      {/* Teachers Table */}
-      <Table
-        columns={columns}
-        data={filteredTeachers}
-        loading={loading}
-        emptyMessage={
-          searchTerm
-            ? "No teachers match your search query."
-            : "No teachers enrolled yet. Click '+ Invite Teacher' to send an invitation."
-        }
-      />
+      {loading && teachers.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 0", color: "var(--color-text-secondary)" }}>
+          Loading faculty records...
+        </div>
+      ) : filteredTeachers.length === 0 ? (
+        <EmptyState
+          icon={<UsersIcon size={36} />}
+          title={searchTerm ? "No Matching Faculty Members" : "No Faculty Enrolled"}
+          description={
+            searchTerm
+              ? `No teacher records match "${searchTerm}".`
+              : "Click 'Invite Teacher' above to onboard your first faculty member."
+          }
+        />
+      ) : (
+        <Table
+          columns={columns}
+          data={filteredTeachers}
+          rowKey={(t) => t.id || t._id}
+        />
+      )}
 
       {/* Invite Teacher Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title="Invite Faculty Member"
+        description="The teacher will receive an email with instructions to set their password."
       >
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-          <div
-            style={{
-              padding: "12px 16px",
-              background: "var(--color-indigo-50, #F4F6FD)",
-              borderRadius: "14px",
-              fontSize: "0.85rem",
-              color: "var(--color-indigo-900, #232C6B)",
-              lineHeight: 1.45,
-              border: "1px solid rgba(91, 115, 224, 0.18)",
-            }}
-          >
-            The teacher will receive an email with a secure link to set their own password.
-          </div>
-
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "12px" }}>
           <Input
             label="Full Name"
             name="name"
@@ -307,10 +330,11 @@ export default function TeacherManagement({ onUpdated }) {
             value={formData.name}
             onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
             required
+            autoFocus
           />
 
           <Input
-            label="Email Address"
+            label="Faculty Email Address"
             type="email"
             name="email"
             placeholder="teacher@rca.ac.rw"
@@ -319,17 +343,11 @@ export default function TeacherManagement({ onUpdated }) {
             required
           />
 
-          {error && (
-            <span style={{ color: "#EF4444", fontSize: "0.82rem", fontWeight: 500 }}>
-              {error}
-            </span>
-          )}
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
-            <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>
+            <Button variant="secondary" size="sm" onClick={handleCloseModal} disabled={saving}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" loading={saving}>
+            <Button variant="primary" size="sm" type="submit" loading={saving}>
               Send Invitation
             </Button>
           </div>
@@ -338,18 +356,15 @@ export default function TeacherManagement({ onUpdated }) {
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={!!deleteTarget}
+        isOpen={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
         title="Delete Teacher"
+        description={`Are you sure you want to delete teacher "${deleteTarget?.name || deleteTarget?.email}"? Their uploaded past papers will remain preserved in the archive under faculty records.`}
       >
-        <p style={{ color: "var(--color-ink-subtle, #3A4269)", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "20px" }}>
-          Are you sure you want to delete teacher{" "}
-          <strong>{deleteTarget?.name || deleteTarget?.email}</strong>?
-          Their uploaded past papers will remain in the archive under faculty records.
-        </p>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => setDeleteTarget(null)}
             disabled={deleting}
           >
@@ -357,6 +372,7 @@ export default function TeacherManagement({ onUpdated }) {
           </Button>
           <Button
             variant="danger"
+            size="sm"
             onClick={handleDelete}
             loading={deleting}
           >
