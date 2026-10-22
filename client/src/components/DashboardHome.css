@@ -5,7 +5,7 @@
   width: 100%;
 }
 
-/* Two-column layout matching reference */
+/* Two-column layout */
 .dashboard-grid-container {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -28,11 +28,11 @@
 
 /* Greeting Card */
 .greeting-card {
-  background: #FFFFFF;
+  background: var(--color-card);
   border-radius: var(--radius-card, 24px);
   padding: 28px 32px;
   box-shadow: var(--shadow-card);
-  border: 1px solid var(--card-border, #E6EAF2);
+  border: 1px solid var(--color-card-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -43,14 +43,14 @@
 .greeting-text h2 {
   font-size: 24px;
   font-weight: 800;
-  color: var(--text-primary, #1E2547);
+  color: var(--color-ink);
   margin-bottom: 8px;
   letter-spacing: -0.3px;
 }
 
 .greeting-text p {
   font-size: 14px;
-  color: var(--text-secondary, #586380);
+  color: var(--color-muted);
   max-width: 420px;
   line-height: 1.5;
   margin-bottom: 14px;
@@ -59,7 +59,7 @@
 .greeting-link {
   font-size: 13px;
   font-weight: 700;
-  color: var(--primary-accent, #5B73E0);
+  color: var(--color-indigo-500);
   text-decoration: underline;
   cursor: pointer;
   display: inline-flex;
@@ -76,7 +76,7 @@
   justify-content: center;
 }
 
-/* Middle Row: Performance & Activity Rings */
+/* Middle Row: Performance & Activity */
 .analytics-row {
   display: grid;
   grid-template-columns: 1.25fr 1fr;
@@ -84,11 +84,11 @@
 }
 
 .activity-card {
-  background: #FFFFFF;
+  background: var(--color-card);
   border-radius: var(--radius-card, 24px);
   padding: 24px;
   box-shadow: var(--shadow-card);
-  border: 1px solid var(--card-border, #E6EAF2);
+  border: 1px solid var(--color-card-border);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -103,7 +103,7 @@
 .activity-card-title {
   font-size: 15px;
   font-weight: 700;
-  color: #1E2547;
+  color: var(--color-ink);
 }
 
 .activity-rings-grid {
@@ -114,11 +114,11 @@
 
 /* Linked Teachers Card */
 .linked-teachers-card {
-  background: #FFFFFF;
+  background: var(--color-card);
   border-radius: var(--radius-card, 24px);
   padding: 24px;
   box-shadow: var(--shadow-card);
-  border: 1px solid var(--card-border, #E6EAF2);
+  border: 1px solid var(--color-card-border);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -133,13 +133,13 @@
 .section-title {
   font-size: 15px;
   font-weight: 700;
-  color: #1E2547;
+  color: var(--color-ink);
 }
 
 .see-all-link {
   font-size: 12px;
   font-weight: 600;
-  color: #5B73E0;
+  color: var(--color-indigo-500);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -150,13 +150,13 @@
   justify-content: space-between;
   padding: 12px 16px;
   border-radius: 16px;
-  background: #F8FAFD;
-  border: 1px solid #EDF1F7;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
   transition: all 0.2s ease;
 }
 
 .teacher-item:hover {
-  background: #F0F4FC;
+  background: var(--color-surface-hover);
   transform: translateY(-1px);
 }
 
@@ -170,7 +170,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+  background: linear-gradient(135deg, var(--color-indigo-600) 0%, var(--color-indigo-800) 100%);
   color: #FFFFFF;
   font-weight: 700;
   font-size: 14px;
@@ -182,12 +182,12 @@
 .teacher-name {
   font-size: 13px;
   font-weight: 700;
-  color: #1E2547;
+  color: var(--color-ink);
 }
 
 .teacher-sub {
   font-size: 11px;
-  color: #8C97B0;
+  color: var(--color-muted);
   font-weight: 500;
 }
 
@@ -201,27 +201,27 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #FFFFFF;
-  border: 1px solid #E2E6F0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-med);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #586380;
+  color: var(--color-muted);
   transition: all 0.15s ease;
 }
 
 .teacher-action-btn:hover {
-  color: #5B73E0;
-  border-color: #5B73E0;
+  color: var(--color-indigo-500);
+  border-color: var(--color-indigo-500);
 }
 
 /* Calendar Timeline Card on Right Col */
 .calendar-card {
-  background: #FFFFFF;
+  background: var(--color-card);
   border-radius: var(--radius-card, 24px);
   padding: 24px;
   box-shadow: var(--shadow-card);
-  border: 1px solid var(--card-border, #E6EAF2);
+  border: 1px solid var(--color-card-border);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -249,7 +249,7 @@
 .timeline-time {
   font-size: 11px;
   font-weight: 600;
-  color: #8C97B0;
+  color: var(--color-muted);
   width: 44px;
   flex-shrink: 0;
 }
@@ -265,9 +265,9 @@
 }
 
 .timeline-lesson-card.highlight {
-  background: var(--primary-accent, #5B73E0);
+  background: var(--color-indigo-600);
   color: #FFFFFF;
-  box-shadow: 0 4px 14px rgba(91, 115, 224, 0.28);
+  box-shadow: 0 4px 14px rgba(59, 76, 163, 0.28);
 }
 
 .timeline-lesson-card.highlight .timeline-sub {
@@ -275,13 +275,13 @@
 }
 
 .timeline-lesson-card.subtle {
-  background: #F8FAFD;
-  border: 1px solid #EBF0F8;
-  color: #1E2547;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
 }
 
 .timeline-lesson-card.subtle .timeline-sub {
-  color: #8C97B0;
+  color: var(--color-muted);
 }
 
 .timeline-icon-box {
@@ -295,8 +295,8 @@
 }
 
 .timeline-lesson-card.subtle .timeline-icon-box {
-  background: #E8EEFA;
-  color: #5B73E0;
+  background: var(--color-surface-hover);
+  color: var(--color-indigo-500);
 }
 
 .timeline-title {
@@ -312,11 +312,11 @@
 
 /* Upcoming Events Card */
 .events-card {
-  background: #FFFFFF;
+  background: var(--color-card);
   border-radius: var(--radius-card, 24px);
   padding: 24px;
   box-shadow: var(--shadow-card);
-  border: 1px solid var(--card-border, #E6EAF2);
+  border: 1px solid var(--color-card-border);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -327,7 +327,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #F1F4F9;
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .event-item:last-child {
@@ -339,7 +339,7 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: #F0F3FA;
+  background: var(--color-surface-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -354,7 +354,7 @@
 .event-title {
   font-size: 12px;
   font-weight: 700;
-  color: #1E2547;
+  color: var(--color-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -362,7 +362,7 @@
 
 .event-date {
   font-size: 11px;
-  color: #8C97B0;
+  color: var(--color-muted);
   margin-top: 2px;
 }
 

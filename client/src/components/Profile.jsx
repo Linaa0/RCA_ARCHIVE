@@ -11,6 +11,8 @@ import { RCA_CLASSES } from "./ui/ClassChips";
 import { clearAuthStorage, persistAuth } from "../utils/auth";
 import { applyTheme, getInitialTheme } from "../utils/theme";
 import { errorMessage } from "./assignments/common";
+import studentGirl from "../assets/figures/student-girl.png";
+import studentBoy from "../assets/figures/student-boy.png";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -19,6 +21,13 @@ export default function Profile() {
   const [cls, setCls] = useState("");
   const [nameMsg, setNameMsg] = useState({ type: "", text: "" });
   const [savingName, setSavingName] = useState(false);
+
+  const [gender, setGender] = useState(() => {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem("rca_user_gender") || "female";
+    }
+    return "female";
+  });
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -46,6 +55,14 @@ export default function Profile() {
   const handleThemeChange = (newTheme) => {
     setCurrentTheme(newTheme);
     applyTheme(newTheme);
+  };
+
+  const handleGenderChange = (newGender) => {
+    setGender(newGender);
+    try {
+      localStorage.setItem("rca_user_gender", newGender);
+      window.dispatchEvent(new Event("profile-gender-changed"));
+    } catch (e) {}
   };
 
   const saveName = async (e) => {
@@ -361,9 +378,9 @@ export default function Profile() {
               minWidth: "160px",
               padding: "16px",
               borderRadius: "var(--radius-card)",
-              border: currentTheme === "light" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
-              background: "#F8F9FD",
-              color: "#1B2142",
+              border: currentTheme === "light" ? "2px solid var(--color-indigo-600)" : "1px solid var(--color-border)",
+              background: "var(--color-surface-subtle)",
+              color: "var(--color-ink)",
               cursor: "pointer",
               textAlign: "left",
               boxShadow: currentTheme === "light" ? "0 4px 14px rgba(63, 79, 168, 0.15)" : "none",
@@ -374,7 +391,7 @@ export default function Profile() {
               <strong style={{ fontSize: "0.95rem" }}>Light Mode</strong>
               {currentTheme === "light" && <Badge variant="indigo" size="sm">Active</Badge>}
             </div>
-            <span style={{ fontSize: "0.8rem", color: "#6A7399" }}>
+            <span style={{ fontSize: "0.8rem", color: "var(--color-muted)" }}>
               Standard lavender gray canvas with white surfaces.
             </span>
           </button>
@@ -387,9 +404,9 @@ export default function Profile() {
               minWidth: "160px",
               padding: "16px",
               borderRadius: "var(--radius-card)",
-              border: currentTheme === "dark" ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-              background: "#1E2235",
-              color: "#F1F3FA",
+              border: currentTheme === "dark" ? "2px solid var(--color-indigo-400)" : "1px solid var(--color-border)",
+              background: "var(--color-surface-subtle)",
+              color: "var(--color-ink)",
               cursor: "pointer",
               textAlign: "left",
               boxShadow: currentTheme === "dark" ? "0 4px 14px rgba(91, 115, 224, 0.25)" : "none",
@@ -400,12 +417,126 @@ export default function Profile() {
               <strong style={{ fontSize: "0.95rem" }}>Dark Mode</strong>
               {currentTheme === "dark" && <Badge variant="indigo" size="sm">Active</Badge>}
             </div>
-            <span style={{ fontSize: "0.8rem", color: "#A5ADC8" }}>
+            <span style={{ fontSize: "0.8rem", color: "var(--color-muted)" }}>
               High contrast midnight canvas optimized for study sessions.
             </span>
           </button>
         </div>
       </div>
+
+      {/* ── Student Dashboard Figure Preference ── */}
+      {user.role === "student" && (
+        <div
+          style={{
+            background: "var(--color-surface)",
+            borderRadius: "var(--radius-card)",
+            padding: "28px 32px",
+            border: "1px solid var(--color-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <h3 style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "6px" }}>
+            Dashboard Student Figure
+          </h3>
+          <p style={{ fontSize: "0.88rem", color: "var(--color-text-secondary)", marginBottom: "20px" }}>
+            Select the illustration displayed on your dashboard greeting card.
+          </p>
+
+          <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => handleGenderChange("female")}
+              style={{
+                flex: 1,
+                minWidth: "180px",
+                padding: "16px",
+                borderRadius: "var(--radius-card)",
+                border: gender === "female" ? "2px solid var(--color-indigo-600)" : "1px solid var(--color-border)",
+                background: "var(--color-surface-subtle)",
+                color: "var(--color-ink)",
+                cursor: "pointer",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                boxShadow: gender === "female" ? "0 4px 14px rgba(63, 79, 168, 0.15)" : "none",
+                transition: "all var(--transition-fast)",
+              }}
+            >
+              <div
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  border: "2px solid var(--color-surface)",
+                  background: "linear-gradient(135deg, rgba(91, 115, 224, 0.2) 0%, rgba(63, 79, 168, 0.1) 100%)",
+                }}
+              >
+                <img
+                  src={studentGirl}
+                  alt="Female Student Figure"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "0.95rem" }}>Female Figure</strong>
+                  {gender === "female" && <Badge variant="indigo" size="sm">Selected</Badge>}
+                </div>
+                <span style={{ fontSize: "0.78rem", color: "var(--color-muted)" }}>Default student figure</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleGenderChange("male")}
+              style={{
+                flex: 1,
+                minWidth: "180px",
+                padding: "16px",
+                borderRadius: "var(--radius-card)",
+                border: gender === "male" ? "2px solid var(--color-indigo-600)" : "1px solid var(--color-border)",
+                background: "var(--color-surface-subtle)",
+                color: "var(--color-ink)",
+                cursor: "pointer",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                boxShadow: gender === "male" ? "0 4px 14px rgba(63, 79, 168, 0.15)" : "none",
+                transition: "all var(--transition-fast)",
+              }}
+            >
+              <div
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  border: "2px solid var(--color-surface)",
+                  background: "linear-gradient(135deg, rgba(91, 115, 224, 0.2) 0%, rgba(63, 79, 168, 0.1) 100%)",
+                }}
+              >
+                <img
+                  src={studentBoy}
+                  alt="Male Student Figure"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "0.95rem" }}>Male Figure</strong>
+                  {gender === "male" && <Badge variant="indigo" size="sm">Selected</Badge>}
+                </div>
+                <span style={{ fontSize: "0.78rem", color: "var(--color-muted)" }}>Alternate student figure</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

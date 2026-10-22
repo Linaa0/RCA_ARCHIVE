@@ -18,6 +18,7 @@ import {
   MaterialsIcon,
   TrashIcon,
 } from "./ui/Icons";
+import adminFig from "../assets/figures/admin.png";
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -248,58 +249,148 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-      {/* ── Standard Page Header ── */}
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "16px",
-        }}
-      >
-        <div>
-          <span
-            style={{
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "var(--color-primary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {currentMeta.kicker}
-          </span>
-          <h1
-            style={{
-              fontSize: "1.75rem",
-              fontWeight: 700,
-              color: "var(--color-text-primary)",
-              marginTop: "4px",
-              marginBottom: "4px",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {currentMeta.title}
-          </h1>
-          <p
-            style={{
-              fontSize: "0.92rem",
-              color: "var(--color-text-secondary)",
-              lineHeight: 1.45,
-              margin: 0,
-            }}
-          >
-            {currentMeta.description}
-          </p>
-        </div>
+      {/* ── Page Header / Overview Greeting Card ── */}
+      {activeTab === "overview" ? (
+        <div
+          style={{
+            background: "linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg) 100%)",
+            borderRadius: "var(--radius-card)",
+            padding: "28px 32px",
+            border: "1px solid var(--color-border)",
+            boxShadow: "var(--shadow-card)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "24px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: "260px" }}>
+            <span
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: "var(--color-primary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: "4px",
+                display: "block",
+              }}
+            >
+              ADMINISTRATION PORTAL
+            </span>
+            <h1
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+                marginTop: "4px",
+                marginBottom: "8px",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              System Administration
+            </h1>
+            <p
+              style={{
+                fontSize: "0.92rem",
+                color: "var(--color-text-secondary)",
+                lineHeight: 1.5,
+                maxWidth: "520px",
+                margin: 0,
+              }}
+            >
+              Monitor portal activity, manage user roles, and govern academic curriculum records across Rwanda Coding Academy.
+            </p>
+            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+              <Button variant="outline" size="sm" onClick={loadDashboard} disabled={loading}>
+                {loading ? "Refreshing..." : "Refresh Data"}
+              </Button>
+            </div>
+          </div>
 
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <Button variant="outline" size="sm" onClick={loadDashboard} disabled={loading}>
-            {loading ? "Refreshing..." : "Refresh Data"}
-          </Button>
+          <div
+            style={{
+              width: "136px",
+              height: "136px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, rgba(91, 115, 224, 0.22) 0%, rgba(63, 79, 168, 0.08) 100%)",
+              border: "3px solid var(--color-surface)",
+              boxShadow: "0 8px 24px rgba(15, 20, 36, 0.15)",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={adminFig}
+              alt="Administrator Figure"
+              loading="lazy"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center top",
+                transform: "scale(1.15) translateY(4%)",
+              }}
+            />
+          </div>
         </div>
-      </header>
+      ) : (
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}
+        >
+          <div>
+            <span
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: "var(--color-primary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {currentMeta.kicker}
+            </span>
+            <h1
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+                marginTop: "4px",
+                marginBottom: "4px",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {currentMeta.title}
+            </h1>
+            <p
+              style={{
+                fontSize: "0.92rem",
+                color: "var(--color-text-secondary)",
+                lineHeight: 1.45,
+                margin: 0,
+              }}
+            >
+              {currentMeta.description}
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Button variant="outline" size="sm" onClick={loadDashboard} disabled={loading}>
+              {loading ? "Refreshing..." : "Refresh Data"}
+            </Button>
+          </div>
+        </header>
+      )}
 
       {error && (
         <div

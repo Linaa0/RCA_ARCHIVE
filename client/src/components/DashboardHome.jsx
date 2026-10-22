@@ -5,7 +5,8 @@ import Badge from "./ui/Badge";
 import Button from "./ui/Button";
 import EmptyState from "./ui/EmptyState";
 import Avatar from "./ui/Avatar";
-import studentBoy from "../assets/avatars/student-boy.svg";
+import studentGirl from "../assets/figures/student-girl.png";
+import studentBoy from "../assets/figures/student-boy.png";
 import {
   MaterialsIcon,
   EyeIcon,
@@ -24,6 +25,21 @@ export default function DashboardHome({
   const user = getStoredUser();
   const displayName = user?.name || user?.username || "Student";
   const firstName = displayName.split(" ")[0] || "Student";
+
+  const [gender, setGender] = useState(() => {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem("rca_user_gender") || user?.gender || "female";
+    }
+    return "female";
+  });
+
+  useEffect(() => {
+    const handleGenderChange = () => {
+      setGender(localStorage.getItem("rca_user_gender") || "female");
+    };
+    window.addEventListener("profile-gender-changed", handleGenderChange);
+    return () => window.removeEventListener("profile-gender-changed", handleGenderChange);
+  }, []);
 
   const [assignments, setAssignments] = useState([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
@@ -170,15 +186,16 @@ export default function DashboardHome({
           </div>
         </div>
 
-        {/* Student Vector Avatar */}
+        {/* Student Dashboard Figure (Female or Male based on preference) */}
         <div
+          className="dashboard-figure-wrap"
           style={{
-            width: "120px",
-            height: "120px",
+            width: "136px",
+            height: "136px",
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #EEF0F6 0%, #E4E8FA 100%)",
+            background: "linear-gradient(135deg, rgba(91, 115, 224, 0.22) 0%, rgba(63, 79, 168, 0.08) 100%)",
             border: "3px solid var(--color-surface)",
-            boxShadow: "0 8px 24px rgba(35, 44, 107, 0.12)",
+            boxShadow: "0 8px 24px rgba(15, 20, 36, 0.15)",
             overflow: "hidden",
             display: "flex",
             alignItems: "center",
@@ -187,13 +204,15 @@ export default function DashboardHome({
           }}
         >
           <img
-            src={studentBoy}
-            alt="RCA Student"
+            src={gender === "male" ? studentBoy : studentGirl}
+            alt={gender === "male" ? "Male Student Figure" : "Female Student Figure"}
+            loading="lazy"
             style={{
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              transform: "scale(1.2) translateY(5%)",
+              objectPosition: "center top",
+              transform: "scale(1.15) translateY(4%)",
             }}
           />
         </div>
