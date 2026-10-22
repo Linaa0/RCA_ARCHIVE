@@ -96,7 +96,7 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
             <span>Report Issue</span>
           </Link>
 
-          {/* Admin panel link — only shown to admins */}
+          {/* Admin panel link: only shown to admins */}
           {role === "admin" && (
             <Link
               to="/admin"

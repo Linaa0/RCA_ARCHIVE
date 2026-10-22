@@ -363,7 +363,9 @@ function App() {
           path="/admin"
           element={
             <PrivateRoute requiredRole="admin">
-              <AdminDashboard />
+              <DashboardShell>
+                <AdminDashboard />
+              </DashboardShell>
             </PrivateRoute>
           }
         />
@@ -433,6 +435,18 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/settings"
+          element={
+            <PrivateRoute>
+              <DashboardShell>
+                <Profile />
+              </DashboardShell>
+            </PrivateRoute>
+          }
+        />
+        <Route path="/subjects" element={<Navigate to="/home#subjects" replace />} />
+        <Route path="/academic-years" element={<Navigate to="/home" replace />} />
 
         {/* Authenticated routes in DashboardShell */}
         <Route

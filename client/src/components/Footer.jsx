@@ -21,13 +21,13 @@ function Footer() {
           </p>
           <div className="footer-socials">
             {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-            <a href="#" className="footer-social" aria-label="Facebook">f</a>
+            <a href="#" className="footer-social" aria-label="Facebook">FB</a>
             {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-            <a href="#" className="footer-social" aria-label="Twitter">𝕏</a>
+            <a href="#" className="footer-social" aria-label="Twitter">X</a>
             {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-            <a href="#" className="footer-social" aria-label="Instagram">📷</a>
+            <a href="#" className="footer-social" aria-label="Instagram">IG</a>
             {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-            <a href="#" className="footer-social" aria-label="GitHub">⌥</a>
+            <a href="#" className="footer-social" aria-label="GitHub">GH</a>
           </div>
         </div>
 

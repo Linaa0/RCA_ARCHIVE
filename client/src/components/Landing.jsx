@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import {
+  SearchIcon as Search,
+  EyeIcon as Eye,
+  FileTextIcon as FileText,
+  ShieldIcon as Shield,
+  GraduationCapIcon as GraduationCap,
+  UsersIcon as Users,
+  ArrowRightIcon as ArrowRight,
+  CheckIcon as Check,
+  ChevronLeftIcon as ChevronLeft,
+  ChevronRightIcon as ChevronRight,
+  MenuIcon as Menu,
+  CloseIcon as X,
+  BookOpenIcon as BookOpen,
+  SparklesIcon as Sparkles,
+  LayersIcon as Layers,
+  CalendarIcon as Calendar,
+  LockIcon as Lock,
+} from "./ui/Icons";
 import "./Landing.css";
 import Logo from "./ui/Logo";
-import ClassChips, { RCA_CLASSES } from "./ui/ClassChips";
-import StatRing from "./ui/StatRing";
 import Button from "./ui/Button";
-import {
-  SearchIcon,
-  LessonsIcon,
-  MaterialsIcon,
-  CalendarIcon,
-  StarIcon,
-  DownloadIcon,
-  EyeIcon,
-  UploadIcon,
-  CheckIcon,
-  UsersIcon,
-  UserIcon,
-  ShieldIcon,
-  ArrowRightIcon,
-  MenuIcon,
-  CloseIcon,
-} from "./ui/Icons";
+import ProgressRing from "./ui/ProgressRing";
+import { RCA_CLASSES } from "./ui/ClassChips";
 import api from "../services/api";
 
 const SUBJECTS_BY_YEAR = {
@@ -31,25 +33,24 @@ const SUBJECTS_BY_YEAR = {
     "Database Management",
     "Networking Essentials",
     "Web User Interface",
-    "Physics & Mechanics",
+    "Physics and Mechanics",
     "Embedded Systems",
-    "JavaScript Core",
-    "Communication & English",
+    "Communication and English",
   ],
   2: [
-    "Data Structures & Algorithms (C++)",
-    "OOP & Web Development (Java)",
+    "Data Structures and Algorithms (C++)",
+    "OOP and Web Development (Java)",
     "Software Engineering Principles",
     "Advanced Database Systems",
     "Enterprise Networking",
-    "Web3 & Smart Contracts",
-    "3D Modelling & Computer Graphics",
+    "Web3 and Smart Contracts",
+    "3D Modelling with Blender",
     "Discrete Mathematics",
   ],
   3: [
-    "Machine Learning & AI (Python)",
-    "Cybersecurity & Threat Defense",
-    "DevOps & Infrastructure Automation",
+    "Machine Learning and AI (Python)",
+    "Cybersecurity and Threat Defense",
+    "DevOps and Infrastructure Automation",
     "Intelligent Robotics Systems",
     "Mobile Applications (React Native)",
     "IT Project Management",
@@ -57,64 +58,29 @@ const SUBJECTS_BY_YEAR = {
   ],
 };
 
-const MARQUEE_SUBJECTS = [
-  "Data Structures & C++",
-  "OOP & Java",
-  "Machine Learning",
-  "DevOps & CI/CD",
-  "Cybersecurity",
-  "Web3 & Solidity",
-  "Embedded Systems",
-  "Database Systems",
-  "Mobile Apps",
-  "Computer Networks",
-  "Software Engineering",
-  "Mathematics",
-];
-
 export default function Landing() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClassId, setSelectedClassId] = useState("Y2A");
+  const [selectedClassIndex, setSelectedClassIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [realStats, setRealStats] = useState({
-    papers: 0,
-    users: 0,
-    subjects: 34,
-  });
+  const [realStats, setRealStats] = useState({ papers: 0, users: 0 });
   const [statsLoaded, setStatsLoaded] = useState(false);
 
-  // Fetch real statistics from API
+  // Fetch verified stats from API without inventing numbers
   useEffect(() => {
     let isMounted = true;
-    api
-      .get("/stats")
-      .then(({ data }) => {
-        if (!isMounted) return;
-        const totalPapers = Number(data?.totalPapers ?? 0);
-        const totalUsers = Number(data?.totalUsers ?? 0);
-        setRealStats({
-          papers: totalPapers,
-          users: totalUsers,
-          subjects: 34,
-        });
-        setStatsLoaded(true);
-      })
-      .catch(() => {
-        // Fallback to papers list count
-        api
-          .get("/papers?limit=100")
-          .then(({ data }) => {
-            if (!isMounted) return;
-            const count = Array.isArray(data) ? data.length : 0;
-            setRealStats((prev) => ({ ...prev, papers: count }));
-            setStatsLoaded(true);
-          })
-          .catch(() => {
-            setStatsLoaded(false);
-          });
-      });
-
+    Promise.all([
+      api.get("/papers").catch(() => ({ data: [] })),
+      api.get("/api/admin/stats").catch(() => ({ data: {} })),
+    ]).then(([papersRes, statsRes]) => {
+      if (!isMounted) return;
+      const papersCount = Array.isArray(papersRes.data)
+        ? papersRes.data.length
+        : Number(statsRes.data?.totalPapers || 0);
+      const usersCount = Number(statsRes.data?.totalUsers || 0);
+      setRealStats({ papers: papersCount, users: usersCount });
+      setStatsLoaded(true);
+    });
     return () => {
       isMounted = false;
     };
@@ -122,73 +88,81 @@ export default function Landing() {
 
   const handleHeroSearch = (e) => {
     e.preventDefault();
-    if (searchTerm.trim()) {
-      navigate(`/login?redirect=/home&search=${encodeURIComponent(searchTerm.trim())}`);
-    } else {
-      navigate("/login");
-    }
+    if (!searchTerm.trim()) return;
+    navigate(`/home?search=${encodeURIComponent(searchTerm.trim())}`);
   };
 
-  const currentClassObj = RCA_CLASSES.find((c) => c.id === selectedClassId) || RCA_CLASSES[4];
-  const classSubjects = SUBJECTS_BY_YEAR[currentClassObj.year] || SUBJECTS_BY_YEAR[2];
+  const currentClass = RCA_CLASSES[selectedClassIndex] || RCA_CLASSES[0];
+  const classSubjects = SUBJECTS_BY_YEAR[currentClass.year] || SUBJECTS_BY_YEAR[1];
+
+  const handlePrevClass = () => {
+    setSelectedClassIndex((prev) => (prev === 0 ? RCA_CLASSES.length - 1 : prev - 1));
+  };
+
+  const handleNextClass = () => {
+    setSelectedClassIndex((prev) => (prev === RCA_CLASSES.length - 1 ? 0 : prev + 1));
+  };
 
   return (
-    <div className="landing-page-root">
-      {/* ── Sticky Glass Navbar ── */}
-      <nav className="landing-nav-glass">
-        <div className="landing-nav-inner">
-          <div className="landing-nav-brand">
-            <Logo variant="light" size="sm" showWordmark wordmarkColor="#1B2142" />
+    <div className="landing-root">
+      {/* ====================================================================
+          1. STICKY CLEAN NAVBAR
+          ==================================================================== */}
+      <nav className="landing-navbar">
+        <div className="landing-navbar-container">
+          <Link to="/" className="landing-navbar-logo">
+            <Logo variant="full" size="navbar" />
+          </Link>
+
+          {/* Desktop Nav Links */}
+          <div className="landing-navbar-links">
+            <a href="#classes" className="nav-link">Classes</a>
+            <a href="#services" className="nav-link">Features</a>
+            <a href="#steps" className="nav-link">How it works</a>
+            <a href="#about" className="nav-link">About</a>
+            <a href="#roles" className="nav-link">Roles</a>
           </div>
 
-          {/* Desktop Nav Links with Animated Underline */}
-          <div className="landing-nav-links">
-            <a href="#shelf" className="landing-nav-link">Class Shelf</a>
-            <a href="#features" className="landing-nav-link">Features</a>
-            <a href="#how-it-works" className="landing-nav-link">Workflow</a>
-            <a href="#roles" className="landing-nav-link">Roles</a>
-          </div>
-
-          <div className="landing-nav-actions">
-            <button
-              type="button"
-              className="nav-btn-signin"
+          {/* Auth Actions */}
+          <div className="landing-navbar-actions">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => navigate("/login")}
             >
               Sign In
-            </button>
-            <button
-              type="button"
-              className="nav-btn-getstarted"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => navigate("/signup")}
             >
               Get Started
-            </button>
-
-            {/* Mobile Hamburger Button */}
+            </Button>
             <button
               type="button"
-              className="nav-mobile-hamburger"
+              className="landing-mobile-menu-btn"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle navigation menu"
+              aria-label="Toggle Navigation Menu"
             >
-              {mobileMenuOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}
+              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="mobile-nav-drawer">
-            <a href="#shelf" onClick={() => setMobileMenuOpen(false)}>Class Shelf</a>
-            <a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>Workflow</a>
+          <div className="landing-mobile-drawer">
+            <a href="#classes" onClick={() => setMobileMenuOpen(false)}>Classes</a>
+            <a href="#services" onClick={() => setMobileMenuOpen(false)}>Features</a>
+            <a href="#steps" onClick={() => setMobileMenuOpen(false)}>How it works</a>
+            <a href="#about" onClick={() => setMobileMenuOpen(false)}>About</a>
             <a href="#roles" onClick={() => setMobileMenuOpen(false)}>Roles</a>
-            <div className="mobile-nav-drawer-actions">
-              <Button variant="secondary" onClick={() => navigate("/login")}>
+            <div className="mobile-drawer-auth">
+              <Button variant="outline" size="md" onClick={() => navigate("/login")}>
                 Sign In
               </Button>
-              <Button variant="primary" onClick={() => navigate("/signup")}>
+              <Button variant="primary" size="md" onClick={() => navigate("/signup")}>
                 Get Started
               </Button>
             </div>
@@ -196,10 +170,14 @@ export default function Landing() {
         )}
       </nav>
 
-      {/* ── Hero Section with Animated Gradient Mesh ── */}
-      <section className="landing-hero-section">
+      {/* ====================================================================
+          2. HERO SECTION
+          Left: Headline, supporting text, 2 CTAs, pill search
+          Right: Circular masked visual overlapping bigger pale circle with dots
+          ==================================================================== */}
+      <header className="landing-hero-section">
         <div className="landing-hero-container">
-          {/* Left Column: Bold Headline & Search */}
+          {/* Left Column */}
           <div className="landing-hero-left">
             <div className="hero-kicker-pill">
               <span className="hero-kicker-dot" />
@@ -207,20 +185,19 @@ export default function Landing() {
             </div>
 
             <h1 className="hero-title">
-              Past Papers, Exams & Notes for Future Tech Leaders.
+              Past papers, assignments and revision notes for RCA leaders.
             </h1>
 
             <p className="hero-subtitle">
-              The dedicated curriculum archive for RCA students and educators.
-              Instantly preview, search, and download exam schemes, CATs, and lecture notes
-              across all terms and cohorts.
+              The dedicated academic portal for Rwanda Coding Academy students and faculty.
+              Search past papers, view comprehensive course notes, and manage class assignments across all terms.
             </p>
 
-            <div className="hero-cta-row">
+            <div className="hero-cta-group">
               <Button
                 variant="primary"
                 size="lg"
-                iconRight={<ArrowRightIcon size={18} />}
+                iconRight={<ArrowRight size={18} />}
                 onClick={() => navigate("/signup")}
               >
                 Access Past Papers
@@ -234,118 +211,249 @@ export default function Landing() {
               </Button>
             </div>
 
-            {/* Pill Search */}
-            <form className="hero-pill-search" onSubmit={handleHeroSearch}>
-              <SearchIcon size={18} className="hero-search-icon" />
+            {/* Pill Search Form */}
+            <form className="hero-search-bar" onSubmit={handleHeroSearch}>
+              <Search size={18} className="hero-search-icon" />
               <input
                 type="text"
-                placeholder="Search by topic, subject or year (e.g. Data Structures)..."
+                placeholder="Search by subject, module or term (e.g. Data Structures)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search past papers and resources"
               />
-              <button type="submit" className="hero-search-button">
+              <button type="submit" className="hero-search-submit">
                 Search
               </button>
             </form>
           </div>
 
-          {/* Right Column: Layered Product Mockup with Safe Clearances & Rendered Bars */}
+          {/* Right Column: Circular Masked Mockup with Pale Overlap & Scattered Dots */}
           <div className="landing-hero-right">
-            {/* Safe Orbiting Chip Left: Clear 20px outside mockup frame */}
-            <div className="hero-orbit-chip chip-preview">
-              <div className="orbit-chip-icon" style={{ background: "#5B73E0" }}>
-                <EyeIcon size={16} />
+            {/* Background Pale Circle Decoration */}
+            <div className="hero-pale-circle" />
+
+            {/* Scattered Decorative Dots */}
+            <div className="hero-decor-dot dot-1" />
+            <div className="hero-decor-dot dot-2" />
+            <div className="hero-decor-dot dot-3" />
+            <div className="hero-decor-dot dot-4" />
+
+            {/* Floating Safe Card 1 (Top Left, 16px+ Clearance) */}
+            <div className="hero-floating-card float-card-1">
+              <div className="floating-card-icon" style={{ backgroundColor: "#5B73E0" }}>
+                <Eye size={16} color="#FFFFFF" />
               </div>
               <div>
-                <strong className="orbit-chip-title">Browser PDF Preview</strong>
-                <span className="orbit-chip-sub">Direct in-browser reading</span>
+                <strong className="floating-card-title">In-Browser Reader</strong>
+                <span className="floating-card-sub">Instant PDF and note preview</span>
               </div>
             </div>
 
-            {/* Safe Orbiting Chip Right: Clear 20px outside mockup frame */}
-            <div className="hero-orbit-chip chip-curriculum">
-              <div className="orbit-chip-icon" style={{ background: "#10B981" }}>
-                <MaterialsIcon size={16} />
+            {/* Floating Safe Card 2 (Bottom Right, 16px+ Clearance) */}
+            <div className="hero-floating-card float-card-2">
+              <div className="floating-card-icon" style={{ backgroundColor: "#10B981" }}>
+                <Check size={16} color="#FFFFFF" />
               </div>
               <div>
-                <strong className="orbit-chip-title">Curriculum Aligned</strong>
-                <span className="orbit-chip-sub">Year 1, 2 & 3 modules</span>
+                <strong className="floating-card-title">Curriculum Aligned</strong>
+                <span className="floating-card-sub">Year 1 to Year 3 streams</span>
               </div>
             </div>
 
-            {/* Main Mockup Frame */}
-            <div className="hero-product-frame">
-              {/* Mockup Sidebar */}
-              <div className="mockup-sidebar">
-                <div className="mockup-sidebar-logo">
-                  <Logo variant="knockout" size="xs" showWordmark={false} />
-                  <span>RCA Archive</span>
-                </div>
-                <div className="mockup-nav-item active">
-                  <LessonsIcon size={16} />
-                  <span>Dashboard</span>
-                </div>
-                <div className="mockup-nav-item">
-                  <MaterialsIcon size={16} />
-                  <span>Past Papers</span>
-                </div>
-                <div className="mockup-nav-item">
-                  <CalendarIcon size={16} />
-                  <span>Subjects</span>
-                </div>
-              </div>
-
-              {/* Mockup Canvas */}
-              <div className="mockup-canvas">
-                <div className="mockup-canvas-header">
-                  <div>
-                    <span className="mockup-welcome">Academic Portal</span>
-                    <strong className="mockup-name">Student Dashboard</strong>
+            {/* Circular Masked Visual Container */}
+            <div className="hero-circle-mask">
+              <div className="hero-mockup-inner">
+                {/* Mockup Header */}
+                <div className="mockup-top-bar">
+                  <div className="mockup-logo-row">
+                    <span className="mockup-dot-indicator" />
+                    <strong>RCA Archive</strong>
                   </div>
-                  <span className="mockup-pill-badge">Term Active</span>
+                  <span className="mockup-term-chip">Term Active</span>
                 </div>
 
-                {/* Rendered Bar Chart with explicit heights and two-tone fills */}
-                <div className="mockup-chart-card">
-                  <div className="mockup-chart-header">
-                    <div>
-                      <span className="mockup-stat-label">Archive by Module</span>
-                      <strong className="mockup-stat-num">Curriculum Coverage</strong>
-                    </div>
-                    <span className="mockup-filter-pill">All Streams ▾</span>
+                {/* Mockup Bar Chart Area */}
+                <div className="mockup-metrics-box">
+                  <div className="mockup-box-head">
+                    <span>Curriculum Coverage</span>
+                    <span className="mockup-badge-mini">All Streams</span>
                   </div>
-
-                  <div className="mockup-bar-chart-container">
-                    <div className="mockup-bar-item">
-                      <div className="mockup-bar-pillar" style={{ height: "72px" }} />
-                      <span className="mockup-bar-label">DSA</span>
+                  <div className="mockup-bars-row">
+                    <div className="mockup-bar-col">
+                      <div className="mockup-bar" style={{ height: "68px", background: "linear-gradient(180deg, #5B73E0 0%, #3F4FA8 100%)" }} />
+                      <span>DSA</span>
                     </div>
-                    <div className="mockup-bar-item">
-                      <div className="mockup-bar-pillar" style={{ height: "94px" }} />
-                      <span className="mockup-bar-label">OOP</span>
+                    <div className="mockup-bar-col">
+                      <div className="mockup-bar" style={{ height: "92px", background: "linear-gradient(180deg, #5B73E0 0%, #3F4FA8 100%)" }} />
+                      <span>OOP</span>
                     </div>
-                    <div className="mockup-bar-item">
-                      <div className="mockup-bar-pillar" style={{ height: "58px" }} />
-                      <span className="mockup-bar-label">DBMS</span>
+                    <div className="mockup-bar-col">
+                      <div className="mockup-bar" style={{ height: "54px", background: "linear-gradient(180deg, #5B73E0 0%, #3F4FA8 100%)" }} />
+                      <span>DBMS</span>
                     </div>
-                    <div className="mockup-bar-item">
-                      <div className="mockup-bar-pillar" style={{ height: "82px" }} />
-                      <span className="mockup-bar-label">AI</span>
+                    <div className="mockup-bar-col">
+                      <div className="mockup-bar" style={{ height: "80px", background: "linear-gradient(180deg, #5B73E0 0%, #3F4FA8 100%)" }} />
+                      <span>AI</span>
                     </div>
-                    <div className="mockup-bar-item">
-                      <div className="mockup-bar-pillar" style={{ height: "64px" }} />
-                      <span className="mockup-bar-label">NET</span>
+                    <div className="mockup-bar-col">
+                      <div className="mockup-bar" style={{ height: "62px", background: "linear-gradient(180deg, #5B73E0 0%, #3F4FA8 100%)" }} />
+                      <span>NET</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Progress Rings Card */}
-                <div className="mockup-rings-card">
-                  <span className="mockup-stat-label">Coverage by Year</span>
-                  <div className="mockup-rings-row">
-                    <StatRing percentage={88} label="Year 1" size={54} color="#3F4FA8" strokeWidth={5} />
-                    <StatRing percentage={92} label="Year 2" size={54} color="#5B73E0" strokeWidth={5} />
-                    <StatRing percentage={79} label="Year 3" size={54} color="#232C6B" strokeWidth={5} />
+                <div className="mockup-rings-box">
+                  <span className="mockup-box-label">Archive Progress</span>
+                  <div className="mockup-rings-grid">
+                    <ProgressRing percentage={88} label="Year 1" size={54} color="#3F4FA8" strokeWidth={5} />
+                    <ProgressRing percentage={94} label="Year 2" size={54} color="#5B73E0" strokeWidth={5} />
+                    <ProgressRing percentage={82} label="Year 3" size={54} color="#232C6B" strokeWidth={5} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ====================================================================
+          3. ROW OF 4 SERVICE CARDS (STRICT CSS GRID, ONE SOLID INDIGO)
+          ==================================================================== */}
+      <section id="services" className="landing-services-section">
+        <div className="landing-container">
+          <div className="section-header-centered">
+            <span className="section-eyebrow">Academic Architecture</span>
+            <h2 className="section-title">Designed for rapid revision and study</h2>
+            <p className="section-subtext">
+              Four tailored features that keep students focused and educators organized.
+            </p>
+          </div>
+
+          <div className="services-strict-grid">
+            {/* Card 1: Search & Filters */}
+            <div className="service-card">
+              <div className="service-icon-box" style={{ backgroundColor: "#F4F6FD", color: "#3F4FA8" }}>
+                <Search size={22} />
+              </div>
+              <h3 className="service-card-title">Search and Filters</h3>
+              <p className="service-card-desc">
+                Filter past exams by academic year, cohort class, module, and examination type in seconds.
+              </p>
+              <div className="service-card-footer">
+                <span className="service-tag">Exact module matching</span>
+              </div>
+            </div>
+
+            {/* Card 2: In-browser Preview */}
+            <div className="service-card">
+              <div className="service-icon-box" style={{ backgroundColor: "#F4F6FD", color: "#5B73E0" }}>
+                <Eye size={22} />
+              </div>
+              <h3 className="service-card-title">In-Browser Preview</h3>
+              <p className="service-card-desc">
+                Read PDF questions, solution schemes, and lecture presentations instantly without downloading clutter.
+              </p>
+              <div className="service-card-footer">
+                <span className="service-tag">Direct file viewing</span>
+              </div>
+            </div>
+
+            {/* Card 3: HIGHLIGHTED SOLID INDIGO CARD */}
+            <div className="service-card card-highlight-indigo">
+              <div className="service-icon-box highlight-icon-box">
+                <Layers size={22} color="#FFFFFF" />
+              </div>
+              <h3 className="service-card-title highlight-title">Class-Based Resources</h3>
+              <p className="service-card-desc highlight-desc">
+                Structured repository spaces for all 10 campus cohorts from Year 1 to Year 3, separating lectures, CATs, and exams.
+              </p>
+              <div className="service-card-footer">
+                <span className="service-tag highlight-tag">10 Campus Cohorts</span>
+              </div>
+            </div>
+
+            {/* Card 4: Role-Based Access */}
+            <div className="service-card">
+              <div className="service-icon-box" style={{ backgroundColor: "#F4F6FD", color: "#10B981" }}>
+                <Shield size={22} />
+              </div>
+              <h3 className="service-card-title">Role-Based Access</h3>
+              <p className="service-card-desc">
+                Dedicated dashboards and permission flows for Students, Instructors, and Academy Administrators.
+              </p>
+              <div className="service-card-footer">
+                <span className="service-tag">Secure roles</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================================
+          4. FULL-WIDTH INDIGO BAND WITH NUMBERED SIMPLE STEPS
+          ==================================================================== */}
+      <section id="steps" className="landing-steps-band">
+        <div className="landing-container">
+          <div className="steps-band-grid">
+            {/* Left: Numbered Steps */}
+            <div className="steps-content-left">
+              <span className="steps-eyebrow">Straightforward Workflow</span>
+              <h2 className="steps-headline">Simple steps to academic success</h2>
+              <p className="steps-lead">
+                Built to integrate cleanly into your daily revision schedule and examination prep.
+              </p>
+
+              <div className="numbered-steps-list">
+                <div className="step-item">
+                  <div className="step-number-circle">1</div>
+                  <div className="step-item-body">
+                    <strong className="step-item-title">Create account</strong>
+                    <p className="step-item-desc">
+                      Register with your name, verified RCA email address, and 6-digit confirmation code.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="step-item">
+                  <div className="step-number-circle">2</div>
+                  <div className="step-item-body">
+                    <strong className="step-item-title">Choose your class</strong>
+                    <p className="step-item-desc">
+                      Select your cohort stream from Y1A through Y3C to access syllabus modules and assignments.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="step-item">
+                  <div className="step-number-circle">3</div>
+                  <div className="step-item-body">
+                    <strong className="step-item-title">Study and contribute</strong>
+                    <p className="step-item-desc">
+                      Preview past exams, submit assignment work, and contribute helpful study materials.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Circular Visual Beside Steps */}
+            <div className="steps-visual-right">
+              <div className="steps-circle-visual">
+                <div className="steps-inner-graphic">
+                  <div className="graphic-badge-row">
+                    <span className="graphic-badge"><Check size={14} /> Marking Scheme</span>
+                    <span className="graphic-badge"><Calendar size={14} /> Term 1 to 3</span>
+                  </div>
+                  <div className="graphic-center-card">
+                    <GraduationCap size={44} color="#3F4FA8" />
+                    <strong>RCA Archive</strong>
+                    <span>Academic Resource Library</span>
+                  </div>
+                  <div className="graphic-pill-row">
+                    <span className="graphic-pill">Past Papers</span>
+                    <span className="graphic-pill">CATs</span>
+                    <span className="graphic-pill">Solutions</span>
                   </div>
                 </div>
               </div>
@@ -354,379 +462,319 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Smooth Marquee Strip of Subject Names ── */}
-      <section className="marquee-section">
-        <div className="marquee-track">
-          <div className="marquee-content">
-            {MARQUEE_SUBJECTS.map((sub, idx) => (
-              <span key={idx} className="marquee-item">
-                <span className="marquee-dot" />
-                {sub}
-              </span>
-            ))}
-          </div>
-          <div className="marquee-content" aria-hidden="true">
-            {MARQUEE_SUBJECTS.map((sub, idx) => (
-              <span key={`clone-${idx}`} className="marquee-item">
-                <span className="marquee-dot" />
-                {sub}
-              </span>
-            ))}
+      {/* ====================================================================
+          5. ABOUT SECTION WITH DEVICE MOCKUP INSIDE CIRCLE
+          ==================================================================== */}
+      <section id="about" className="landing-about-section">
+        <div className="landing-container">
+          <div className="about-layout-grid">
+            {/* Left: Device Mockup inside Circle */}
+            <div className="about-visual-col">
+              <div className="about-circle-container">
+                <div className="about-circle-backdrop" />
+                <div className="about-device-mockup">
+                  <div className="device-screen-top">
+                    <span className="device-camera-dot" />
+                  </div>
+                  <div className="device-screen-content">
+                    <div className="device-app-header">
+                      <Logo variant="knockout" size="xs" showWordmark={false} />
+                      <span className="device-header-title">Student Portal</span>
+                    </div>
+                    <div className="device-card-mock">
+                      <div className="device-card-header">
+                        <span className="device-class-tag">{currentClass.label}</span>
+                        <span className="device-status-badge">Active</span>
+                      </div>
+                      <strong className="device-subject-name">{classSubjects[0]}</strong>
+                      <span className="device-meta">Year {currentClass.year} • 12 Resources</span>
+                    </div>
+                    <div className="device-card-mock subtle">
+                      <div className="device-card-header">
+                        <span className="device-class-tag">{currentClass.label}</span>
+                      </div>
+                      <strong className="device-subject-name">{classSubjects[1]}</strong>
+                      <span className="device-meta">Year {currentClass.year} • 8 Resources</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Informational Copy */}
+            <div className="about-text-col">
+              <span className="section-eyebrow">Institutional Heritage</span>
+              <h2 className="section-title">Built for the future tech leaders of Rwanda</h2>
+              <p className="about-paragraph">
+                Rwanda Coding Academy combines rigorous high school academics with specialized software engineering, embedded systems, and artificial intelligence tracks.
+              </p>
+              <p className="about-paragraph">
+                The RCA Archive serves as the central digital repository for curriculum materials, preserving previous years' examination standards, instructor notes, and student project documentation in one unified system.
+              </p>
+
+              <div className="about-bullets-grid">
+                <div className="about-bullet">
+                  <div className="about-bullet-icon"><Check size={16} /></div>
+                  <div>
+                    <strong>Historical Continuity</strong>
+                    <span>Access questions dating back across multiple cohorts.</span>
+                  </div>
+                </div>
+                <div className="about-bullet">
+                  <div className="about-bullet-icon"><Check size={16} /></div>
+                  <div>
+                    <strong>Stream Separation</strong>
+                    <span>Separate spaces for Software, Embedded, and GenAI streams.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Real Stats Row (Driven by Real API Data) ── */}
-      {statsLoaded && (
-        <section className="landing-stats-row">
-          <div className="stats-container">
-            <div className="stat-unit">
-              <strong className="stat-big-num num-stat">
-                {realStats.papers > 0 ? `${realStats.papers}+` : "Live"}
-              </strong>
-              <span className="stat-unit-title">Archived Past Papers</span>
-              <span className="stat-unit-desc">Available for direct study</span>
-            </div>
-
-            <div className="stat-unit">
-              <strong className="stat-big-num num-stat">
-                {realStats.users > 0 ? `${realStats.users}+` : "Active"}
-              </strong>
-              <span className="stat-unit-title">Registered Accounts</span>
-              <span className="stat-unit-desc">RCA students and faculty</span>
-            </div>
-
-            <div className="stat-unit">
-              <strong className="stat-big-num num-stat">34+</strong>
-              <span className="stat-unit-title">Curriculum Modules</span>
-              <span className="stat-unit-desc">Year 1, Year 2 & Year 3</span>
-            </div>
-
-            <div className="stat-unit">
-              <strong className="stat-big-num num-stat">100%</strong>
-              <span className="stat-unit-title">Institutional Focus</span>
-              <span className="stat-unit-desc">Tailored to Rwanda Coding Academy</span>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── Interactive Campus "Archive Shelf" Class Selector Motif ── */}
-      <section id="shelf" className="campus-shelf-section">
-        <div className="section-head-wrap">
-          <span className="section-eyebrow">Campus Archive Shelf</span>
-          <h2 className="section-main-title">Select your cohort shelf</h2>
-          <p className="section-main-sub">
-            Browse through RCA cohorts to discover modules, lecture guides, CATs, and final examination archives.
-          </p>
-        </div>
-
-        <div className="shelf-chips-wrap">
-          <ClassChips
-            selectedClass={selectedClassId}
-            onSelectClass={setSelectedClassId}
-            size="md"
-          />
-        </div>
-
-        {/* Shelf Content Panel (Animated when class changes) */}
-        <div className="shelf-display-card">
-          <div className="shelf-display-header">
+      {/* ====================================================================
+          6. BROWSE BY CLASS CAROUSEL WITH ARROWS
+          ==================================================================== */}
+      <section id="classes" className="landing-classes-section">
+        <div className="landing-container">
+          <div className="classes-header-row">
             <div>
-              <span className="shelf-cohort-tag">Cohort Focus</span>
-              <h3 className="shelf-cohort-title">
-                {currentClassObj.label} — Year {currentClassObj.year} Stream {currentClassObj.stream}
-              </h3>
+              <span className="section-eyebrow">Campus Directory</span>
+              <h2 className="section-title">Browse by class cohort</h2>
+              <p className="section-subtext">
+                Select a class stream to preview active syllabus modules and revision past papers.
+              </p>
             </div>
-            <div className="shelf-types-badge-row">
-              <span className="shelf-type-pill">Past Papers</span>
-              <span className="shelf-type-pill">Marking Schemes</span>
-              <span className="shelf-type-pill">Lecture Slides</span>
-            </div>
-          </div>
 
-          <div className="shelf-subjects-grid">
-            {classSubjects.map((subject, idx) => (
-              <div
-                key={idx}
-                className="shelf-subject-item"
-                onClick={() =>
-                  navigate(`/login?redirect=/subject/${currentClassObj.year}/${encodeURIComponent(subject)}`)
-                }
+            {/* Carousel Control Arrows */}
+            <div className="carousel-nav-arrows">
+              <button
+                type="button"
+                className="carousel-arrow-btn"
+                onClick={handlePrevClass}
+                aria-label="Previous class stream"
               >
-                <div className="shelf-subject-icon">
-                  <MaterialsIcon size={18} />
-                </div>
-                <div className="shelf-subject-info">
-                  <strong>{subject}</strong>
-                  <span>Year {currentClassObj.year} • View past exams →</span>
-                </div>
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                type="button"
+                className="carousel-arrow-btn"
+                onClick={handleNextClass}
+                aria-label="Next class stream"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive Class Chips Track */}
+          <div className="classes-chips-track">
+            {RCA_CLASSES.map((cls, idx) => {
+              const isSelected = selectedClassIndex === idx;
+              return (
+                <button
+                  key={cls.id}
+                  type="button"
+                  className={`class-chip-pill ${isSelected ? "selected" : ""}`}
+                  onClick={() => setSelectedClassIndex(idx)}
+                >
+                  {cls.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Class Content Showcase Card */}
+          <div className="class-showcase-panel">
+            <div className="class-showcase-header">
+              <div>
+                <span className="showcase-cohort-tag">Cohort Focus</span>
+                <h3 className="showcase-cohort-title">
+                  {currentClass.label}: Year {currentClass.year}, Stream {currentClass.stream}
+                </h3>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features Bento Grid (Strict Grid-Template-Areas, NO Empty Cells) ── */}
-      <section id="features" className="bento-features-section">
-        <div className="section-head-wrap">
-          <span className="section-eyebrow">Engineered for RCA</span>
-          <h2 className="section-main-title">Modern academic tools that work</h2>
-          <p className="section-main-sub">
-            Built from scratch to give RCA students and teachers clean, fast, and structured revision workflows.
-          </p>
-        </div>
-
-        <div className="bento-strict-grid">
-          {/* Card 1: Search & Filtering */}
-          <div className="bento-item bento-area-search">
-            <div className="bento-item-icon" style={{ background: "#3F4FA8", color: "#FFFFFF" }}>
-              <SearchIcon size={22} />
-            </div>
-            <h3 className="bento-item-title">Instant Search & Class Filters</h3>
-            <p className="bento-item-desc">
-              Filter by cohort class (Y1A through Y3C), subject module, and exam type. Locate exact past exams within seconds.
-            </p>
-            <div className="bento-visual-search-demo">
-              <span className="demo-chip">Y2A</span>
-              <span className="demo-chip active">Data Structures</span>
-              <span className="demo-chip">Exam Paper</span>
-            </div>
-          </div>
-
-          {/* Card 2: In-Browser Document Preview */}
-          <div className="bento-item bento-area-preview">
-            <div className="bento-item-icon" style={{ background: "#5B73E0", color: "#FFFFFF" }}>
-              <EyeIcon size={22} />
-            </div>
-            <h3 className="bento-item-title">In-Browser Document Preview</h3>
-            <p className="bento-item-desc">
-              View PDF question papers, DOCX solutions, and PPTX notes seamlessly directly in the application without download delays.
-            </p>
-            <div className="bento-visual-preview-demo">
-              <div className="preview-doc-card">
-                <span className="doc-icon">PDF</span>
-                <span>CAT_1_Algorithms_2025.pdf</span>
+              <div className="showcase-types-row">
+                <span className="showcase-pill">Notes</span>
+                <span className="showcase-pill">Assignments</span>
+                <span className="showcase-pill">Past Papers</span>
               </div>
             </div>
-          </div>
 
-          {/* Card 3: Cryptographic Deduplication */}
-          <div className="bento-item bento-area-upload">
-            <div className="bento-item-icon" style={{ background: "#10B981", color: "#FFFFFF" }}>
-              <UploadIcon size={22} />
-            </div>
-            <h3 className="bento-item-title">SHA-256 Deduplication</h3>
-            <p className="bento-item-desc">
-              Automated cryptographic file hashing checks uploads for identical content, preventing repeated duplicates in the repository.
-            </p>
-            <div className="bento-visual-hash-demo">
-              <span className="hash-code">sha256: 7f83b165... verified</span>
-            </div>
-          </div>
-
-          {/* Card 4: Peer Ratings */}
-          <div className="bento-item bento-area-ratings">
-            <div className="bento-item-icon" style={{ background: "#F59E0B", color: "#FFFFFF" }}>
-              <StarIcon size={22} />
-            </div>
-            <h3 className="bento-item-title">Verified Peer Ratings</h3>
-            <p className="bento-item-desc">
-              Students and teachers rate papers to highlight high-yield examination questions and comprehensive solution keys.
-            </p>
-            <div className="bento-visual-stars-demo">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <StarIcon key={s} size={18} filled />
+            <div className="showcase-modules-grid">
+              {classSubjects.map((sub, sIdx) => (
+                <div
+                  key={sIdx}
+                  className="showcase-module-card"
+                  onClick={() => navigate(`/login?redirect=/subject/${currentClass.year}/${encodeURIComponent(sub)}`)}
+                >
+                  <div className="module-card-icon">
+                    <BookOpen size={18} />
+                  </div>
+                  <div className="module-card-info">
+                    <strong>{sub}</strong>
+                    <span>Year {currentClass.year} Curriculum</span>
+                  </div>
+                  <ArrowRight size={16} className="module-card-arrow" />
+                </div>
               ))}
-              <span className="star-rating-text">Peer-reviewed</span>
-            </div>
-          </div>
-
-          {/* Card 5: Class-Based Organisation */}
-          <div className="bento-item bento-area-classes">
-            <div className="bento-item-icon" style={{ background: "#232C6B", color: "#FFFFFF" }}>
-              <MaterialsIcon size={22} />
-            </div>
-            <h3 className="bento-item-title">Campus Cohort Organisation</h3>
-            <p className="bento-item-desc">
-              All 10 campus classes (Y1A, Y1B, Y1C, Y1GenAI, Y2A, Y2B, Y2C, Y3A, Y3B, Y3C) have dedicated archive shelf spaces.
-            </p>
-            <div className="bento-visual-classes-demo">
-              <span className="cohort-mini-tag">10 Campus Cohorts</span>
-              <span className="cohort-mini-tag">Structured Terms</span>
-            </div>
-          </div>
-
-          {/* Card 6: Role-Based Access Control */}
-          <div className="bento-item bento-area-rbac">
-            <div className="bento-item-icon" style={{ background: "#3F4FA8", color: "#FFFFFF" }}>
-              <ShieldIcon size={22} />
-            </div>
-            <h3 className="bento-item-title">Role-Based Access & Moderation</h3>
-            <p className="bento-item-desc">
-              Distinct permissions for Students, Teachers, and Administrators, with a formal deletion request queue for content moderation.
-            </p>
-            <div className="bento-visual-rbac-demo">
-              <span className="role-pill-student">Student</span>
-              <span className="role-pill-teacher">Teacher</span>
-              <span className="role-pill-admin">Administrator</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── How It Works (3 Steps with Connected Line) ── */}
-      <section id="how-it-works" className="how-it-works-section">
-        <div className="section-head-wrap">
-          <span className="section-eyebrow">Straightforward Workflow</span>
-          <h2 className="section-main-title">How to get started in 3 steps</h2>
-          <p className="section-main-sub">
-            Designed to fit directly into your daily revision habits and exam preparations.
-          </p>
-        </div>
-
-        <div className="steps-connected-grid">
-          <div className="step-card-box">
-            <div className="step-circle-badge">01</div>
-            <h3 className="step-heading">Create Account or Sign In</h3>
-            <p className="step-description">
-              Sign in with your verified RCA credentials, or register with 6-digit email OTP verification.
+      {/* ====================================================================
+          7. ROLES OVERVIEW SECTION
+          ==================================================================== */}
+      <section id="roles" className="landing-roles-section">
+        <div className="landing-container">
+          <div className="section-header-centered">
+            <span className="section-eyebrow">Permission Architecture</span>
+            <h2 className="section-title">Built for the entire RCA community</h2>
+            <p className="section-subtext">
+              Distinct workflows designed specifically for learners, instructors, and system administrators.
             </p>
           </div>
 
-          <div className="step-card-box">
-            <div className="step-circle-badge">02</div>
-            <h3 className="step-heading">Select Year or Class Shelf</h3>
-            <p className="step-description">
-              Choose your cohort stream or search across all curriculum modules to pinpoint relevant materials.
-            </p>
-          </div>
+          <div className="roles-cards-grid">
+            {/* Student Role */}
+            <div className="role-card">
+              <div className="role-card-badge" style={{ backgroundColor: "#F4F6FD", color: "#3F4FA8" }}>
+                <GraduationCap size={24} />
+              </div>
+              <h3 className="role-card-name">Students</h3>
+              <p className="role-card-desc">
+                Study with previous years' examination papers, verify solution steps, and review assignment criteria.
+              </p>
+              <ul className="role-checklist">
+                <li><Check size={15} /> Cohort-filtered past exams</li>
+                <li><Check size={15} /> Direct in-browser PDF preview</li>
+                <li><Check size={15} /> Peer paper uploads</li>
+              </ul>
+            </div>
 
-          <div className="step-card-box">
-            <div className="step-circle-badge">03</div>
-            <h3 className="step-heading">Preview, Study & Download</h3>
-            <p className="step-description">
-              Study directly in the responsive viewer, download files for offline study, and rate helpful solutions.
-            </p>
+            {/* Teacher Role */}
+            <div className="role-card">
+              <div className="role-card-badge" style={{ backgroundColor: "#F4F6FD", color: "#5B73E0" }}>
+                <Users size={24} />
+              </div>
+              <h3 className="role-card-name">Teachers</h3>
+              <p className="role-card-desc">
+                Publish official examination materials, curriculum slides, and manage assignment submission deadlines.
+              </p>
+              <ul className="role-checklist">
+                <li><Check size={15} /> Manage class assignments</li>
+                <li><Check size={15} /> Review and resolve appeals</li>
+                <li><Check size={15} /> Publish curriculum solution notes</li>
+              </ul>
+            </div>
+
+            {/* Admin Role */}
+            <div className="role-card">
+              <div className="role-card-badge" style={{ backgroundColor: "#F4F6FD", color: "#232C6B" }}>
+                <Shield size={24} />
+              </div>
+              <h3 className="role-card-name">Administrators</h3>
+              <p className="role-card-desc">
+                Complete platform supervision, user provisioning, faculty invitations, and content deletion reviews.
+              </p>
+              <ul className="role-checklist">
+                <li><Check size={15} /> Faculty account invitations</li>
+                <li><Check size={15} /> Content deletion moderation</li>
+                <li><Check size={15} /> Real-time system analytics</li>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Roles Section (3 Distinct Cards) ── */}
-      <section id="roles" className="roles-overview-section">
-        <div className="section-head-wrap">
-          <span className="section-eyebrow">Tailored Experience</span>
-          <h2 className="section-main-title">Built for the entire RCA community</h2>
-          <p className="section-main-sub">
-            Distinct tools and permissions designed for learners, instructors, and academy administration.
-          </p>
-        </div>
-
-        <div className="roles-cards-container">
-          {/* Student Card */}
-          <div className="role-user-card">
-            <div className="role-card-icon" style={{ background: "#E4E8FA", color: "#3F4FA8" }}>
-              <UserIcon size={24} />
+      {/* ====================================================================
+          8. CALL TO ACTION BAR OVERLAPPING FOOTER
+          ==================================================================== */}
+      <section className="landing-cta-section">
+        <div className="landing-container">
+          <div className="cta-overlap-card">
+            <div className="cta-text-left">
+              <h2 className="cta-headline">Ready to excel in your RCA courses?</h2>
+              <p className="cta-subheadline">
+                Join your classmates and start preparing with comprehensive past papers and solution keys today.
+              </p>
             </div>
-            <h3 className="role-card-title">Students</h3>
-            <p className="role-card-summary">
-              Prepare effectively with previous term examination papers, quizzes, notes, and peer solution guides.
-            </p>
-            <ul className="role-bullets">
-              <li><CheckIcon size={14} /> Cohort-filtered past exams</li>
-              <li><CheckIcon size={14} /> Full in-browser PDF preview</li>
-              <li><CheckIcon size={14} /> Upload paper contributions</li>
-            </ul>
-          </div>
-
-          {/* Teacher Card */}
-          <div className="role-user-card">
-            <div className="role-card-icon" style={{ background: "#EEF0F6", color: "#5B73E0" }}>
-              <UsersIcon size={24} />
+            <div className="cta-buttons-right">
+              <Button
+                variant="primary"
+                size="lg"
+                iconRight={<ArrowRight size={18} />}
+                onClick={() => navigate("/signup")}
+              >
+                Create Account
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate("/login")}
+                style={{ backgroundColor: "transparent", color: "#FFFFFF", borderColor: "rgba(255,255,255,0.4)" }}
+              >
+                Sign In
+              </Button>
             </div>
-            <h3 className="role-card-title">Teachers</h3>
-            <p className="role-card-summary">
-              Publish official past exams, curriculum slides, and lesson supplements to your cohort effortlessly.
-            </p>
-            <ul className="role-bullets">
-              <li><CheckIcon size={14} /> Upload past papers with metadata</li>
-              <li><CheckIcon size={14} /> Verified faculty contributor tag</li>
-              <li><CheckIcon size={14} /> Review student engagement</li>
-            </ul>
-          </div>
-
-          {/* Administrator Card */}
-          <div className="role-user-card">
-            <div className="role-card-icon" style={{ background: "#F4F6FD", color: "#232C6B" }}>
-              <ShieldIcon size={24} />
-            </div>
-            <h3 className="role-card-title">Administrators</h3>
-            <p className="role-card-summary">
-              Maintain institutional standards with moderation queues, user directories, and system audit logs.
-            </p>
-            <ul className="role-bullets">
-              <li><CheckIcon size={14} /> Paper deletion moderation queue</li>
-              <li><CheckIcon size={14} /> Teacher and student account management</li>
-              <li><CheckIcon size={14} /> Live repository analytics</li>
-            </ul>
           </div>
         </div>
       </section>
 
-      {/* ── Final CTA Band ── */}
-      <section className="landing-final-cta">
-        <div className="final-cta-card">
-          <h2 className="final-cta-heading">Ready to start preparing for exams?</h2>
-          <p className="final-cta-subtitle">
-            Join Rwanda Coding Academy students and educators sharing past papers and curriculum solutions.
-          </p>
-          <Button
-            variant="glass"
-            size="lg"
-            onClick={() => navigate("/signup")}
-            style={{ fontWeight: 700 }}
-          >
-            Create Your Account
-          </Button>
-        </div>
-      </section>
+      {/* ====================================================================
+          9. MULTI-COLUMN FOOTER
+          ==================================================================== */}
+      <footer className="landing-footer">
+        <div className="landing-container">
+          <div className="footer-columns-grid">
+            {/* Col 1: Brand Info */}
+            <div className="footer-brand-col">
+              <Logo variant="knockout" size="md" />
+              <p className="footer-brand-text">
+                Rwanda Coding Academy academic knowledge archive and curriculum revision portal.
+                Dedicated to empowering young software engineering talents.
+              </p>
+              <span className="footer-brand-sub">Nyabihu Campus, Western Province, Rwanda</span>
+            </div>
 
-      {/* ── Modern Clean Footer ── */}
-      <footer className="landing-footer-clean">
-        <div className="footer-grid">
-          <div className="footer-brand-pane">
-            <Logo variant="light" size="sm" showWordmark wordmarkColor="#1B2142" />
-            <p className="footer-tagline">
-              Official past papers and academic study repository for Rwanda Coding Academy.
-            </p>
+            {/* Col 2: Academic Streams */}
+            <div className="footer-links-col">
+              <strong className="footer-col-title">Academic Years</strong>
+              <ul>
+                <li><Link to="/home">Year 1 Curriculum</Link></li>
+                <li><Link to="/home">Year 2 Curriculum</Link></li>
+                <li><Link to="/home">Year 3 Curriculum</Link></li>
+                <li><Link to="/home">General AI Track</Link></li>
+              </ul>
+            </div>
+
+            {/* Col 3: Portal Links */}
+            <div className="footer-links-col">
+              <strong className="footer-col-title">Portal Access</strong>
+              <ul>
+                <li><Link to="/login">Sign In</Link></li>
+                <li><Link to="/signup">Student Registration</Link></li>
+                <li><Link to="/teacher">Teacher Dashboard</Link></li>
+                <li><Link to="/admin">Administration</Link></li>
+              </ul>
+            </div>
+
+            {/* Col 4: Support */}
+            <div className="footer-links-col">
+              <strong className="footer-col-title">Institutional Support</strong>
+              <ul>
+                <li><Link to="/report-issue">Report an Issue</Link></li>
+                <li><a href="mailto:support@rca.ac.rw">Technical Helpdesk</a></li>
+                <li><Link to="/login">Account Recovery</Link></li>
+              </ul>
+            </div>
           </div>
 
-          <div className="footer-links-col">
-            <h4>Portal</h4>
-            <a href="#shelf">Class Shelf</a>
-            <a href="#features">Features</a>
-            <a href="#how-it-works">How It Works</a>
-            <a href="#roles">Role Access</a>
+          <div className="footer-bottom-bar">
+            <span>Copyright Rwanda Coding Academy Archive. All rights reserved.</span>
+            <span>Educational Knowledge Base</span>
           </div>
-
-          <div className="footer-links-col">
-            <h4>Cohorts</h4>
-            <Link to="/login?redirect=/home?year=1">Year 1 Curriculum</Link>
-            <Link to="/login?redirect=/home?year=2">Year 2 Curriculum</Link>
-            <Link to="/login?redirect=/home?year=3">Year 3 Curriculum</Link>
-          </div>
-
-          <div className="footer-links-col">
-            <h4>Account</h4>
-            <Link to="/login">Sign In</Link>
-            <Link to="/signup">Register</Link>
-            <Link to="/reset-password">Reset Password</Link>
-          </div>
-        </div>
-
-        <div className="footer-bottom-bar">
-          <span>© {new Date().getFullYear()} Rwanda Coding Academy. All rights reserved.</span>
-          <span>Academic Knowledge Repository</span>
         </div>
       </footer>
     </div>
