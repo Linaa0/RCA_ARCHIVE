@@ -29,6 +29,7 @@ export default function Input({
         flexDirection: "column",
         gap: "6px",
         width: "100%",
+        fontFamily: "var(--font-family, 'Quicksand', sans-serif)",
         ...style,
       }}
     >
@@ -38,14 +39,14 @@ export default function Input({
           style={{
             fontSize: "0.85rem",
             fontWeight: 600,
-            color: "var(--color-ink, #1B2142)",
+            color: error ? "var(--color-danger, #EF4444)" : "var(--color-ink, #1B2142)",
             display: "flex",
             alignItems: "center",
             gap: "4px",
           }}
         >
           {label}
-          {required && <span style={{ color: "#EF4444" }}>*</span>}
+          {required && <span style={{ color: "var(--color-danger, #EF4444)" }}>*</span>}
         </label>
       )}
 
@@ -66,6 +67,7 @@ export default function Input({
               display: "flex",
               alignItems: "center",
               pointerEvents: "none",
+              zIndex: 1,
             }}
           >
             {icon}
@@ -85,30 +87,34 @@ export default function Input({
             width: "100%",
             height: "46px",
             padding: `0 ${iconRight ? "40px" : "16px"} 0 ${icon ? "42px" : "16px"}`,
-            borderRadius: "var(--radius-input, 16px)",
+            borderRadius: "var(--radius-input, 14px)",
             border: error
-              ? "1.5px solid #EF4444"
-              : "1px solid rgba(63, 79, 168, 0.16)",
-            background: disabled ? "var(--color-bg, #EEF0F6)" : "#FFFFFF",
+              ? "1.5px solid var(--color-danger, #EF4444)"
+              : "1.5px solid var(--color-border-med, rgba(63, 79, 168, 0.16))",
+            backgroundColor: disabled
+              ? "var(--color-bg-subtle, #E6E9F2)"
+              : "var(--color-surface, #FFFFFF)",
             color: "var(--color-ink, #1B2142)",
-            fontSize: "0.92rem",
+            fontFamily: "inherit",
+            fontSize: "0.925rem",
+            fontWeight: 500,
             outline: "none",
-            transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+            transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
             boxShadow: error
-              ? "0 0 0 3px rgba(239, 68, 68, 0.15)"
-              : "0 1px 3px rgba(35, 44, 107, 0.04)",
+              ? "0 0 0 3px var(--color-danger-bg, rgba(239, 68, 68, 0.15))"
+              : "var(--shadow-xs)",
             ...inputStyle,
           }}
           onFocus={(e) => {
             if (!error) {
               e.currentTarget.style.borderColor = "var(--color-indigo-500, #5B73E0)";
-              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(91, 115, 224, 0.22)";
+              e.currentTarget.style.boxShadow = "var(--focus-ring)";
             }
           }}
           onBlur={(e) => {
             if (!error) {
-              e.currentTarget.style.borderColor = "rgba(63, 79, 168, 0.16)";
-              e.currentTarget.style.boxShadow = "0 1px 3px rgba(35, 44, 107, 0.04)";
+              e.currentTarget.style.borderColor = "var(--color-border-med, rgba(63, 79, 168, 0.16))";
+              e.currentTarget.style.boxShadow = "var(--shadow-xs)";
             }
           }}
           {...props}
@@ -119,8 +125,11 @@ export default function Input({
             style={{
               position: "absolute",
               right: "14px",
+              color: "var(--color-muted, #6A7399)",
               display: "flex",
               alignItems: "center",
+              cursor: "pointer",
+              zIndex: 1,
             }}
           >
             {iconRight}
@@ -128,15 +137,18 @@ export default function Input({
         )}
       </div>
 
-      {error ? (
-        <span style={{ fontSize: "0.78rem", color: "#EF4444", fontWeight: 500 }}>
-          {error}
+      {(error || helperText) && (
+        <span
+          style={{
+            fontSize: "0.8rem",
+            color: error ? "var(--color-danger, #EF4444)" : "var(--color-muted, #6A7399)",
+            fontWeight: 500,
+            marginTop: "2px",
+          }}
+        >
+          {error || helperText}
         </span>
-      ) : helperText ? (
-        <span style={{ fontSize: "0.78rem", color: "var(--color-muted, #6A7399)" }}>
-          {helperText}
-        </span>
-      ) : null}
+      )}
     </div>
   );
 }

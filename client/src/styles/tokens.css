@@ -1,92 +1,205 @@
 /* ==========================================================================
-   RCA ARCHIVE - DESIGN SYSTEM TOKENS
-   Inspired by "Smart" Student Dashboard & Campus Archive Shelf Concept
+   RCA ARCHIVE - MODERN COMMERCIAL DESIGN SYSTEM TOKENS
+   Quicksand Typography | Dual Themes (Light & Dark) | 8px Grid
    ========================================================================== */
 
-:root {
-  /* Brand Palette */
+:root,
+[data-theme="light"] {
+  /* Brand Palette - Deep Indigo Family & Periwinkle */
+  --color-indigo-950: #191F4D;
   --color-indigo-900: #232C6B;
   --color-indigo-800: #303E8A;
-  --color-indigo-700: #3F4FA8; /* Primary Sidebar */
+  --color-indigo-700: #3F4FA8; /* Primary Brand & Sidebar */
   --color-indigo-600: #4B62CE;
-  --color-indigo-500: #5B73E0; /* Primary Accent */
+  --color-indigo-500: #5B73E0; /* Primary Interactive Accent */
   --color-indigo-400: #7C91E8;
+  --color-indigo-300: #A5B4FC;
   --color-indigo-200: #C7D2FE;
   --color-indigo-100: #E4E8FA;
   --color-indigo-50:  #F4F6FD;
 
-  /* Neutrals & Surfaces */
-  --color-ink:        #1B2142; /* Strong text */
-  --color-ink-subtle: #3A4269;
-  --color-muted:      #6A7399; /* Secondary labels */
-  --color-tertiary:   #949EBF; /* Subtle metadata */
-  --color-border:     rgba(63, 79, 168, 0.08);
-  --color-border-med: rgba(63, 79, 168, 0.16);
-  --color-bg:         #EEF0F6; /* Page canvas */
-  --color-surface:    #FFFFFF; /* Pure white card surface */
+  /* Surfaces & Backgrounds - Light */
+  --color-bg:             #EEF0F6; /* Lavender-gray page canvas */
+  --color-bg-subtle:      #E6E9F2;
+  --color-surface:        #FFFFFF; /* Pure white card surface */
   --color-surface-subtle: #F8F9FD;
-  --color-divider:    #E7EBF5;
+  --color-surface-hover:  #F3F5FC;
+  --color-card:           #FFFFFF;
+  --color-card-border:    rgba(63, 79, 168, 0.08);
+
+  /* Typography Colors - Light */
+  --color-ink:            #1B2142; /* Deep primary ink */
+  --color-ink-subtle:     #343D68;
+  --color-muted:          #6A7399; /* Secondary labels */
+  --color-tertiary:       #8E98BF; /* Subtle metadata */
+  --color-disabled:       #B0B8D4;
+
+  /* Borders & Dividers - Light */
+  --color-border:         rgba(63, 79, 168, 0.09);
+  --color-border-med:     rgba(63, 79, 168, 0.16);
+  --color-border-strong:  rgba(63, 79, 168, 0.28);
+  --color-divider:        #E4E8F2;
+
+  /* Sidebar Tokens (Identical across student, teacher, admin) */
+  --sidebar-bg:           #3F4FA8;
+  --sidebar-bg-gradient:  linear-gradient(180deg, #3F4FA8 0%, #2A3676 100%);
+  --sidebar-text:         #FFFFFF;
+  --sidebar-text-muted:   rgba(255, 255, 255, 0.72);
+  --sidebar-item-hover:   rgba(255, 255, 255, 0.10);
+  --sidebar-active-bg:    #FFFFFF;
+  --sidebar-active-text:  #3F4FA8;
 
   /* Semantic Colors */
-  --color-success:       #10B981;
-  --color-success-bg:    rgba(16, 185, 129, 0.10);
-  --color-success-border:rgba(16, 185, 129, 0.25);
-  --color-warning:       #F59E0B;
-  --color-warning-bg:    rgba(245, 158, 11, 0.10);
-  --color-warning-border:rgba(245, 158, 11, 0.25);
-  --color-danger:        #EF4444;
-  --color-danger-bg:     rgba(239, 68, 68, 0.10);
-  --color-danger-border: rgba(239, 68, 68, 0.25);
-  --color-info:          #3B82F6;
-  --color-info-bg:       rgba(59, 130, 246, 0.10);
+  --color-success:        #10B981;
+  --color-success-bg:     rgba(16, 185, 129, 0.10);
+  --color-success-border: rgba(16, 185, 129, 0.25);
+  --color-warning:        #F59E0B;
+  --color-warning-bg:     rgba(245, 158, 11, 0.10);
+  --color-warning-border: rgba(245, 158, 11, 0.25);
+  --color-danger:         #EF4444;
+  --color-danger-bg:      rgba(239, 68, 68, 0.10);
+  --color-danger-border:  rgba(239, 68, 68, 0.25);
+  --color-info:           #3B82F6;
+  --color-info-bg:        rgba(59, 130, 246, 0.10);
+  --color-info-border:    rgba(59, 130, 246, 0.25);
 
   /* Gradients */
-  --gradient-sidebar: linear-gradient(180deg, #3F4FA8 0%, #2A3676 100%);
-  --gradient-accent:  linear-gradient(135deg, #5B73E0 0%, #3F4FA8 100%);
-  --gradient-hero:    linear-gradient(135deg, #232C6B 0%, #3F4FA8 55%, #5B73E0 100%);
-  --gradient-mesh:    radial-gradient(at 0% 0%, rgba(91, 115, 224, 0.35) 0px, transparent 50%),
-                      radial-gradient(at 100% 100%, rgba(35, 44, 107, 0.45) 0px, transparent 50%),
-                      linear-gradient(145deg, #232C6B 0%, #3F4FA8 100%);
-
-  /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-numeric: 'Inter', -apple-system, BlinkMacSystemFont, monospace;
-
-  /* Font Sizes & Scale */
-  --text-xs:   0.75rem;    /* 12px */
-  --text-sm:   0.875rem;   /* 14px */
-  --text-base: 1rem;       /* 16px */
-  --text-lg:   1.25rem;    /* 20px */
-  --text-xl:   1.75rem;    /* 28px */
-  --text-2xl:  2.5rem;     /* 40px */
-  --text-3xl:  4rem;       /* 64px */
-
-  /* Border Radii */
-  --radius-card: 24px;
-  --radius-card-sm: 18px;
-  --radius-input: 16px;
-  --radius-pill: 999px;
-  --radius-badge: 8px;
+  --gradient-accent:      linear-gradient(135deg, #5B73E0 0%, #3F4FA8 100%);
+  --gradient-hero:        linear-gradient(135deg, #232C6B 0%, #3F4FA8 55%, #5B73E0 100%);
+  --gradient-card-top:    linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #FFFFFF 100%);
 
   /* Shadows - Layered Indigo Tinted */
-  --shadow-xs: 0 1px 3px rgba(35, 44, 107, 0.04);
-  --shadow-sm: 0 2px 8px rgba(35, 44, 107, 0.05);
-  --shadow-card: 0 8px 24px -4px rgba(35, 44, 107, 0.06), 0 2px 6px -1px rgba(35, 44, 107, 0.03);
-  --shadow-card-hover: 0 16px 36px -6px rgba(35, 44, 107, 0.10), 0 4px 12px -2px rgba(35, 44, 107, 0.04);
-  --shadow-dropdown: 0 20px 40px -8px rgba(35, 44, 107, 0.16), 0 4px 12px rgba(35, 44, 107, 0.05);
-  --shadow-modal: 0 24px 60px -12px rgba(35, 44, 107, 0.25);
-  --shadow-shelf: 0 4px 0 #DDE2F0, 0 8px 20px rgba(35, 44, 107, 0.06);
+  --shadow-xs:         0 1px 3px rgba(35, 44, 107, 0.04);
+  --shadow-sm:         0 2px 8px rgba(35, 44, 107, 0.05);
+  --shadow-card:       0 8px 24px -4px rgba(35, 44, 107, 0.06), 0 2px 6px -1px rgba(35, 44, 107, 0.03);
+  --shadow-card-hover: 0 16px 36px -6px rgba(35, 44, 107, 0.12), 0 4px 12px -2px rgba(35, 44, 107, 0.05);
+  --shadow-dropdown:   0 20px 40px -8px rgba(35, 44, 107, 0.16), 0 4px 12px rgba(35, 44, 107, 0.05);
+  --shadow-modal:      0 24px 60px -12px rgba(35, 44, 107, 0.25);
 
   /* Focus Ring */
-  --focus-ring: 0 0 0 3px rgba(91, 115, 224, 0.35);
-
-  /* Transitions */
-  --transition-fast: 0.15s ease-out;
-  --transition-base: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  --focus-ring:        0 0 0 3px rgba(91, 115, 224, 0.35);
 }
 
-/* Base resets & global styles */
+/* ==========================================================================
+   DARK THEME TOKENS
+   Maintains #3F4FA8 Sidebar Identity | WCAG AA Contrast everywhere
+   ========================================================================== */
+[data-theme="dark"] {
+  /* Surfaces & Backgrounds - Dark */
+  --color-bg:             #0F1222; /* Deep midnight canvas */
+  --color-bg-subtle:      #151930;
+  --color-surface:        #181D38; /* Crisp dark card surface */
+  --color-surface-subtle: #20264A;
+  --color-surface-hover:  #252C54;
+  --color-card:           #181D38;
+  --color-card-border:    rgba(124, 145, 232, 0.14);
+
+  /* Typography Colors - Dark */
+  --color-ink:            #F4F6FD; /* Crisp light text */
+  --color-ink-subtle:     #DCE2F8;
+  --color-muted:          #9CA8D4; /* Readable secondary labels */
+  --color-tertiary:       #717DA8;
+  --color-disabled:       #525C84;
+
+  /* Borders & Dividers - Dark */
+  --color-border:         rgba(124, 145, 232, 0.14);
+  --color-border-med:     rgba(124, 145, 232, 0.22);
+  --color-border-strong:  rgba(124, 145, 232, 0.35);
+  --color-divider:        rgba(124, 145, 232, 0.12);
+
+  /* Sidebar Tokens (Dark mode preserves deep indigo hierarchy) */
+  --sidebar-bg:           #141938;
+  --sidebar-bg-gradient:  linear-gradient(180deg, #1A2149 0%, #10142E 100%);
+  --sidebar-text:         #FFFFFF;
+  --sidebar-text-muted:   rgba(255, 255, 255, 0.65);
+  --sidebar-item-hover:   rgba(255, 255, 255, 0.08);
+  --sidebar-active-bg:    #5B73E0;
+  --sidebar-active-text:  #FFFFFF;
+
+  /* Semantic Colors - High Contrast for Dark */
+  --color-success:        #34D399;
+  --color-success-bg:     rgba(52, 211, 153, 0.15);
+  --color-success-border: rgba(52, 211, 153, 0.35);
+  --color-warning:        #FBBF24;
+  --color-warning-bg:     rgba(251, 191, 36, 0.15);
+  --color-warning-border: rgba(251, 191, 36, 0.35);
+  --color-danger:         #F87171;
+  --color-danger-bg:      rgba(248, 113, 113, 0.15);
+  --color-danger-border:  rgba(248, 113, 113, 0.35);
+  --color-info:           #60A5FA;
+  --color-info-bg:        rgba(96, 165, 250, 0.15);
+  --color-info-border:    rgba(96, 165, 250, 0.35);
+
+  /* Gradients - Dark */
+  --gradient-accent:      linear-gradient(135deg, #5B73E0 0%, #303E8A 100%);
+  --gradient-hero:        linear-gradient(135deg, #10142E 0%, #1A2149 55%, #303E8A 100%);
+  --gradient-card-top:    linear-gradient(180deg, rgba(32,38,74,0.6) 0%, rgba(24,29,56,1) 100%);
+
+  /* Shadows - Dark Mode Depth */
+  --shadow-xs:         0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-sm:         0 2px 8px rgba(0, 0, 0, 0.40);
+  --shadow-card:       0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.30);
+  --shadow-card-hover: 0 16px 36px -6px rgba(0, 0, 0, 0.60), 0 4px 12px -2px rgba(0, 0, 0, 0.40);
+  --shadow-dropdown:   0 20px 40px -8px rgba(0, 0, 0, 0.65);
+  --shadow-modal:      0 24px 60px -12px rgba(0, 0, 0, 0.80);
+
+  /* Focus Ring */
+  --focus-ring:        0 0 0 3px rgba(124, 145, 232, 0.45);
+}
+
+/* ==========================================================================
+   GLOBAL DESIGN CONSTANTS (Theme-Independent)
+   ========================================================================== */
+:root {
+  /* Typography - Quicksand Everywhere */
+  --font-family:  'Quicksand', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-numeric: 'Quicksand', system-ui, monospace;
+
+  /* Font Scale */
+  --text-2xs:  0.6875rem; /* 11px */
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.375rem;  /* 22px */
+  --text-2xl:  1.75rem;   /* 28px */
+  --text-3xl:  2.25rem;   /* 36px */
+  --text-4xl:  3rem;      /* 48px */
+  --text-5xl:  3.75rem;   /* 60px */
+
+  /* 8px Spatial Grid System */
+  --space-0-5: 4px;
+  --space-1:   8px;
+  --space-2:   16px;
+  --space-3:   24px;
+  --space-4:   32px;
+  --space-5:   40px;
+  --space-6:   48px;
+  --space-8:   64px;
+  --space-10:  80px;
+  --space-12:  96px;
+
+  /* Radii Specifications */
+  --radius-card:    24px;
+  --radius-card-sm: 16px;
+  --radius-input:   14px;
+  --radius-pill:    999px;
+  --radius-badge:   8px;
+
+  /* Motion Timings (200ms to 300ms) */
+  --duration-fast:   180ms;
+  --duration-normal: 240ms;
+  --duration-smooth: 300ms;
+  --ease-spring:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth:     cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: var(--duration-fast) var(--ease-spring);
+  --transition-base: var(--duration-normal) var(--ease-spring);
+  --transition-smooth: var(--duration-smooth) var(--ease-smooth);
+}
+
+/* ==========================================================================
+   GLOBAL RESETS & TYPOGRAPHY ENFORCEMENT
+   ========================================================================== */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -95,19 +208,44 @@
 
 html, body {
   font-family: var(--font-family);
+  font-weight: 500;
   background-color: var(--color-bg);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  transition: background-color var(--duration-normal) var(--ease-smooth),
+              color var(--duration-normal) var(--ease-smooth);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  line-height: 1.25;
+}
+
+h1 { font-size: var(--text-4xl); }
+h2 { font-size: var(--text-3xl); }
+h3 { font-size: var(--text-2xl); }
+h4 { font-size: var(--text-xl); }
+h5 { font-size: var(--text-lg); }
+h6 { font-size: var(--text-base); }
+
+p, span, label, input, textarea, button, select {
+  font-family: var(--font-family);
 }
 
 input, button, select, textarea {
   font-family: inherit;
+  font-size: inherit;
 }
 
 button {
   cursor: pointer;
+  border: none;
+  background: none;
 }
 
 a {
@@ -115,20 +253,29 @@ a {
   text-decoration: none;
 }
 
-/* Tabular figures for all metric numbers */
+/* Safe table and card word breaking for long text */
+.truncate-cell,
+td,
+.card-title,
+.card-desc {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Tabular figures for stats and metrics */
 .num-stat, .stat-value, .metric-num {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* Accessible visible focus styles */
+/* Focus styles */
 :focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
-/* Respect reduced motion */
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

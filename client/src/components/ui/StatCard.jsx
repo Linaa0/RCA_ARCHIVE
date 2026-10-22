@@ -17,7 +17,7 @@ export default function StatCard({
   style = {},
 }) {
   const formattedValue =
-    typeof value === "number" ? value.toLocaleString() : value ?? "—";
+    typeof value === "number" ? value.toLocaleString() : value ?? "-";
 
   return (
     <article
@@ -80,10 +80,10 @@ export default function StatCard({
       <div style={{ marginTop: "14px" }}>
         <strong
           style={{
-            fontFamily: "var(--font-numeric, 'Inter', sans-serif)",
+            fontFamily: "var(--font-numeric, 'Quicksand', monospace)",
             fontVariantNumeric: "tabular-nums",
             fontSize: "2.35rem",
-            fontWeight: 800,
+            fontWeight: 700,
             lineHeight: 1,
             letterSpacing: "-0.035em",
             color: "var(--color-ink, #1B2142)",

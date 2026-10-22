@@ -25,6 +25,8 @@ export default function Card({
           : "var(--shadow-card, 0 8px 24px -4px rgba(35, 44, 107, 0.06))",
         transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         position: "relative",
+        overflowWrap: "anywhere",
+        wordBreak: "break-word",
         ...style,
       }}
     >

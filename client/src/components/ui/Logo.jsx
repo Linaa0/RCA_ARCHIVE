@@ -2,14 +2,14 @@ import React from "react";
 import rcaLogo from "../../assets/rca.png";
 
 /**
- * Clean RCA Archive Logo component
- * - variant: "light" (for white/light backgrounds, full-colour navy/gold shield)
- *            "knockout" (for dark/indigo backgrounds, white silhouette filter)
- * - size: "sm" (navbar: 38-40px), "md" (sidebar: 44px), "lg" (auth hero: 96-110px), "icon"
- * - showWordmark: boolean (whether to render "RCA Archive" text beside it)
+ * RCA Archive Official Logo
+ * - Full-colour shield on light backgrounds
+ * - Crisp white silhouette on dark or indigo backgrounds
+ * - No container tile or box
+ * - Standard sizes: navbar: 40px, sidebar: 44px, auth: 96px
  */
 export default function Logo({
-  variant = "light",
+  variant = "full",
   size = "md",
   showWordmark = true,
   wordmarkColor,
@@ -18,33 +18,42 @@ export default function Logo({
   onClick,
 }) {
   const sizeMap = {
-    xs: 28,
-    sm: 38,
+    xs: 24,
+    sm: 40,
     md: 44,
-    lg: 104,
+    lg: 96,
+    navbar: 40,
+    sidebar: 44,
+    auth: 96,
   };
 
-  const pixelSize = sizeMap[size] || (typeof size === "number" ? size : 44);
+  const pixelSize = typeof size === "number" ? size : (sizeMap[size] || 44);
 
-  const isKnockout = variant === "knockout" || variant === "white";
+  const isWhite =
+    variant === "white" ||
+    variant === "knockout" ||
+    variant === "dark";
 
-  const imgFilter = isKnockout
-    ? "brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0,0,0,0.25))"
-    : "drop-shadow(0 2px 8px rgba(35, 44, 107, 0.08))";
+  const imgFilter = isWhite
+    ? "brightness(0) invert(1)"
+    : "none";
 
-  const defaultTextColor = isKnockout ? "#FFFFFF" : "#1B2142";
+  const defaultTextColor = isWhite ? "#FFFFFF" : "var(--color-ink, #1B2142)";
   const textColor = wordmarkColor || defaultTextColor;
 
   return (
     <div
-      className={`rca-logo-wrap ${className}`}
+      className={`rca-logo ${className}`}
       onClick={onClick}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: size === "lg" ? "16px" : size === "sm" ? "10px" : "12px",
+        gap: pixelSize >= 80 ? "16px" : pixelSize <= 40 ? "10px" : "12px",
         cursor: onClick ? "pointer" : "default",
         userSelect: "none",
+        background: "transparent",
+        border: "none",
+        padding: 0,
         ...style,
       }}
     >
@@ -56,30 +65,33 @@ export default function Logo({
           height: `${pixelSize}px`,
           objectFit: "contain",
           filter: imgFilter,
-          transition: "transform 0.2s ease",
+          display: "block",
+          flexShrink: 0,
         }}
       />
       {showWordmark && (
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
           <span
             style={{
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "var(--font-family, 'Quicksand', sans-serif)",
               fontWeight: 700,
-              fontSize: size === "lg" ? "1.75rem" : size === "sm" ? "1rem" : "1.2rem",
-              letterSpacing: "-0.035em",
+              fontSize: pixelSize >= 80 ? "1.75rem" : pixelSize <= 40 ? "1.05rem" : "1.25rem",
+              letterSpacing: "-0.03em",
               color: textColor,
               whiteSpace: "nowrap",
             }}
           >
             RCA Archive
           </span>
-          {size === "lg" && (
+          {pixelSize >= 80 && (
             <span
               style={{
-                fontSize: "0.85rem",
-                color: isKnockout ? "rgba(255,255,255,0.7)" : "#6A7399",
+                fontFamily: "var(--font-family, 'Quicksand', sans-serif)",
+                fontSize: "0.875rem",
+                color: isWhite ? "rgba(255, 255, 255, 0.75)" : "var(--color-muted, #6A7399)",
                 fontWeight: 500,
-                marginTop: "3px",
+                marginTop: "4px",
+                letterSpacing: "-0.01em",
               }}
             >
               Academic Knowledge Portal
