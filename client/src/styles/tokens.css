@@ -10,8 +10,8 @@
   --color-indigo-900: #232C6B;
   --color-indigo-800: #303E8A;
   --color-indigo-700: #3F4FA8; /* Primary Brand & Sidebar */
-  --color-indigo-600: #4B62CE;
-  --color-indigo-500: #5B73E0; /* Primary Interactive Accent */
+  --color-indigo-600: #3E53B8;
+  --color-indigo-500: #4B62CE; /* Primary Interactive Accent (WCAG AA 5.33:1) */
   --color-indigo-400: #7C91E8;
   --color-indigo-300: #A5B4FC;
   --color-indigo-200: #C7D2FE;
@@ -76,66 +76,98 @@
   --shadow-dropdown:   0 20px 40px -8px rgba(35, 44, 107, 0.16), 0 4px 12px rgba(35, 44, 107, 0.05);
   --shadow-modal:      0 24px 60px -12px rgba(35, 44, 107, 0.25);
 
+  /* Backward-Compatible Token Aliases - Light */
+  --text-primary:         var(--color-ink);
+  --text-secondary:       var(--color-muted);
+  --text-tertiary:        var(--color-tertiary);
+  --text-muted:           var(--color-muted);
+  --card-bg:              var(--color-card);
+  --card-subtle:          var(--color-surface-subtle);
+  --card-border:          var(--color-card-border);
+  --border-subtle:        var(--color-border);
+  --border-color:         var(--color-border);
+  --primary-accent:       var(--color-indigo-500);
+  --accent-primary:       var(--color-indigo-500);
+  --accent-light:         var(--color-indigo-600);
+  --bg-secondary:         var(--color-surface);
+  --canvas-bg:            var(--color-bg);
+  --color-surface-raised: #FFFFFF;
+
   /* Focus Ring */
   --focus-ring:        0 0 0 3px rgba(91, 115, 224, 0.35);
 }
 
 /* ==========================================================================
    DARK THEME TOKENS
-   Maintains #3F4FA8 Sidebar Identity | WCAG AA Contrast everywhere
+   Calm, soft, eye-friendly palette (no pure black/white)
+   Deep navy-charcoal canvas #0F1424 | Main panel #151B30 | Cards #1B2340
    ========================================================================== */
 [data-theme="dark"] {
-  /* Surfaces & Backgrounds - Dark */
-  --color-bg:             #0F1222; /* Deep midnight canvas */
-  --color-bg-subtle:      #151930;
-  --color-surface:        #181D38; /* Crisp dark card surface */
-  --color-surface-subtle: #20264A;
-  --color-surface-hover:  #252C54;
-  --color-card:           #181D38;
-  --color-card-border:    rgba(124, 145, 232, 0.14);
+  /* Brand Palette - Calibrated for Dark */
+  --color-indigo-950: #0D1226;
+  --color-indigo-900: #141C38;
+  --color-indigo-800: #1D264F;
+  --color-indigo-700: #293570;
+  --color-indigo-600: #4B62CE;
+  --color-indigo-500: #8FA2FF; /* Lighter periwinkle for dark links/active */
+  --color-indigo-400: #8FA2FF;
+  --color-indigo-300: #A5B4FC;
+  --color-indigo-200: #C7D2FE;
+  --color-indigo-100: #1E2756;
+  --color-indigo-50:  #161D42;
 
-  /* Typography Colors - Dark */
-  --color-ink:            #F4F6FD; /* Crisp light text */
-  --color-ink-subtle:     #DCE2F8;
-  --color-muted:          #9CA8D4; /* Readable secondary labels */
-  --color-tertiary:       #717DA8;
-  --color-disabled:       #525C84;
+  /* Surfaces & Backgrounds - Dark (Calm & Eye-Friendly) */
+  --color-bg:             #0F1424; /* Deep navy-charcoal app canvas */
+  --color-bg-subtle:      #151B30; /* Main content panel */
+  --color-surface:        #1B2340; /* Card surface */
+  --color-surface-subtle: #171E36;
+  --color-surface-hover:  #222B4D;
+  --color-surface-raised: #222B4D; /* Modals, popovers, dropdowns */
+  --color-card:           #1B2340;
+  --color-card-border:    rgba(255, 255, 255, 0.08);
 
-  /* Borders & Dividers - Dark */
-  --color-border:         rgba(124, 145, 232, 0.14);
-  --color-border-med:     rgba(124, 145, 232, 0.22);
-  --color-border-strong:  rgba(124, 145, 232, 0.35);
-  --color-divider:        rgba(124, 145, 232, 0.12);
+  /* Typography Colors - Dark (Soft Off-White & Balanced Secondary) */
+  --color-ink:            #E8EBF7; /* Soft off-white primary text */
+  --color-ink-subtle:     #CBD2EC;
+  --color-muted:          #A9B1D0; /* Readable secondary text */
+  --color-tertiary:       #8B95BC; /* Metadata and subtle notes */
+  --color-disabled:       #586288;
 
-  /* Sidebar Tokens (Dark mode preserves deep indigo hierarchy) */
-  --sidebar-bg:           #141938;
-  --sidebar-bg-gradient:  linear-gradient(180deg, #1A2149 0%, #10142E 100%);
+  /* Borders & Dividers - Dark (Low Opacity White, Never Harsh) */
+  --color-border:         rgba(255, 255, 255, 0.08);
+  --color-border-med:     rgba(255, 255, 255, 0.14);
+  --color-border-strong:  rgba(255, 255, 255, 0.22);
+  --color-divider:        rgba(255, 255, 255, 0.07);
+
+  /* Sidebar & Topbar (Distinct Indigo Family) */
+  --sidebar-bg:           #1C2348;
+  --sidebar-bg-gradient:  linear-gradient(180deg, #1E2756 0%, #161D42 100%);
   --sidebar-text:         #FFFFFF;
-  --sidebar-text-muted:   rgba(255, 255, 255, 0.65);
+  --sidebar-text-muted:   rgba(255, 255, 255, 0.72);
   --sidebar-item-hover:   rgba(255, 255, 255, 0.08);
-  --sidebar-active-bg:    #5B73E0;
-  --sidebar-active-text:  #FFFFFF;
+  --sidebar-active-bg:    #8FA2FF;
+  --sidebar-active-text:  #0F1424;
 
-  /* Semantic Colors - High Contrast for Dark */
+  /* Semantic Colors - High Contrast Tinted Variants */
   --color-success:        #34D399;
-  --color-success-bg:     rgba(52, 211, 153, 0.15);
-  --color-success-border: rgba(52, 211, 153, 0.35);
+  --color-success-bg:     rgba(52, 211, 153, 0.12);
+  --color-success-border: rgba(52, 211, 153, 0.28);
   --color-warning:        #FBBF24;
-  --color-warning-bg:     rgba(251, 191, 36, 0.15);
-  --color-warning-border: rgba(251, 191, 36, 0.35);
+  --color-warning-bg:     rgba(251, 191, 36, 0.12);
+  --color-warning-border: rgba(251, 191, 36, 0.28);
   --color-danger:         #F87171;
-  --color-danger-bg:      rgba(248, 113, 113, 0.15);
-  --color-danger-border:  rgba(248, 113, 113, 0.35);
+  --color-danger-bg:      rgba(248, 113, 113, 0.12);
+  --color-danger-border:  rgba(248, 113, 113, 0.28);
   --color-info:           #60A5FA;
-  --color-info-bg:        rgba(96, 165, 250, 0.15);
-  --color-info-border:    rgba(96, 165, 250, 0.35);
+  --color-info-bg:        rgba(96, 165, 250, 0.12);
+  --color-info-border:    rgba(96, 165, 250, 0.28);
 
   /* Gradients - Dark */
-  --gradient-accent:      linear-gradient(135deg, #5B73E0 0%, #303E8A 100%);
-  --gradient-hero:        linear-gradient(135deg, #10142E 0%, #1A2149 55%, #303E8A 100%);
-  --gradient-card-top:    linear-gradient(180deg, rgba(32,38,74,0.6) 0%, rgba(24,29,56,1) 100%);
+  --gradient-accent:      linear-gradient(135deg, #8FA2FF 0%, #4B62CE 100%);
+  --gradient-hero:        linear-gradient(135deg, #10142A 0%, #1A2148 55%, #293570 100%);
+  --gradient-card-top:    linear-gradient(180deg, rgba(34, 43, 77, 0.5) 0%, rgba(27, 35, 64, 1) 100%);
 
-  /* Shadows - Dark Mode Depth */
+  /* Shadows - Dark Mode Depth via Soft Opacities */
   --shadow-xs:         0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-sm:         0 2px 8px rgba(0, 0, 0, 0.40);
   --shadow-card:       0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.30);
@@ -144,7 +176,23 @@
   --shadow-modal:      0 24px 60px -12px rgba(0, 0, 0, 0.80);
 
   /* Focus Ring */
-  --focus-ring:        0 0 0 3px rgba(124, 145, 232, 0.45);
+  --focus-ring:        0 0 0 3px rgba(143, 162, 255, 0.45);
+
+  /* Backward-Compatible Token Aliases - Dark */
+  --text-primary:         var(--color-ink);
+  --text-secondary:       var(--color-muted);
+  --text-tertiary:        var(--color-tertiary);
+  --text-muted:           var(--color-muted);
+  --card-bg:              var(--color-card);
+  --card-subtle:          var(--color-surface-subtle);
+  --card-border:          var(--color-card-border);
+  --border-subtle:        var(--color-border);
+  --border-color:         var(--color-border);
+  --primary-accent:       var(--color-indigo-500);
+  --accent-primary:       var(--color-indigo-500);
+  --accent-light:         var(--color-indigo-400);
+  --bg-secondary:         var(--color-surface);
+  --canvas-bg:            var(--color-bg);
 }
 
 /* ==========================================================================
@@ -283,4 +331,99 @@ td,
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ==========================================================================
+   INPUTS & AUTOFILL (LIGHT & DARK THEMES)
+   ========================================================================== */
+input, select, textarea {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border: 1.5px solid var(--color-border-med);
+  border-radius: var(--radius-input);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-tertiary);
+  opacity: 1;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-indigo-500);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--color-bg-subtle);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--color-tertiary);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--color-indigo-400);
+  box-shadow: var(--focus-ring);
+  background-color: var(--color-surface);
+}
+
+/* Autofill styling overrides */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-ink) !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--color-surface) inset !important;
+  box-shadow: 0 0 0px 1000px var(--color-surface) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: var(--color-ink);
+}
+
+[data-theme="dark"] input:-webkit-autofill,
+[data-theme="dark"] input:-webkit-autofill:hover,
+[data-theme="dark"] input:-webkit-autofill:focus,
+[data-theme="dark"] textarea:-webkit-autofill,
+[data-theme="dark"] select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-ink) !important;
+  -webkit-box-shadow: 0 0 0px 1000px #151B30 inset !important;
+  box-shadow: 0 0 0px 1000px #151B30 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: var(--color-ink);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-indigo-400);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #0F1424;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #252F54;
+  border-radius: var(--radius-pill);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #3B487A;
 }
