@@ -12,14 +12,16 @@ import "./Login.css";
 export default function Signup() {
   const navigate = useNavigate();
 
-  // Step 1: name + email
-  // Step 2: password + confirmPassword + class
-  // Step 3: 6-digit OTP
+  // 3-step registration wizard
+  // Step 1: full name + email
+  // Step 2: username + password with strength meter + class selection
+  // Step 3: 6-digit OTP in segmented input with resend timer
   const [step, setStep] = useState(1);
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    username: "",
     password: "",
     confirmPassword: "",
     class: "Y1A",
@@ -48,7 +50,14 @@ export default function Signup() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      // Auto-suggest username if untouched
+      if (name === "email" && !prev.username && value.includes("@")) {
+        next.username = value.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "");
+      }
+      return next;
+    });
     setError("");
   };
 
@@ -68,7 +77,7 @@ export default function Signup() {
     return { score: 100, label: "Strong", color: "#10B981" };
   }, [formData.password]);
 
-  // Advance from Step 1 to Step 2
+  // Step 1 -> Step 2
   const handleNextStep1 = (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -79,19 +88,23 @@ export default function Signup() {
       setError("Please enter a valid email address.");
       return;
     }
+    if (!formData.username.trim()) {
+      const defaultUser = formData.email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "");
+      setFormData((prev) => ({ ...prev, username: defaultUser }));
+    }
     setError("");
     setStep(2);
   };
 
-  // Advance from Step 2 to Step 3: Send OTP
+  // Step 2 -> Step 3: Send OTP
   const handleSendOtpStep2 = async (e) => {
     e.preventDefault();
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (!formData.username.trim()) {
+      setError("Please enter a username.");
       return;
     }
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
 
@@ -105,7 +118,7 @@ export default function Signup() {
       setResendTimer(60);
       setStep(3);
       if (data?.previewUrl) {
-        setInfo("Development OTP preview is available in the server logs.");
+        setInfo("Verification code dispatched to your email.");
       }
     } catch (err) {
       setError(
@@ -132,7 +145,7 @@ export default function Signup() {
       setResendTimer(60);
       setInfo("A new verification code has been dispatched.");
     } catch (err) {
-      setError(err.response?.data?.error || "Unable to resend OTP.");
+      setError(err.response?.data?.error || "Unable to resend code.");
     } finally {
       setLoading(false);
     }
@@ -171,7 +184,8 @@ export default function Signup() {
     setError("");
     try {
       await api.post("/signup", {
-        username: formData.name.trim(),
+        username: formData.username.trim(),
+        fullName: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
         class: formData.class,
@@ -181,7 +195,7 @@ export default function Signup() {
       setSignupSuccess(true);
       setTimeout(() => {
         navigate("/login");
-      }, 1600);
+      }, 1500);
     } catch (err) {
       setError(
         err.response?.data?.error ||
@@ -195,13 +209,13 @@ export default function Signup() {
 
   return (
     <div className="auth-split-layout">
-      {/* ── Left Premium Indigo Mesh Panel ── */}
+      {/* ── Left Premium Indigo Mesh Panel with Rotating Shelf ── */}
       <AuthBrandPanel />
 
-      {/* ── Right Auth Form Panel (Strict 100dvh, Compact, No Scroll) ── */}
+      {/* ── Right Auth Form Panel (Compact, 100dvh, No Scroll) ── */}
       <section className="auth-form-pane">
         <div className="auth-form-card">
-          {/* Back Link */}
+          {/* Back to Portal Link */}
           <Link to="/" className="auth-back-link">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
@@ -224,7 +238,7 @@ export default function Signup() {
                     {isPassed ? <CheckIcon size={12} /> : s}
                   </div>
                   <span className="step-label">
-                    {s === 1 ? "Identity" : s === 2 ? "Security" : "Verify"}
+                    {s === 1 ? "Identity" : s === 2 ? "Account" : "Verify"}
                   </span>
                   {s < 3 && <div className={`step-line ${step > s ? "filled" : ""}`} />}
                 </div>
@@ -234,33 +248,33 @@ export default function Signup() {
 
           <h2 className="auth-form-title">
             {signupSuccess
-              ? "Account Created!"
+              ? "Account Created"
               : step === 1
-              ? "Create your account"
+              ? "Student Registration"
               : step === 2
-              ? "Set password & class"
-              : "Enter verification code"}
+              ? "Username and Security"
+              : "Verify Email Code"}
           </h2>
           <p className="auth-form-subtitle">
             {signupSuccess
-              ? "Redirecting you to login..."
+              ? "Redirecting you to sign in..."
               : step === 1
-              ? "Step 1 of 3: Provide your academy student identity."
+              ? "Step 1 of 3: Provide your full name and student email."
               : step === 2
-              ? "Step 2 of 3: Choose your cohort class and security."
-              : "Step 3 of 3: Enter the 6-digit verification code."}
+              ? "Step 2 of 3: Pick a username, password, and class cohort."
+              : "Step 3 of 3: Enter the 6 digit code sent to your inbox."}
           </p>
 
           {error && <div className="auth-alert-error">{error}</div>}
           {info && !error && <div className="auth-alert-info">{info}</div>}
 
-          {/* ── STEP 1: Name + Email ── */}
+          {/* ── STEP 1: Full Name and Email ── */}
           {step === 1 && !signupSuccess && (
             <form onSubmit={handleNextStep1} className="compact-auth-form">
               <Input
                 label="Full Name"
                 name="name"
-                placeholder="e.g. Grace Stanley"
+                placeholder="e.g. Jean Dupont"
                 value={formData.name}
                 onChange={handleChange}
                 required
@@ -268,7 +282,7 @@ export default function Signup() {
               />
 
               <Input
-                label="Email Address"
+                label="Student Email Address"
                 type="email"
                 name="email"
                 placeholder="student@rca.ac.rw"
@@ -281,9 +295,9 @@ export default function Signup() {
                 variant="primary"
                 size="md"
                 type="submit"
-                style={{ width: "100%", marginTop: "8px" }}
+                style={{ width: "100%", marginTop: "6px" }}
               >
-                Continue to Password →
+                Continue to Account Setup
               </Button>
 
               <div className="auth-switch-prompt">
@@ -292,10 +306,20 @@ export default function Signup() {
             </form>
           )}
 
-          {/* ── STEP 2: Password, Confirm, Class Selector ── */}
+          {/* ── STEP 2: Username, Password with Strength Meter, and Class ── */}
           {step === 2 && !signupSuccess && (
             <form onSubmit={handleSendOtpStep2} className="compact-auth-form">
-              <div style={{ position: "relative" }}>
+              <Input
+                label="Username"
+                name="username"
+                placeholder="e.g. jdupont"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                autoFocus
+              />
+
+              <div>
                 <Input
                   label="Password"
                   type={showPassword ? "text" : "password"}
@@ -304,25 +328,24 @@ export default function Signup() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  autoFocus
                   iconRight={
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "#6A7399" }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
+                      aria-label="Toggle password visibility"
                     >
                       <EyeIcon size={16} />
                     </button>
                   }
                 />
-                {/* Password strength meter */}
                 {formData.password && (
-                  <div style={{ marginTop: "6px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#6A7399", marginBottom: "3px" }}>
+                  <div style={{ marginTop: "4px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "var(--color-text-tertiary)", marginBottom: "3px" }}>
                       <span>Strength</span>
                       <strong style={{ color: passwordStrength.color }}>{passwordStrength.label}</strong>
                     </div>
-                    <div style={{ height: "4px", width: "100%", background: "#E7EBF5", borderRadius: "999px", overflow: "hidden" }}>
+                    <div style={{ height: "4px", width: "100%", background: "var(--color-border)", borderRadius: "999px", overflow: "hidden" }}>
                       <div
                         style={{
                           height: "100%",
@@ -336,16 +359,6 @@ export default function Signup() {
                 )}
               </div>
 
-              <Input
-                label="Confirm Password"
-                type={showPassword ? "text" : "password"}
-                name="confirmPassword"
-                placeholder="Re-enter password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-              />
-
               <Select
                 label="Assigned Cohort Class"
                 name="class"
@@ -357,7 +370,7 @@ export default function Signup() {
                 }))}
               />
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+              <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
                 <Button
                   variant="secondary"
                   size="md"
@@ -365,7 +378,7 @@ export default function Signup() {
                   onClick={() => setStep(1)}
                   style={{ flex: 1 }}
                 >
-                  ← Back
+                  Back
                 </Button>
                 <Button
                   variant="primary"
@@ -380,11 +393,11 @@ export default function Signup() {
             </form>
           )}
 
-          {/* ── STEP 3: Segmented 6-digit OTP Input ── */}
+          {/* ── STEP 3: Segmented 6-digit OTP ── */}
           {step === 3 && !signupSuccess && (
             <form onSubmit={handleCompleteSignup} className="compact-auth-form">
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-ink, #1B2142)", display: "block", marginBottom: "8px" }}>
-                6-Digit Verification Code
+              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-primary)", display: "block" }}>
+                6 Digit Verification Code
               </label>
 
               {/* Segmented Inputs */}
@@ -404,22 +417,22 @@ export default function Signup() {
                 ))}
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "#6A7399", margin: "10px 0" }}>
-                <span>Didn't receive code?</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--color-text-secondary)", margin: "4px 0" }}>
+                <span>Did not receive code?</span>
                 {resendTimer > 0 ? (
                   <span>Resend in {resendTimer}s</span>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    style={{ background: "none", border: "none", color: "#3F4FA8", fontWeight: 700, cursor: "pointer" }}
+                    style={{ background: "none", border: "none", color: "var(--color-primary)", fontWeight: 700, cursor: "pointer" }}
                   >
                     Resend Code
                   </button>
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
                 <Button
                   variant="secondary"
                   size="md"
@@ -427,7 +440,7 @@ export default function Signup() {
                   onClick={() => setStep(2)}
                   style={{ flex: 1 }}
                 >
-                  ← Back
+                  Back
                 </Button>
                 <Button
                   variant="primary"
@@ -444,24 +457,24 @@ export default function Signup() {
 
           {/* Success State */}
           {signupSuccess && (
-            <div style={{ textAlign: "center", padding: "28px 0" }}>
+            <div style={{ textAlign: "center", padding: "24px 0" }}>
               <div
                 style={{
-                  width: "60px",
-                  height: "60px",
+                  width: "56px",
+                  height: "56px",
                   borderRadius: "50%",
                   background: "rgba(16, 185, 129, 0.12)",
                   color: "#10B981",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  marginBottom: "16px",
+                  marginBottom: "14px",
                 }}
               >
-                <CheckIcon size={28} />
+                <CheckIcon size={26} />
               </div>
-              <p style={{ color: "#6A7399", fontSize: "0.92rem" }}>
-                Your account is ready! Taking you to the sign-in screen...
+              <p style={{ color: "var(--color-text-secondary)", fontSize: "0.92rem" }}>
+                Your account is ready. Taking you to the sign-in screen...
               </p>
             </div>
           )}

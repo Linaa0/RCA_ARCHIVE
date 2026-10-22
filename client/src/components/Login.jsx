@@ -37,10 +37,9 @@ export default function Login() {
         password,
       });
 
-      // Persist auth tokens & user session
+      // Persist auth tokens and user session
       persistAuth(data);
 
-      // Admin -> /admin, teacher -> /teacher, everyone else -> student /home
       const role = data.role || data.user?.role;
       const home = getHomePathForRole(role);
       const canUseRedirect = redirectTarget && role === "student";
@@ -107,7 +106,8 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#6A7399" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
+                    aria-label="Toggle password visibility"
                   >
                     <EyeIcon size={16} />
                   </button>
@@ -118,7 +118,7 @@ export default function Login() {
                   to="/reset-password"
                   style={{
                     fontSize: "0.8rem",
-                    color: "var(--color-indigo-700, #3F4FA8)",
+                    color: "var(--color-primary)",
                     fontWeight: 600,
                     textDecoration: "none",
                   }}
@@ -133,13 +133,13 @@ export default function Login() {
               size="md"
               type="submit"
               loading={loading}
-              style={{ width: "100%", marginTop: "12px" }}
+              style={{ width: "100%", marginTop: "10px" }}
             >
               Sign In to Account
             </Button>
 
             <div className="auth-switch-prompt">
-              Don't have an account yet?{" "}
+              Do not have an account yet?{" "}
               <Link to="/signup">Register Now</Link>
             </div>
           </form>

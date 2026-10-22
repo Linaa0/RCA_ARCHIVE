@@ -1,0 +1,284 @@
+/* ==========================================================================
+   RCA ARCHIVE - AUTH BRAND PANEL
+   Indigo gradient showcase, rotating card stack with preview & progress dots
+   ========================================================================== */
+
+.auth-brand-pane {
+  background: radial-gradient(circle at 15% 15%, rgba(91, 115, 224, 0.45) 0%, transparent 50%),
+              radial-gradient(circle at 85% 85%, rgba(35, 44, 107, 0.6) 0%, transparent 55%),
+              linear-gradient(145deg, #232C6B 0%, #303E8A 50%, #3F4FA8 100%);
+  padding: 44px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+  height: 100vh;
+  max-height: 100vh;
+}
+
+/* Subtle background geometric dot grid overlay */
+.auth-brand-pane::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.auth-brand-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+}
+
+.auth-brand-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 500px;
+}
+
+.auth-headline-box {
+  animation: authTextFade 0.4s ease-out;
+}
+
+@keyframes authTextFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-kicker {
+  display: inline-block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #C7D2FE;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.auth-headline-title {
+  font-size: 2.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: #FFFFFF;
+  margin-bottom: 12px;
+  font-family: var(--font-family);
+}
+
+.auth-headline-sub {
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 500;
+}
+
+/* ── Rotating Resource Stack Container ── */
+.auth-stack-container {
+  position: relative;
+  height: 190px;
+  margin-top: 6px;
+  cursor: pointer;
+}
+
+/* Layer 3 (Furthest background card) */
+.card-layer-3 {
+  position: absolute;
+  top: 0;
+  left: 32px;
+  right: 32px;
+  height: 74px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: scale(0.92);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Layer 2 (Middle preview card) */
+.card-layer-2 {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  height: 82px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 20px;
+  padding: 14px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  transform: scale(0.96);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Layer 1 (Front active card) */
+.auth-card-front {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 22px 26px;
+  box-shadow: 0 16px 36px -6px rgba(18, 24, 58, 0.35);
+  border: 1px solid rgba(63, 79, 168, 0.12);
+  z-index: 3;
+  animation: cardSlideFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--color-ink, #1B2142);
+}
+
+@keyframes cardSlideFade {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.auth-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.auth-card-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  color: #FFFFFF;
+  letter-spacing: 0.04em;
+}
+
+.auth-card-pill.active-pill {
+  background: var(--color-indigo-100, #E4E8FA);
+  color: var(--color-indigo-700, #3F4FA8);
+}
+
+.auth-card-type-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-bg, #EEF0F6);
+  color: var(--color-text-secondary, #5C658E);
+}
+
+.auth-card-format {
+  font-size: 0.76rem;
+  color: var(--color-text-tertiary, #8A92B4);
+  font-weight: 500;
+}
+
+.auth-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-card-subject {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-indigo-500, #5B73E0);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.auth-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1B2142);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.auth-card-sub-text {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Progress Dots ── */
+.auth-stack-dots {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 4;
+}
+
+.auth-stack-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 0;
+}
+
+.auth-stack-dot.active {
+  width: 22px;
+  background: #FFFFFF;
+}
+
+.auth-stack-dot:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Trust Points ── */
+.auth-trust-strip {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-trust-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 500;
+}

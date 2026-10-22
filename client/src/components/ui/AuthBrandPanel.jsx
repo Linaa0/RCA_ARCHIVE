@@ -1,85 +1,156 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Logo from "./Logo";
-import { CheckIcon, EyeIcon, MaterialsIcon, ShieldIcon } from "./Icons";
+import { MaterialsIcon, EyeIcon, ShieldIcon } from "./Icons";
+import "./AuthBrandPanel.css";
 
-const HEADLINES = [
+const RESOURCE_CARDS = [
   {
-    title: "Official RCA Past Papers & Solutions.",
-    sub: "Direct access to examination archives, CATs, and verified marking schemes across all terms.",
+    id: 1,
+    cohort: "Y1A",
+    subject: "Fundamentals of Programming",
+    title: "CAT 1 Past Examination Paper",
+    type: "Past Paper",
+    format: "PDF Document (12 pages)",
   },
   {
-    title: "Campus Archive Shelf for All Cohorts.",
-    sub: "Curriculum-aligned resources structured specifically for Year 1, Year 2, and Year 3 classes.",
+    id: 2,
+    cohort: "Y1GenAI",
+    subject: "Introduction to Artificial Intelligence",
+    title: "Core Concepts and Algorithms Notes",
+    type: "Notes",
+    format: "Lecture Slides (34 slides)",
   },
   {
-    title: "Instant In-Browser Study Previews.",
-    sub: "View PDF question papers, lecture slides, and notes on any device without waiting for downloads.",
+    id: 3,
+    cohort: "Y2B",
+    subject: "Data Structures with C++",
+    title: "Binary Search Trees and Graphs Lab",
+    type: "Assignment",
+    format: "Problem Sheet (4 tasks)",
+  },
+  {
+    id: 4,
+    cohort: "Y2C",
+    subject: "Software Engineering",
+    title: "Agile Development and Architecture",
+    type: "Notes",
+    format: "PDF Document (18 pages)",
+  },
+  {
+    id: 5,
+    cohort: "Y3A",
+    subject: "Embedded Systems and Hardware",
+    title: "Microcontroller Interfacing Paper",
+    type: "Past Paper",
+    format: "Final Exam (8 pages)",
+  },
+  {
+    id: 6,
+    cohort: "Y3C",
+    subject: "Mobile Application Development",
+    title: "Cross Platform State Management",
+    type: "Assignment",
+    format: "Project Specification",
   },
 ];
 
 export default function AuthBrandPanel() {
-  const [headlineIndex, setHeadlineIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const timerRef = useRef(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setHeadlineIndex((prev) => (prev + 1) % HEADLINES.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+    if (isHovered) return;
 
-  const activeHeadline = HEADLINES[headlineIndex];
+    timerRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % RESOURCE_CARDS.length);
+    }, 4000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isHovered]);
+
+  const activeCard = RESOURCE_CARDS[currentIndex];
+  const nextCard = RESOURCE_CARDS[(currentIndex + 1) % RESOURCE_CARDS.length];
+  const thirdCard = RESOURCE_CARDS[(currentIndex + 2) % RESOURCE_CARDS.length];
 
   return (
     <section className="auth-brand-pane">
-      {/* Knockout Logo */}
-      <div className="auth-brand-header">
-        <Logo variant="knockout" size="md" wordmarkColor="#FFFFFF" />
-      </div>
+      {/* ── RCA Shield Logo: 96px, knockout white, NO container box ── */}
+      <header className="auth-brand-header">
+        <Logo variant="knockout" size="auth" wordmarkColor="#FFFFFF" />
+      </header>
 
-      {/* Rotating Headline */}
+      {/* ── Center Content ── */}
       <div className="auth-brand-center">
-        <div className="auth-headline-box" key={headlineIndex}>
-          <span className="auth-kicker">Knowledge Repository</span>
-          <h2 className="auth-headline-title">{activeHeadline.title}</h2>
-          <p className="auth-headline-sub">{activeHeadline.sub}</p>
+        <div className="auth-headline-box">
+          <span className="auth-kicker">Academic Archive Portal</span>
+          <h1 className="auth-headline-title">
+            Rwanda Coding Academy Past Papers and Materials
+          </h1>
+          <p className="auth-headline-sub">
+            Centralized academic repository providing direct access to lecture notes, past exams, and assignments across all cohorts.
+          </p>
         </div>
 
-        {/* Animated Showcase: Stack of Floating Document Shelf Cards */}
-        <div className="auth-showcase-stack">
-          {/* Background Card 3 */}
-          <div className="showcase-card showcase-card-back">
-            <span className="doc-pill">Y3 AI</span>
-            <span className="doc-name">Machine Learning Exam 2024</span>
+        {/* ── Rotating Resource Stack (Pause on Hover) ── */}
+        <div
+          className="auth-stack-container"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {/* Card 3 (furthest back) */}
+          <div className="auth-card-preview card-layer-3" key={`preview-3-${thirdCard.id}`}>
+            <span className="auth-card-pill">{thirdCard.cohort}</span>
+            <span className="auth-card-sub-text">{thirdCard.subject}</span>
           </div>
 
-          {/* Middle Card 2 */}
-          <div className="showcase-card showcase-card-mid">
-            <span className="doc-pill">Y2 DSA</span>
-            <span className="doc-name">Data Structures Final Paper</span>
+          {/* Card 2 (middle preview) */}
+          <div className="auth-card-preview card-layer-2" key={`preview-2-${nextCard.id}`}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span className="auth-card-pill">{nextCard.cohort}</span>
+              <span className="auth-card-type-tag">{nextCard.type}</span>
+            </div>
+            <span className="auth-card-sub-text">{nextCard.title}</span>
           </div>
 
-          {/* Front Active Card 1 */}
-          <div className="showcase-card showcase-card-front">
-            <div className="card-tab-edge" />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <span className="doc-pill-primary">Y1 DEV</span>
-              <span style={{ fontSize: "0.72rem", color: "#6A7399", fontWeight: 600 }}>PDF Document</span>
+          {/* Card 1 (Front active card with slide and fade transition) */}
+          <div className="auth-card-front" key={`active-${activeCard.id}`}>
+            <div className="auth-card-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span className="auth-card-pill active-pill">{activeCard.cohort}</span>
+                <span className="auth-card-type-tag">{activeCard.type}</span>
+              </div>
+              <span className="auth-card-format">{activeCard.format}</span>
             </div>
-            <strong style={{ fontSize: "0.92rem", color: "#1B2142", display: "block" }}>
-              Fundamentals of Programming CAT 1
-            </strong>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "8px", fontSize: "0.75rem", color: "#10B981", fontWeight: 600 }}>
-              <CheckIcon size={12} /> Verified Answer Scheme
+
+            <div className="auth-card-body">
+              <span className="auth-card-subject">{activeCard.subject}</span>
+              <h3 className="auth-card-title">{activeCard.title}</h3>
             </div>
+          </div>
+
+          {/* ── Progress Dots ── */}
+          <div className="auth-stack-dots">
+            {RESOURCE_CARDS.map((item, idx) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`auth-stack-dot ${idx === currentIndex ? "active" : ""}`}
+                onClick={() => setCurrentIndex(idx)}
+                aria-label={`Jump to sample resource card ${idx + 1}`}
+              />
+            ))}
           </div>
         </div>
       </div>
 
-      {/* 3 Honest Trust Chips */}
-      <div className="auth-trust-strip">
+      {/* ── Trust Points ── */}
+      <footer className="auth-trust-strip">
         <div className="auth-trust-chip">
           <EyeIcon size={14} />
-          <span>In-browser PDF, DOCX, & PPTX viewer</span>
+          <span>In-browser PDF, document, and code previews</span>
         </div>
         <div className="auth-trust-chip">
           <MaterialsIcon size={14} />
@@ -87,9 +158,9 @@ export default function AuthBrandPanel() {
         </div>
         <div className="auth-trust-chip">
           <ShieldIcon size={14} />
-          <span>Official RCA authentication</span>
+          <span>Official Rwanda Coding Academy credentials</span>
         </div>
-      </div>
+      </footer>
     </section>
   );
 }

@@ -45,13 +45,13 @@ export default function ResetPassword() {
       });
       setSuccess(
         data?.message ||
-        "A password reset link has been dispatched to your email address."
+        "A password recovery link has been dispatched to your email address."
       );
     } catch (err) {
       setError(
         err.response?.data?.error ||
         err.response?.data?.message ||
-        "Unable to send reset link."
+        "Unable to send recovery link."
       );
     } finally {
       setLoading(false);
@@ -79,13 +79,13 @@ export default function ResetPassword() {
         token,
         newPassword: password,
       });
-      setSuccess(data?.message || "Password updated successfully!");
+      setSuccess(data?.message || "Password updated successfully.");
       setTimeout(() => navigate("/login"), 1800);
     } catch (err) {
       setError(
         err.response?.data?.error ||
         err.response?.data?.message ||
-        "Password reset token is invalid or has expired."
+        "Password setup link is invalid or has expired."
       );
     } finally {
       setLoading(false);
@@ -108,12 +108,12 @@ export default function ResetPassword() {
           </Link>
 
           <h2 className="auth-form-title">
-            {isTokenFlow ? "Set New Password" : "Reset Password"}
+            {isTokenFlow ? "Set Account Password" : "Reset Password"}
           </h2>
           <p className="auth-form-subtitle">
             {isTokenFlow
-              ? "Create a secure password to restore access to your account."
-              : "Enter your registered email address and we'll send you a password recovery link."}
+              ? "Create a secure password to activate or restore access to your account."
+              : "Enter your registered email address to receive password recovery instructions."}
           </p>
 
           {error && <div className="auth-alert-error">{error}</div>}
@@ -139,13 +139,13 @@ export default function ResetPassword() {
                 size="md"
                 type="submit"
                 loading={loading}
-                style={{ width: "100%", marginTop: "12px" }}
+                style={{ width: "100%", marginTop: "10px" }}
               >
-                Send Password Reset Link
+                Send Password Recovery Link
               </Button>
 
               <div className="auth-switch-prompt">
-                Remember your password? <Link to="/login">Sign In</Link>
+                Remember your credentials? <Link to="/login">Sign In</Link>
               </div>
             </form>
           ) : (
@@ -165,7 +165,8 @@ export default function ResetPassword() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#6A7399" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
+                    aria-label="Toggle password visibility"
                   >
                     <EyeIcon size={16} />
                   </button>
@@ -189,9 +190,9 @@ export default function ResetPassword() {
                 size="md"
                 type="submit"
                 loading={loading}
-                style={{ width: "100%", marginTop: "12px" }}
+                style={{ width: "100%", marginTop: "10px" }}
               >
-                Set New Password
+                Save New Password
               </Button>
             </form>
           )}
