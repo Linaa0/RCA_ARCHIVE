@@ -115,10 +115,9 @@ cp server/.env.example server/.env
 | `NODE_ENV` | Runtime environment | `development` |
 | `MONGO_URI` | MongoDB connection string | `mongodb://127.0.0.1:27017` |
 | `MONGO_DB_NAME` | Database name | `rca_past_papers` / `rca_archive_db` |
-| `JWT_SECRET` | Secret key for JWT signing | `rca_secret_key_2024` |
-| `ADMIN_BOOTSTRAP_EMAILS` | Comma-separated admin emails | `deenovdunya01@gmail.com,chretiensano@gmail.com,mucyoasifiwe80@gmail.com` |
-| `ADMIN_BOOTSTRAP_EMAIL` | Admin email for `create-admin.js` | `mucyoasifiwe80@gmail.com` |
-| `ADMIN_BOOTSTRAP_PASSWORD` | Admin password for `create-admin.js` | (Your secure password) |
+| `JWT_SECRET` | Secret key for JWT signing (>= 32 chars) | (Generate secure 64-byte hex string) |
+| `ADMIN_BOOTSTRAP_EMAILS` | Comma-separated admin emails | `admin@rca.ac.rw` |
+| `TEACHER_EMAILS` | Comma-separated teacher emails | `teacher@rca.ac.rw` |
 | `BASE_URL` | Backend public base URL | `http://localhost:5077` |
 | `FRONTEND_BASE_URL` | Frontend URL for links in emails | `http://localhost:3074` |
 | `CORS_ORIGINS` | Additional allowed CORS origins | `https://rcaarchive.innov.rw,...` |

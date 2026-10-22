@@ -18,9 +18,15 @@ build/
 # Uploaded files
 server/uploads/*
 !server/uploads/.gitkeep
+server/submissions/*
+!server/submissions/.gitkeep
 rcabackend/uploads/*
 !rcabackend/uploads/.gitkeep
 downloaded_*.pdf
+
+# Backups
+server/backups/
+backups/
 
 # Logs
 npm-debug.log*

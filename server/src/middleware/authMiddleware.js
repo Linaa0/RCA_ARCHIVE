@@ -8,8 +8,14 @@ async function findUserByEmail(email) {
   const users = getUsersCollection();
   let user = await users.findOne({ email: normalizedEmail });
   if (user) return user;
-  return users.findOne({
+  user = await users.findOne({
     email: { $regex: new RegExp(`^${escapeRegExp(normalizedEmail)}$`, "i") },
+  });
+  if (user) return user;
+  user = await users.findOne({ username: normalizedEmail });
+  if (user) return user;
+  return users.findOne({
+    username: { $regex: new RegExp(`^${escapeRegExp(normalizedEmail)}$`, "i") },
   });
 }
 

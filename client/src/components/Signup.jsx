@@ -104,11 +104,7 @@ export default function Signup() {
       });
       setResendTimer(60);
       setStep(3);
-      if (data?.developmentOtpBypass) {
-        setInfo(
-          "Development mode: enter any 6-digit code. Email verification is required on the live site."
-        );
-      } else if (data?.previewUrl) {
+      if (data?.previewUrl) {
         setInfo("Development OTP preview is available in the server logs.");
       }
     } catch (err) {
@@ -129,16 +125,12 @@ export default function Signup() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.post("/send-otp", {
+      await api.post("/send-otp", {
         email: formData.email.trim(),
         operation: "signup",
       });
       setResendTimer(60);
-      setInfo(
-        data?.developmentOtpBypass
-          ? "Development mode: enter any 6-digit code. Email verification is required on the live site."
-          : "A new verification code has been dispatched."
-      );
+      setInfo("A new verification code has been dispatched.");
     } catch (err) {
       setError(err.response?.data?.error || "Unable to resend OTP.");
     } finally {

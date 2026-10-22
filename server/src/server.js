@@ -18,7 +18,7 @@ async function startServer() {
     await connectToMongo();
     console.log("Connected to MongoDB successfully!");
 
-    console.log("📋 Server Configuration:");
+    console.log("Server Configuration:");
     console.log(`   - PORT: ${PORT}`);
     console.log(`   - SMTP_HOST: ${SMTP_HOST || "(not set)"}`);
     console.log(`   - SMTP_PORT: ${SMTP_PORT}`);
@@ -26,27 +26,27 @@ async function startServer() {
     console.log(`   - SMTP_PASS: ${SMTP_PASS ? "(set)" : "(not set)"}`);
     console.log(`   - EMAIL_FROM: ${EMAIL_FROM}`);
     console.log(
-      `   - Real SMTP configured: ${isRealSmtpConfigured() ? "✅ Yes" : "❌ No"}`
+      `   - Real SMTP configured: ${isRealSmtpConfigured() ? "Yes" : "No"}`
     );
 
     if (isRealSmtpConfigured()) {
       try {
-        console.log("🔍 Testing SMTP connection...");
+        console.log("[INFO] Testing SMTP connection...");
         const { transporter } = await createMailTransporter();
         await transporter.verify();
-        console.log("✅ SMTP test passed! Server is ready to send emails!");
+        console.log("[OK] SMTP test passed. Server is ready to send emails.");
       } catch (smtpErr) {
-        console.error("❌ SMTP Test FAILED:", smtpErr.message);
+        console.error("[ERROR] SMTP Test FAILED:", smtpErr.message);
       }
     }
 
     const server = app.listen(PORT, () => {
-      console.log(`\n✅ RCA Backend running on http://localhost:${PORT}`);
+      console.log(`\n[OK] RCA Backend running on http://localhost:${PORT}`);
     });
 
     server.on("error", (err) => {
       if (err.code === "EADDRINUSE") {
-        console.error(`\n❌ Port ${PORT} is already in use.`);
+        console.error(`\n[ERROR] Port ${PORT} is already in use.`);
         console.error(
           `   Stop the existing process first, then restart the backend.`
         );
@@ -60,7 +60,7 @@ async function startServer() {
       }
     });
   } catch (err) {
-    console.error("❌ Fatal startup error:", err);
+    console.error("[ERROR] Fatal startup error:", err);
     process.exit(1);
   }
 }

@@ -5,11 +5,11 @@ Decided by the email, in `server/src/config/roles.js`:
 
 | Email | Role | Lands on |
 |---|---|---|
-| `mucyoasifiwe80@gmail.com` (+ the 2 other admin emails already in `config/env.js`) | admin | `/admin` |
-| `isabellecadeau78@gmail.com` | teacher | `/teacher` |
-| anything else | student | `/home` |
+| Admin emails listed in `ADMIN_BOOTSTRAP_EMAILS` (e.g. `admin@rca.ac.rw`) | admin | `/admin` |
+| Teacher emails listed in `TEACHER_EMAILS` (e.g. `teacher@rca.ac.rw`) | teacher | `/teacher` |
+| Any other registered student account | student | `/home` |
 
-- Add teachers: put the email in `DEFAULT_TEACHER_EMAILS` in `roles.js` (or set the `TEACHER_EMAILS` env var, comma separated) and restart the server.
+- Add teachers: set the `TEACHER_EMAILS` environment variable (comma separated) or create teachers directly in the Admin Panel.
 - The role is applied at **signup** and re-checked at **every login**, so someone who already signed up as a student gets promoted the next time they log in.
 - Teachers created from the Admin panel keep working (nobody is ever auto-demoted).
 - Routes are protected on the frontend (`PrivateRoute`) and on the backend (`requireTeacher` / `requireStudent` / `requireAdmin`).

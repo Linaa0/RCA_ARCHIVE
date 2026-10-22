@@ -8,23 +8,13 @@ const { connectToMongo, getUsersCollection, closeDb } = require("../src/models")
 
 async function main() {
   try {
-    const email =
-      process.env.ADMIN_BOOTSTRAP_EMAIL ||
-      process.env.ADMIN_EMAIL ||
-      process.argv[2];
-    const password =
-      process.env.ADMIN_BOOTSTRAP_PASSWORD ||
-      process.env.ADMIN_PASSWORD ||
-      process.argv[3];
-    const name =
-      process.env.ADMIN_BOOTSTRAP_NAME ||
-      process.env.ADMIN_NAME ||
-      process.argv[4] ||
-      "Administrator";
+    const email = process.argv[2] || process.env.SEED_ADMIN_EMAIL;
+    const password = process.argv[3] || process.env.SEED_ADMIN_PASSWORD;
+    const name = process.argv[4] || process.env.SEED_ADMIN_NAME;
 
-    if (!email || !password) {
+    if (!email || !password || !name) {
       console.error(
-        "❌ Missing admin credentials! Please set ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD in server/.env, or pass as arguments: node scripts/create-admin.js <email> <password> [name]"
+        "Missing admin credentials. Pass arguments: node scripts/create-admin.js <email> <password> <name> or define SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, and SEED_ADMIN_NAME in server/.env."
       );
       process.exit(1);
     }
@@ -37,11 +27,12 @@ async function main() {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const now = new Date().toISOString();
+    const username = (email.split("@")[0] || "admin").toLowerCase();
 
     if (!user) {
       const newUser = {
         id: String(Date.now()),
-        username: name.split(" ")[0] || "Admin",
+        username,
         name,
         email: normalizedEmail,
         password: hashedPassword,
@@ -52,12 +43,14 @@ async function main() {
       };
 
       await users.insertOne(newUser);
-      console.log(`✅ Admin user "${normalizedEmail}" created successfully!`);
+      console.log(`Admin user "${normalizedEmail}" created successfully.`);
     } else {
       await users.updateOne(
         { email: normalizedEmail },
         {
           $set: {
+            name,
+            username,
             role: "admin",
             status: "active",
             password: hashedPassword,
@@ -66,14 +59,14 @@ async function main() {
         }
       );
       console.log(
-        `✅ User "${normalizedEmail}" updated to admin role and password updated!`
+        `User "${normalizedEmail}" updated to admin role and password updated.`
       );
     }
 
     await closeDb();
     process.exit(0);
   } catch (err) {
-    console.error("❌ Error in create-admin:", err);
+    console.error("Error in create-admin:", err);
     process.exit(1);
   }
 }

@@ -6,21 +6,13 @@
 //
 // To add a teacher: put the email in TEACHER_EMAILS below (or in the
 // TEACHER_EMAILS environment variable, comma separated) and restart the server.
-const { ADMIN_BOOTSTRAP_EMAILS } = require("./env");
+const { ADMIN_BOOTSTRAP_EMAILS, TEACHER_EMAILS: ENV_TEACHER_EMAILS } = require("./env");
 
 const norm = (e) => (e || "").trim().toLowerCase();
 
-const DEFAULT_TEACHER_EMAILS = [
-  "isabellecadeau78@gmail.com",
-  // add more teacher emails here
-];
-
 const TEACHER_EMAILS = [
   ...new Set(
-    [
-      ...DEFAULT_TEACHER_EMAILS,
-      ...(process.env.TEACHER_EMAILS || "").split(","),
-    ]
+    (ENV_TEACHER_EMAILS || (process.env.TEACHER_EMAILS || "").split(","))
       .map(norm)
       .filter(Boolean)
   ),

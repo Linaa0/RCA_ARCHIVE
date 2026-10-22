@@ -6,26 +6,32 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 dotenv.config(); // fallback to current working directory .env
 
 const PORT = Number(process.env.PORT) || 5077;
-const NODE_ENV = process.env.NODE_ENV || "development";
+const NODE_ENV = process.env.NODE_ENV || "production";
 const MONGO_URI =
   process.env.MONGO_URI ||
   process.env.MONGODB_URI ||
   "mongodb://127.0.0.1:27017";
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME || "rca_past_papers";
-const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_not_secure";
+const JWT_SECRET = process.env.JWT_SECRET || "";
 const ADMIN_BOOTSTRAP_SECRET = process.env.ADMIN_BOOTSTRAP_SECRET || "";
 
-const DEFAULT_ADMIN_BOOTSTRAP_EMAILS = [
-  "deenovdunya01@gmail.com",
-  "chretiensano@gmail.com",
-  "mucyoasifiwe80@gmail.com",
-];
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error(
+    "JWT_SECRET is missing or shorter than 32 characters. Please provide a secure JWT_SECRET in server/.env."
+  );
+}
 
 const ADMIN_BOOTSTRAP_EMAILS = process.env.ADMIN_BOOTSTRAP_EMAILS
   ? process.env.ADMIN_BOOTSTRAP_EMAILS.split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean)
-  : DEFAULT_ADMIN_BOOTSTRAP_EMAILS;
+  : [];
+
+const TEACHER_EMAILS = process.env.TEACHER_EMAILS
+  ? process.env.TEACHER_EMAILS.split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  : [];
 
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "http://localhost:3074";
@@ -49,12 +55,6 @@ const UPLOADS_DIR =
 
 const SERVE_FRONTEND = process.env.SERVE_FRONTEND !== "false";
 
-if (!process.env.JWT_SECRET) {
-  console.warn(
-    "Warning: JWT_SECRET is not set. Using insecure fallback for development. Set JWT_SECRET in .env for production."
-  );
-}
-
 module.exports = {
   PORT,
   NODE_ENV,
@@ -63,6 +63,7 @@ module.exports = {
   JWT_SECRET,
   ADMIN_BOOTSTRAP_SECRET,
   ADMIN_BOOTSTRAP_EMAILS,
+  TEACHER_EMAILS,
   BASE_URL,
   FRONTEND_BASE_URL,
   CORS_ORIGINS,

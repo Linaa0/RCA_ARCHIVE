@@ -92,24 +92,22 @@ async function sendOtp(req, res) {
 
   try {
     const { previewUrl, isReal } = await sendVerificationEmail(email, otp);
-    console.log(`🔐 OTP for ${email} (${operation}): ${otp}`);
+    console.log(`[OTP] Generated OTP for ${email} (${operation}): ${otp}`);
 
     return res.json({
       message: isReal
         ? "OTP sent successfully. Check your email for the code."
         : "OTP sent successfully! Check the server logs for the preview URL.",
       previewUrl,
-      developmentOtpBypass: NODE_ENV === "development",
     });
   } catch (err) {
-    console.error("❌ Detailed OTP email error:", err);
-    console.log(`🔐 OTP for ${email} (${operation}): ${otp}`);
+    console.error("[OTP_ERROR] Detailed OTP email error:", err);
+    console.log(`[OTP] Generated OTP for ${email} (${operation}): ${otp}`);
 
     if (NODE_ENV !== "production") {
       return res.json({
         message: "OTP email failed to send, but check server logs for the code.",
         error: err.message,
-        developmentOtpBypass: NODE_ENV === "development",
       });
     }
 
@@ -341,15 +339,8 @@ async function signup(req, res) {
     email: normalizedEmail,
     operation: "signup",
   });
-  const developmentOtpBypass =
-    NODE_ENV === "development" &&
-    typeof otp === "string" &&
-    /^\d{6}$/.test(otp);
 
-  if (
-    !developmentOtpBypass &&
-    (!otpRecord || !otp || otpRecord.code !== otp)
-  ) {
+  if (!otpRecord || !otp || otpRecord.code !== otp) {
     return res.status(400).json({
       error: "Invalid or expired OTP. Please request a new verification code.",
       requiresOtp: true,
@@ -407,7 +398,7 @@ async function login(req, res) {
     });
   }
 
-  const normalizedEmail = normalizeEmail(email);
+  const normalizedEmail = normalizeEmail(user.email);
   const initialAttempts = await checkFailedAttempts(normalizedEmail);
 
   if (initialAttempts >= 3) {
