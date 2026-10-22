@@ -53,7 +53,7 @@ export default function StudentAssignmentsWidget() {
       )}
 
       {nextUp.length === 0 ? (
-        <div className="asg-meta" style={{ marginTop: 12 }}>Nothing due. You are all caught up. 🎉</div>
+        <div className="asg-meta" style={{ marginTop: 12 }}>Nothing due. You are all caught up.</div>
       ) : (
         <div style={{ marginTop: 6 }}>
           {nextUp.map((a) => (

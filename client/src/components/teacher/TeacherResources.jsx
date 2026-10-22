@@ -104,7 +104,7 @@ export default function TeacherResources() {
     }
     previewTab.opener = null;
     previewTab.document.title = resource.title;
-    previewTab.document.body.textContent = "Opening resource…";
+    previewTab.document.body.textContent = "Opening resource...";
     try {
       const blob = await fetchBlob(`/teacher/resources/${resource.id}/file`);
       previewTab.location.href = URL.createObjectURL(blob);
@@ -151,9 +151,9 @@ export default function TeacherResources() {
 
       <div className="asg-panel">
         {loading ? (
-          <p className="asg-sub">Loading resources…</p>
+          <p className="asg-sub">Loading resources...</p>
         ) : visibleResources.length === 0 ? (
-          <div className="asg-empty">No {tab === "notes" ? "notes" : "past papers"} uploaded yet. Use “Upload resource” to add one.</div>
+          <div className="asg-empty">No {tab === "notes" ? "notes" : "past papers"} uploaded yet. Use "Upload resource" to add one.</div>
         ) : (
           <div className="th-table-wrap">
             <div className="th-table th-resource-table">
@@ -170,7 +170,7 @@ export default function TeacherResources() {
                     <div className="th-cell-title">{resource.title}</div>
                     {resource.isDemo && <Badge variant="warning" size="sm">Sample</Badge>}
                   </div>
-                  <div className="th-cell-sub">{[resource.subject, resource.year].filter(Boolean).join(" • ") || "—"}</div>
+                  <div className="th-cell-sub">{[resource.subject, resource.year].filter(Boolean).join(" • ") || "N/A"}</div>
                   <div className="th-cell-time">{formatDateTime(resource.uploadedAt)}</div>
                   <div className="th-cell-sub">{resource.originalName}</div>
                   <div className="th-row-actions th-resource-actions">

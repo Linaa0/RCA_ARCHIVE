@@ -14,7 +14,7 @@ function timeLeft(deadline) {
 
 // "Given to": classes first, then individual students
 export function Recipients({ classLabels = [], students = [] }) {
-  if (classLabels.length === 0 && students.length === 0) return <span className="th-cell-sub">—</span>;
+  if (classLabels.length === 0 && students.length === 0) return <span className="th-cell-sub">N/A</span>;
   return (
     <div className="th-chips">
       {classLabels.map((c) => (

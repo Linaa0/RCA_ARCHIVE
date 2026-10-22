@@ -2,9 +2,9 @@ import React from "react";
 import Badge from "../ui/Badge";
 
 export function formatDateTime(value) {
-  if (!value) return "—";
+  if (!value) return "N/A";
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "N/A";
   return d.toLocaleString(undefined, {
     year: "numeric",
     month: "short",

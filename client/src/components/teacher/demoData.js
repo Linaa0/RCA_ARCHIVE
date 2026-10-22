@@ -65,8 +65,8 @@ export const DEMO_RESOURCES = [
   { id: "demo-resource-notes-1", title: "Python Functions and Loops", type: "notes", subject: "Programming", year: "Year 1", originalName: "python-functions-notes.pdf", uploadedAt: daysFromNow(-5), isDemo: true },
   { id: "demo-resource-notes-2", title: "Introduction to Database Design", type: "notes", subject: "Database Systems", year: "Year 2", originalName: "database-design-notes.pdf", uploadedAt: daysFromNow(-3), isDemo: true },
   { id: "demo-resource-notes-3", title: "Responsive Web Design", type: "notes", subject: "Web Development", year: "Year 2", originalName: "responsive-web-design.docx", uploadedAt: daysFromNow(-1), isDemo: true },
-  { id: "demo-resource-paper-1", title: "Programming Fundamentals — Midterm", type: "past-paper", subject: "Programming", year: "Year 1", originalName: "programming-midterm-2025.pdf", uploadedAt: daysFromNow(-4), isDemo: true },
-  { id: "demo-resource-paper-2", title: "Database Systems — Final Exam", type: "past-paper", subject: "Database Systems", year: "Year 2", originalName: "database-final-2025.pdf", uploadedAt: daysFromNow(-2), isDemo: true },
+  { id: "demo-resource-paper-1", title: "Programming Fundamentals: Midterm", type: "past-paper", subject: "Programming", year: "Year 1", originalName: "programming-midterm-2025.pdf", uploadedAt: daysFromNow(-4), isDemo: true },
+  { id: "demo-resource-paper-2", title: "Database Systems: Final Exam", type: "past-paper", subject: "Database Systems", year: "Year 2", originalName: "database-final-2025.pdf", uploadedAt: daysFromNow(-2), isDemo: true },
 ];
 
 export const DEMO_APPEALS = [

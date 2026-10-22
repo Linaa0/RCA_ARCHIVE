@@ -5,78 +5,125 @@ import { LessonsIcon, MaterialsIcon, ForumIcon, EyeIcon, PlusIcon } from "../ui/
 import TeacherHero from "./TeacherHero";
 import AssignmentTable from "../assignments/AssignmentTable";
 import { errorMessage } from "../assignments/common";
-import { DEMO_STATS } from "./demoData";
+import StatCardUI from "../ui/StatCard";
 import "../assignments/assignments.css";
-
-function StatCard({ label, value, sub, icon, tone }) {
-  return (
-    <div className="th-stat">
-      <div className="th-stat-label">{label}</div>
-      <div className="th-stat-body">
-        <div className={`th-stat-icon ${tone}`}>{icon}</div>
-        <div>
-          <div className="th-stat-value">{value}</div>
-          <div className="th-stat-sub">{sub}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function TeacherDashboard() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
-  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     api
       .get("/teacher/stats")
       .then(({ data }) => {
-        const hasData = data.totalAssignments || data.totalResources || data.totalSubmissions || data.appealsReceived;
-        setIsDemo(!hasData);
-        setStats(hasData ? { ...data, upcoming: data.upcoming || [] } : DEMO_STATS);
+        setStats({
+          totalAssignments: data.totalAssignments ?? 0,
+          totalResources: data.totalResources ?? 0,
+          appealsReceived: data.appealsReceived ?? 0,
+          readAppeals: data.readAppeals ?? 0,
+          unreadAppeals: data.unreadAppeals ?? 0,
+          upcoming: Array.isArray(data.upcoming) ? data.upcoming : [],
+        });
       })
       .catch((err) => {
-        setStats(DEMO_STATS);
-        setIsDemo(true);
-        setError(errorMessage(err, "Could not load your dashboard."));
+        setStats({
+          totalAssignments: 0,
+          totalResources: 0,
+          appealsReceived: 0,
+          readAppeals: 0,
+          unreadAppeals: 0,
+          upcoming: [],
+        });
+        setError(errorMessage(err, "Could not load teacher statistics."));
       });
   }, []);
 
   return (
-    <div className="asg-page">
+    <div className="asg-page" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       <TeacherHero />
 
-      <div style={{ display: "flex", justifyContent: "flex-start", margin: "16px 0 20px" }}>
+      <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "4px" }}>
         <Link
           to="/teacher/assignments?new=1"
-          className="topbar-action-pill"
-          style={{ background: "#3F4FA8", color: "#FFFFFF", borderColor: "#3F4FA8", fontWeight: 700, textDecoration: "none" }}
+          style={{
+            background: "var(--color-primary)",
+            color: "#FFFFFF",
+            padding: "8px 20px",
+            borderRadius: "999px",
+            fontWeight: 700,
+            fontSize: "0.86rem",
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            boxShadow: "0 4px 12px rgba(63, 79, 168, 0.25)",
+          }}
         >
           <PlusIcon size={16} />
-          <span>Give new assignment</span>
+          <span>Give New Assignment</span>
         </Link>
       </div>
 
       {error && <div className="asg-alert error">{error}</div>}
-      {stats && isDemo && <div className="asg-alert info">Showing sample teacher data for preview.</div>}
 
-      <div className="th-stats">
-        <StatCard label="Total assignments" value={stats ? stats.totalAssignments : "–"} sub="assignments sent" icon={<LessonsIcon size={24} />} tone="blue" />
-        <StatCard label="Total resources" value={stats ? stats.totalResources ?? 0 : "–"} sub="resources uploaded" icon={<MaterialsIcon size={24} />} tone="green" />
-        <StatCard label="Appeals" value={stats ? stats.appealsReceived : "–"} sub="appeals received" icon={<ForumIcon size={24} />} tone="orange" />
-        <StatCard label="Read appeals" value={stats ? stats.readAppeals : "–"} sub={stats ? `${stats.unreadAppeals} still unread` : "appeals read"} icon={<EyeIcon size={24} />} tone="pink" />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "20px",
+        }}
+      >
+        <StatCardUI
+          label="Total Assignments"
+          value={stats ? stats.totalAssignments : 0}
+          icon={<LessonsIcon size={22} />}
+          accentColor="#3F4FA8"
+        />
+        <StatCardUI
+          label="Total Resources"
+          value={stats ? stats.totalResources : 0}
+          icon={<MaterialsIcon size={22} />}
+          accentColor="#10B981"
+        />
+        <StatCardUI
+          label="Appeals Received"
+          value={stats ? stats.appealsReceived : 0}
+          icon={<ForumIcon size={22} />}
+          accentColor="#F59E0B"
+        />
+        <StatCardUI
+          label="Unread Appeals"
+          value={stats ? stats.unreadAppeals : 0}
+          icon={<EyeIcon size={22} />}
+          accentColor="#EC4899"
+        />
       </div>
 
-      <div className="asg-panel">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <h3 style={{ margin: 0 }}>Upcoming deadlines</h3>
-          <Link to="/teacher/assignments" style={{ color: "#3F4FA8", fontWeight: 700, fontSize: "0.88rem" }}>
-            All assignments →
+      <div
+        style={{
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
+          padding: "28px 32px",
+          border: "1px solid var(--color-border)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
+              Upcoming Deadlines
+            </h3>
+            <span style={{ fontSize: "0.84rem", color: "var(--color-text-secondary)" }}>
+              Assignments with deadlines approaching
+            </span>
+          </div>
+          <Link to="/teacher/assignments" style={{ color: "var(--color-primary)", fontWeight: 700, fontSize: "0.88rem", textDecoration: "none" }}>
+            All Assignments
           </Link>
         </div>
+
         {!stats ? (
-          <p className="asg-sub">Loading…</p>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.9rem" }}>Loading deadlines...</p>
         ) : (
           <AssignmentTable rows={stats.upcoming} emptyText="No upcoming deadlines. Give an assignment to get started." />
         )}
