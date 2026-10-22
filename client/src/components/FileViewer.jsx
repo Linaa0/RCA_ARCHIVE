@@ -136,7 +136,7 @@ export default function FileViewer() {
             gap: "8px",
             background: "var(--color-bg)",
             border: "1px solid var(--color-border)",
-            color: "var(--color-text-primary)",
+            color: "var(--color-ink)",
             padding: "8px 18px",
             borderRadius: "999px",
             cursor: "pointer",
@@ -145,12 +145,12 @@ export default function FileViewer() {
             transition: "all var(--transition-fast)",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-primary)";
-            e.currentTarget.style.color = "var(--color-primary)";
+            e.currentTarget.style.borderColor = "var(--color-indigo-500)";
+            e.currentTarget.style.color = "var(--color-indigo-500)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = "var(--color-border)";
-            e.currentTarget.style.color = "var(--color-text-primary)";
+            e.currentTarget.style.color = "var(--color-ink)";
           }}
         >
           <ArrowLeftIcon size={16} />
@@ -162,7 +162,7 @@ export default function FileViewer() {
             title={paper.title}
             style={{
               margin: 0,
-              color: "var(--color-text-primary)",
+              color: "var(--color-ink)",
               fontWeight: 700,
               fontSize: "1.05rem",
               whiteSpace: "nowrap",
@@ -172,7 +172,7 @@ export default function FileViewer() {
           >
             {paper.title}
           </h1>
-          <p style={{ margin: "2px 0 0", color: "var(--color-text-secondary)", fontSize: "0.8rem", fontWeight: 500 }}>
+          <p style={{ margin: "2px 0 0", color: "var(--color-muted)", fontSize: "0.8rem", fontWeight: 500 }}>
             {paper.subject} • Year {paper.year} • {paper.type || "Past Paper"}
           </p>
         </div>
@@ -184,7 +184,7 @@ export default function FileViewer() {
             display: "inline-flex",
             alignItems: "center",
             gap: "8px",
-            background: "var(--color-primary)",
+            background: "var(--color-indigo-600)",
             color: "#ffffff",
             padding: "9px 22px",
             borderRadius: "999px",
@@ -219,7 +219,7 @@ export default function FileViewer() {
             <audio controls src={fileUrl} style={{ width: "80%", maxWidth: "600px" }} />
           </div>
         ) : canRenderText ? (
-          <div style={{ padding: "32px", overflowY: "auto", height: "100%", background: "var(--color-surface)", color: "var(--color-text-primary)" }}>
+          <div style={{ padding: "32px", overflowY: "auto", height: "100%", background: "var(--color-surface)", color: "var(--color-ink)" }}>
             {textLoading ? (
               <p>Loading text preview...</p>
             ) : textError ? (
@@ -247,8 +247,8 @@ export default function FileViewer() {
                 width: "64px",
                 height: "64px",
                 borderRadius: "18px",
-                background: "var(--color-indigo-100, #E4E8FA)",
-                color: "var(--color-primary)",
+                background: "var(--color-surface-subtle)",
+                color: "var(--color-indigo-500)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -257,10 +257,10 @@ export default function FileViewer() {
             >
               <EyeIcon size={28} />
             </div>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "8px" }}>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--color-ink)", marginBottom: "8px" }}>
               In-Browser Preview Not Supported for .{ext?.toUpperCase()}
             </h2>
-            <p style={{ maxWidth: "420px", color: "var(--color-text-secondary)", fontSize: "0.9rem", lineHeight: 1.5, marginBottom: "20px" }}>
+            <p style={{ maxWidth: "420px", color: "var(--color-muted)", fontSize: "0.9rem", lineHeight: 1.5, marginBottom: "20px" }}>
               This file type cannot be displayed directly in your web browser. You can download the file to inspect it on your computer.
             </p>
             <a
@@ -270,7 +270,7 @@ export default function FileViewer() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
-                background: "var(--color-primary)",
+                background: "var(--color-indigo-600)",
                 color: "#ffffff",
                 padding: "10px 24px",
                 borderRadius: "999px",

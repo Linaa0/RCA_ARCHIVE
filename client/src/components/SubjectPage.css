@@ -29,8 +29,8 @@
   gap: 8px;
   padding: 6px 14px;
   border-radius: var(--radius-pill);
-  background: #ffffff;
-  border: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-med);
   box-shadow: var(--shadow-sm);
 }
 
@@ -80,14 +80,14 @@
 }
 
 .login-to-upload {
-  background: #ffffff;
-  color: var(--primary-accent);
+  background: var(--color-surface);
+  color: var(--color-indigo-500);
   padding: 10px 22px;
   border-radius: var(--radius-pill);
   text-decoration: none;
   font-weight: 600;
   font-size: 0.9rem;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--color-border-med);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-fast);
 }
@@ -116,9 +116,9 @@
 .filter-pill {
   padding: 8px 18px;
   border-radius: var(--radius-pill);
-  background: #ffffff;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-med);
+  color: var(--color-muted);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -140,10 +140,10 @@
 .subject-search-input {
   padding: 10px 20px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border-subtle);
-  background: #ffffff;
+  border: 1px solid var(--color-border-med);
+  background: var(--color-surface);
   font-size: 0.9rem;
-  color: var(--text-primary);
+  color: var(--color-ink);
   outline: none;
   box-shadow: var(--shadow-sm);
   min-width: 260px;
@@ -164,10 +164,10 @@
 }
 
 .paper-item-card {
-  background: #ffffff;
+  background: var(--color-card);
   border-radius: var(--radius-card);
   padding: 24px;
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--color-card-border);
   box-shadow: var(--shadow-card);
   transition: all var(--transition-normal);
   display: flex;
@@ -299,9 +299,9 @@
 }
 
 .btn-download-paper:hover {
-  background: #ffffff;
-  border-color: var(--primary-accent);
-  color: var(--primary-accent);
+  background: var(--color-surface-hover);
+  border-color: var(--color-indigo-500);
+  color: var(--color-indigo-500);
 }
 
 /* Modals (Upload, Edit, Delete Request) */
@@ -319,13 +319,13 @@
 }
 
 .subject-modal-card {
-  background: #ffffff;
+  background: var(--color-surface-raised);
   border-radius: var(--radius-card);
   padding: 36px 32px;
   width: 100%;
   max-width: 520px;
-  box-shadow: var(--shadow-dropdown);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--color-border-strong);
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -415,9 +415,9 @@
 .empty-papers-state {
   text-align: center;
   padding: 64px 32px;
-  background: #ffffff;
+  background: var(--color-card);
   border-radius: var(--radius-card);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--color-card-border);
   box-shadow: var(--shadow-sm);
   margin-bottom: 32px;
 }
@@ -448,10 +448,10 @@
 .filters input {
   padding: 11px 20px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border-subtle);
-  background: #ffffff;
+  border: 1px solid var(--color-border-med);
+  background: var(--color-surface);
   font-size: 0.9rem;
-  color: var(--text-primary);
+  color: var(--color-ink);
   outline: none;
   min-width: 240px;
   box-shadow: var(--shadow-sm);
@@ -459,18 +459,18 @@
 }
 
 .filters input:focus {
-  border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+  border-color: var(--color-indigo-500);
+  box-shadow: var(--focus-ring);
 }
 
 .filters select {
   padding: 11px 20px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border-subtle);
-  background: #ffffff;
+  border: 1px solid var(--color-border-med);
+  background: var(--color-surface);
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   outline: none;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -501,11 +501,11 @@
 
 /* Upload Form Box */
 .upload-form-box {
-  background: #ffffff;
+  background: var(--color-card);
   border-radius: var(--radius-card);
   padding: 32px;
   box-shadow: var(--shadow-card);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--color-card-border);
   margin-bottom: 28px;
 }
 
@@ -580,10 +580,10 @@
 }
 
 .paper-card {
-  background: #ffffff;
+  background: var(--color-card);
   border-radius: var(--radius-card);
   padding: 24px;
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--color-card-border);
   box-shadow: var(--shadow-card);
   display: flex;
   align-items: center;

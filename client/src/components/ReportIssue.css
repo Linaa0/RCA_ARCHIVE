@@ -14,8 +14,8 @@
 .report-issue-panel {
   width: 100%;
   max-width: 780px;
-  background: #ffffff;
-  border: 1px solid var(--card-border);
+  background: var(--color-card);
+  border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card);
   padding: 40px;
   box-shadow: var(--shadow-card);
@@ -77,9 +77,9 @@
 .report-issue-form input:focus,
 .report-issue-form select:focus,
 .report-issue-form textarea:focus {
-  background: #ffffff;
-  border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+  background: var(--color-surface);
+  border-color: var(--color-indigo-500);
+  box-shadow: var(--focus-ring);
 }
 
 .report-issue-submit {

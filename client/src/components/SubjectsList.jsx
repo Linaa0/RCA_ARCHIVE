@@ -42,7 +42,12 @@ function SubjectCard({ year, subject }) {
       <p>{count === null ? "0 file(s)" : `${count} file(s)`}</p>
       <div className="subject-card-footer">
         <span className="subject-link-text">Past Papers &amp; Notes</span>
-        <span className="subject-arrow">→</span>
+        <span className="subject-arrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </span>
       </div>
     </Link>
   );
@@ -56,7 +61,13 @@ function SubjectsList({ subjects, activeYear }) {
           <h2 className="subjects-section-title">Year {activeYear} Subjects</h2>
           <p className="subjects-section-sub">Browse and access all subjects for Year {activeYear}</p>
         </div>
-        <a href="#subjects" className="view-all-link">View all subjects →</a>
+        <a href="#subjects" className="view-all-link">
+          View all subjects
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
       </div>
 
       <div className="subjects-grid">

@@ -53,22 +53,22 @@
 }
 
 .subject-card {
-  background: var(--card-subtle);
-  border: 1px solid var(--border-subtle);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card-sm);
   padding: 20px 18px;
   text-decoration: none;
-  color: var(--text-primary);
+  color: var(--color-ink);
   display: flex;
   flex-direction: column;
   transition: all var(--transition-fast);
 }
 
 .subject-card:hover {
-  background: #ffffff;
-  border-color: var(--primary-accent);
+  background: var(--color-surface-hover);
+  border-color: var(--color-indigo-400);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .subject-card-top {

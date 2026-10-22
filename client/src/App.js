@@ -81,10 +81,10 @@ function PaperResultCard({ paper }) {
   return (
     <div
       style={{
-        background: "#ffffff",
+        background: "var(--color-card)",
         borderRadius: "18px",
         padding: "20px 24px",
-        border: "1px solid var(--card-border)",
+        border: "1px solid var(--color-card-border)",
         boxShadow: "var(--shadow-sm)",
         display: "flex",
         alignItems: "center",
@@ -222,11 +222,11 @@ function AuthenticatedHome({
             id="subjects"
             style={{
               marginTop: "36px",
-              background: "#ffffff",
+              background: "var(--color-card)",
               borderRadius: "24px",
               padding: "32px",
               boxShadow: "var(--shadow-card)",
-              border: "1px solid var(--card-border)",
+              border: "1px solid var(--color-card-border)",
             }}
           >
             <div
@@ -244,14 +244,14 @@ function AuthenticatedHome({
                   style={{
                     fontSize: "0.75rem",
                     fontWeight: 700,
-                    color: "var(--primary-accent)",
+                    color: "var(--color-indigo-500)",
                     textTransform: "uppercase",
                     letterSpacing: "0.08em",
                   }}
                 >
                   Curriculum Repository
                 </span>
-                <h3 style={{ fontSize: "1.35rem", fontWeight: 800, marginTop: "2px" }}>
+                <h3 style={{ fontSize: "1.35rem", fontWeight: 800, marginTop: "2px", color: "var(--color-ink)" }}>
                   Explore Subjects by Cohort
                 </h3>
               </div>
@@ -265,9 +265,9 @@ function AuthenticatedHome({
                       borderRadius: "999px",
                       fontSize: "0.88rem",
                       fontWeight: 600,
-                      border: "1px solid var(--border-subtle)",
-                      background: activeYear === y ? "var(--sidebar-bg)" : "#ffffff",
-                      color: activeYear === y ? "#ffffff" : "var(--text-secondary)",
+                      border: "1px solid var(--color-border-med)",
+                      background: activeYear === y ? "var(--color-indigo-600)" : "var(--color-surface-subtle)",
+                      color: activeYear === y ? "#ffffff" : "var(--color-muted)",
                       cursor: "pointer",
                       boxShadow: activeYear === y ? "0 4px 12px rgba(59, 76, 163, 0.25)" : "none",
                       transition: "all 0.2s ease",

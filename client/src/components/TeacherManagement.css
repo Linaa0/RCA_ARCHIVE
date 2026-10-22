@@ -38,9 +38,9 @@
 }
 
 .teacher-tools input {
-  border: 1px solid var(--border-subtle);
-  background: #ffffff;
-  color: var(--text-primary);
+  border: 1px solid var(--color-border-med);
+  background: var(--color-surface);
+  color: var(--color-ink);
   border-radius: var(--radius-pill);
   padding: 10px 18px;
   outline: none;
@@ -52,16 +52,16 @@
 }
 
 .teacher-tools input:focus {
-  border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+  border-color: var(--color-indigo-500);
+  box-shadow: var(--focus-ring);
 }
 
 .ghost-btn {
   padding: 10px 20px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border-subtle);
-  background: #ffffff;
-  color: var(--text-secondary);
+  border: 1px solid var(--color-border-med);
+  background: var(--color-surface);
+  color: var(--color-muted);
   font-family: var(--font-family);
   font-size: 0.88rem;
   font-weight: 600;
@@ -71,14 +71,14 @@
 }
 
 .ghost-btn:hover {
-  border-color: var(--primary-accent);
-  color: var(--primary-accent);
+  border-color: var(--color-indigo-500);
+  color: var(--color-indigo-500);
 }
 
 .btn-primary {
   padding: 10px 22px;
   border-radius: var(--radius-pill);
-  background: var(--sidebar-bg);
+  background: var(--color-indigo-600);
   color: #ffffff;
   font-family: var(--font-family);
   font-size: 0.88rem;
@@ -90,7 +90,7 @@
 }
 
 .btn-primary:hover {
-  background: #313f8c;
+  background: var(--color-indigo-700);
   transform: translateY(-1px);
 }
 
@@ -98,7 +98,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(30, 37, 71, 0.4);
+  background: rgba(15, 20, 36, 0.65);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -109,19 +109,19 @@
 }
 
 .modal-content {
-  background: #ffffff;
+  background: var(--color-surface-raised);
   border-radius: var(--radius-card);
   padding: 36px 32px;
   width: 100%;
   max-width: 500px;
-  box-shadow: var(--shadow-dropdown);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--color-border-strong);
 }
 
 .modal-content h3 {
   font-size: 1.35rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin-bottom: 20px;
 }
 
@@ -130,10 +130,10 @@
   width: 100%;
   padding: 12px 16px;
   border-radius: var(--radius-input);
-  border: 1px solid var(--border-subtle);
-  background: var(--card-subtle);
+  border: 1px solid var(--color-border-med);
+  background: var(--color-surface-subtle);
   font-size: 0.925rem;
-  color: var(--text-primary);
+  color: var(--color-ink);
   outline: none;
   margin-bottom: 16px;
   box-sizing: border-box;
@@ -141,7 +141,7 @@
 
 .modal-content input:focus,
 .modal-content select:focus {
-  border-color: var(--primary-accent);
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+  border-color: var(--color-indigo-500);
+  background: var(--color-surface);
+  box-shadow: var(--focus-ring);
 }
