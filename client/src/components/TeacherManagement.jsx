@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { authDelete, authGet, authPost, authPut } from "../utils/apiClient";
+import { authDelete, authGet, authPost } from "../utils/apiClient";
 import Table from "./ui/Table";
 import Badge from "./ui/Badge";
 import Button from "./ui/Button";
@@ -7,7 +7,7 @@ import IconButton from "./ui/IconButton";
 import Input from "./ui/Input";
 import Modal from "./ui/Modal";
 import Avatar from "./ui/Avatar";
-import { EditIcon, TrashIcon, SearchIcon, CloseIcon } from "./ui/Icons";
+import { TrashIcon, SearchIcon, CloseIcon } from "./ui/Icons";
 import "./TeacherManagement.css";
 
 const EMPTY_FORM = { name: "", email: "" };
@@ -15,7 +15,6 @@ const EMPTY_FORM = { name: "", email: "" };
 export default function TeacherManagement({ onUpdated }) {
   const [teachers, setTeachers] = useState([]);
   const [formData, setFormData] = useState(EMPTY_FORM);
-  const [editingTeacher, setEditingTeacher] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,7 +42,6 @@ export default function TeacherManagement({ onUpdated }) {
     loadTeachers();
 
     const handleOpenModal = () => {
-      setEditingTeacher(null);
       setFormData(EMPTY_FORM);
       setError("");
       setSuccess("");
@@ -67,20 +65,8 @@ export default function TeacherManagement({ onUpdated }) {
     });
   }, [searchTerm, teachers]);
 
-  const handleOpenEdit = (teacher) => {
-    setEditingTeacher(teacher);
-    setFormData({
-      name: teacher.name || teacher.username || "",
-      email: teacher.email || "",
-    });
-    setError("");
-    setSuccess("");
-    setIsModalOpen(true);
-  };
-
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingTeacher(null);
     setFormData(EMPTY_FORM);
     setError("");
   };
@@ -92,77 +78,19 @@ export default function TeacherManagement({ onUpdated }) {
     setSuccess("");
 
     try {
-      if (editingTeacher) {
-        const payload = {
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-        };
-        const updated = await authPut(
-          `/api/admin/teachers/${editingTeacher.id || editingTeacher._id}`,
-          payload
-        );
-        const updatedTeacher = updated.teacher || updated;
-        setTeachers((prev) =>
-          prev.map((t) =>
-            (t.id || t._id) === (updatedTeacher.id || updatedTeacher._id)
-              ? updatedTeacher
-              : t
-          )
-        );
-        setSuccess("Teacher updated successfully.");
-        handleCloseModal();
-      } else {
-        const created = await authPost("/api/admin/teachers", {
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-        });
-        const newTeacher = created.teacher || created;
-        setTeachers((prev) => [newTeacher, ...prev]);
-        setSuccess("Teacher invitation sent successfully.");
-        handleCloseModal();
-      }
+      const created = await authPost("/api/admin/teachers", {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+      });
+      const newTeacher = created.teacher || created;
+      setTeachers((prev) => [newTeacher, ...prev]);
+      setSuccess("Teacher invitation sent successfully.");
+      handleCloseModal();
       if (onUpdated) onUpdated();
     } catch (err) {
-      setError(err.message || "Failed to save teacher.");
+      setError(err.message || "Failed to invite teacher.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleToggleStatus = async (teacher) => {
-    const newStatus = teacher.status === "disabled" ? "active" : "disabled";
-    try {
-      const updated = await authPut(
-        `/api/admin/teachers/${teacher.id || teacher._id}/status`,
-        { status: newStatus }
-      );
-      const updatedTeacher = updated.teacher || updated;
-      setTeachers((prev) =>
-        prev.map((t) =>
-          (t.id || t._id) === (updatedTeacher.id || updatedTeacher._id)
-            ? updatedTeacher
-            : t
-        )
-      );
-      setSuccess(
-        newStatus === "disabled"
-          ? "Teacher account disabled."
-          : "Teacher account re-enabled."
-      );
-      if (onUpdated) onUpdated();
-    } catch (err) {
-      setError(err.message || "Unable to update teacher status.");
-    }
-  };
-
-  const handleResendInvite = async (teacher) => {
-    try {
-      await authPost("/api/admin/teachers/resend-invite", {
-        email: teacher.email,
-      });
-      setSuccess(`Invitation email resent to ${teacher.email}.`);
-    } catch (err) {
-      setError(err.message || "Unable to resend invite.");
     }
   };
 
@@ -237,52 +165,8 @@ export default function TeacherManagement({ onUpdated }) {
       key: "actions",
       align: "right",
       render: (_, teacher) => {
-        const isPending = teacher.status === "pending_password_setup";
-        const isDisabled = teacher.status === "disabled";
         return (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
-            <IconButton
-              icon={<EditIcon size={15} />}
-              title="Edit teacher details"
-              size="sm"
-              onClick={() => handleOpenEdit(teacher)}
-            />
-
-            {isPending && (
-              <IconButton
-                icon={
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                }
-                title="Resend invitation link"
-                size="sm"
-                variant="subtle"
-                onClick={() => handleResendInvite(teacher)}
-              />
-            )}
-
-            <IconButton
-              icon={
-                isDisabled ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 14 14" />
-                  </svg>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                  </svg>
-                )
-              }
-              title={isDisabled ? "Re-enable account" : "Disable account"}
-              size="sm"
-              variant={isDisabled ? "subtle" : "ghost"}
-              onClick={() => handleToggleStatus(teacher)}
-            />
-
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <IconButton
               icon={<TrashIcon size={15} />}
               title="Delete teacher"
@@ -396,28 +280,26 @@ export default function TeacherManagement({ onUpdated }) {
         }
       />
 
-      {/* Invite / Edit Teacher Modal */}
+      {/* Invite Teacher Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={editingTeacher ? "Edit Teacher Account" : "Invite Faculty Member"}
+        title="Invite Faculty Member"
       >
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-          {!editingTeacher && (
-            <div
-              style={{
-                padding: "12px 16px",
-                background: "var(--color-indigo-50, #F4F6FD)",
-                borderRadius: "14px",
-                fontSize: "0.85rem",
-                color: "var(--color-indigo-900, #232C6B)",
-                lineHeight: 1.45,
-                border: "1px solid rgba(91, 115, 224, 0.18)",
-              }}
-            >
-              The teacher will receive an email with a secure link to set their own password.
-            </div>
-          )}
+          <div
+            style={{
+              padding: "12px 16px",
+              background: "var(--color-indigo-50, #F4F6FD)",
+              borderRadius: "14px",
+              fontSize: "0.85rem",
+              color: "var(--color-indigo-900, #232C6B)",
+              lineHeight: 1.45,
+              border: "1px solid rgba(91, 115, 224, 0.18)",
+            }}
+          >
+            The teacher will receive an email with a secure link to set their own password.
+          </div>
 
           <Input
             label="Full Name"
@@ -449,7 +331,7 @@ export default function TeacherManagement({ onUpdated }) {
               Cancel
             </Button>
             <Button variant="primary" type="submit" loading={saving}>
-              {editingTeacher ? "Update Teacher" : "Send Invitation"}
+              Send Invitation
             </Button>
           </div>
         </form>

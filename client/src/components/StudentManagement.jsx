@@ -1,30 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { authDelete, authGet, authPost, authPut } from "../utils/apiClient";
+import { authDelete, authGet } from "../utils/apiClient";
 import Table from "./ui/Table";
 import Badge from "./ui/Badge";
 import Button from "./ui/Button";
 import IconButton from "./ui/IconButton";
 import Input from "./ui/Input";
-import Select from "./ui/Select";
 import Modal from "./ui/Modal";
 import Avatar from "./ui/Avatar";
-import { RCA_CLASSES } from "./ui/ClassChips";
-import { EditIcon, TrashIcon, SearchIcon } from "./ui/Icons";
-
-const EMPTY_FORM = { name: "", email: "", class: "Y1A" };
+import { TrashIcon, SearchIcon } from "./ui/Icons";
 
 export default function StudentManagement({ onUpdated }) {
   const [students, setStudents] = useState([]);
-  const [formData, setFormData] = useState(EMPTY_FORM);
-  const [editingStudent, setEditingStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -41,19 +33,6 @@ export default function StudentManagement({ onUpdated }) {
 
   useEffect(() => {
     loadStudents();
-
-    const handleOpenModal = () => {
-      setEditingStudent(null);
-      setFormData(EMPTY_FORM);
-      setError("");
-      setSuccess("");
-      setIsModalOpen(true);
-    };
-
-    window.addEventListener("open-create-student-modal", handleOpenModal);
-    return () => {
-      window.removeEventListener("open-create-student-modal", handleOpenModal);
-    };
   }, []);
 
   const filteredStudents = useMemo(() => {
@@ -66,99 +45,6 @@ export default function StudentManagement({ onUpdated }) {
       return name.includes(kw) || email.includes(kw) || cls.includes(kw);
     });
   }, [searchTerm, students]);
-
-  const handleOpenEdit = (student) => {
-    setEditingStudent(student);
-    setFormData({
-      name: student.name || student.username || "",
-      email: student.email || "",
-      class: student.class || "Y1A",
-    });
-    setError("");
-    setSuccess("");
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingStudent(null);
-    setFormData(EMPTY_FORM);
-    setError("");
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      if (editingStudent) {
-        const response = await authPut(
-          `/api/admin/students/${editingStudent.id || editingStudent._id}`,
-          {
-            name: formData.name.trim(),
-            email: formData.email.trim(),
-            class: formData.class,
-          }
-        );
-        const updated = response.student || response;
-        setStudents((prev) =>
-          prev.map((s) =>
-            (s.id || s._id) === (updated.id || updated._id) ? updated : s
-          )
-        );
-        setSuccess("Student record updated successfully.");
-        handleCloseModal();
-      } else {
-        const response = await authPost("/api/admin/students", {
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          class: formData.class,
-        });
-        const created = response.student || response;
-        setStudents((prev) => [created, ...prev]);
-        setSuccess("Student invitation dispatched.");
-        handleCloseModal();
-      }
-      if (onUpdated) onUpdated();
-    } catch (err) {
-      setError(err.data?.message || err.message || "Failed to save student.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const resendInvite = async (student) => {
-    try {
-      await authPost("/api/admin/students/resend-invite", {
-        email: student.email,
-      });
-      setSuccess(`Invitation email resent to ${student.email}.`);
-    } catch (err) {
-      setError(err.message || "Unable to resend invitation.");
-    }
-  };
-
-  const toggleStatus = async (student) => {
-    const nextStatus = student.status === "disabled" ? "active" : "disabled";
-    try {
-      const response = await authPut(
-        `/api/admin/students/${student.id || student._id}/status`,
-        { status: nextStatus }
-      );
-      const updated = response.student || response;
-      setStudents((prev) =>
-        prev.map((s) =>
-          (s.id || s._id) === (updated.id || updated._id) ? updated : s
-        )
-      );
-      setSuccess(`Student account is now ${nextStatus}.`);
-      if (onUpdated) onUpdated();
-    } catch (err) {
-      setError(err.message || "Unable to update student status.");
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -240,52 +126,8 @@ export default function StudentManagement({ onUpdated }) {
       key: "actions",
       align: "right",
       render: (_, student) => {
-        const isPending = student.status === "pending_password_setup";
-        const isDisabled = student.status === "disabled";
         return (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
-            <IconButton
-              icon={<EditIcon size={15} />}
-              title="Edit student"
-              size="sm"
-              onClick={() => handleOpenEdit(student)}
-            />
-
-            {isPending && (
-              <IconButton
-                icon={
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                }
-                title="Resend invitation"
-                size="sm"
-                variant="subtle"
-                onClick={() => resendInvite(student)}
-              />
-            )}
-
-            <IconButton
-              icon={
-                isDisabled ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 14 14" />
-                  </svg>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                  </svg>
-                )
-              }
-              title={isDisabled ? "Re-enable student" : "Disable student"}
-              size="sm"
-              variant={isDisabled ? "subtle" : "ghost"}
-              onClick={() => toggleStatus(student)}
-            />
-
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <IconButton
               icon={<TrashIcon size={15} />}
               title="Delete student"
@@ -309,7 +151,7 @@ export default function StudentManagement({ onUpdated }) {
         boxShadow: "var(--shadow-card, 0 8px 24px -4px rgba(35, 44, 107, 0.06))",
       }}
     >
-      {/* Top Bar with Search & Create Button */}
+      {/* Student list search and refresh controls */}
       <div
         style={{
           display: "flex",
@@ -338,17 +180,6 @@ export default function StudentManagement({ onUpdated }) {
             disabled={loading}
           >
             {loading ? "Loading..." : "Reload"}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              setEditingStudent(null);
-              setFormData(EMPTY_FORM);
-              setIsModalOpen(true);
-            }}
-          >
-            + Create Student
           </Button>
         </div>
       </div>
@@ -395,76 +226,9 @@ export default function StudentManagement({ onUpdated }) {
         emptyMessage={
           searchTerm
             ? "No students match your search criteria."
-            : "No students registered yet. Students can sign up via self-service or be invited above."
+            : "No students registered yet. Students can create accounts through sign-up."
         }
       />
-
-      {/* Create / Edit Student Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={editingStudent ? "Edit Student Account" : "Add Student"}
-      >
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-          {!editingStudent && (
-            <div
-              style={{
-                padding: "12px 16px",
-                background: "var(--color-indigo-50, #F4F6FD)",
-                borderRadius: "14px",
-                fontSize: "0.85rem",
-                color: "var(--color-indigo-900, #232C6B)",
-                lineHeight: 1.45,
-                border: "1px solid rgba(91, 115, 224, 0.18)",
-              }}
-            >
-              The student will receive an invitation email to set up their password. Students may also register themselves through public sign-up.
-            </div>
-          )}
-
-          <Input
-            label="Full Name"
-            name="name"
-            placeholder="e.g. Grace Stanley"
-            value={formData.name}
-            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-            required
-          />
-
-          <Input
-            label="Email Address"
-            type="email"
-            name="email"
-            placeholder="grace.stanley@rca.ac.rw"
-            value={formData.email}
-            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-            required
-          />
-
-          <Select
-            label="Class Cohort"
-            name="class"
-            value={formData.class}
-            onChange={(e) => setFormData((prev) => ({ ...prev, class: e.target.value }))}
-            options={RCA_CLASSES.map((c) => ({ value: c.id, label: `${c.label} (Year ${c.year})` }))}
-          />
-
-          {error && (
-            <span style={{ color: "#EF4444", fontSize: "0.82rem", fontWeight: 500 }}>
-              {error}
-            </span>
-          )}
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
-            <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" loading={saving}>
-              {editingStudent ? "Update Student" : "Send Invitation"}
-            </Button>
-          </div>
-        </form>
-      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

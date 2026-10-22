@@ -104,8 +104,12 @@ export default function Signup() {
       });
       setResendTimer(60);
       setStep(3);
-      if (data?.previewUrl) {
-        setInfo(`Dev OTP preview available at console.`);
+      if (data?.developmentOtpBypass) {
+        setInfo(
+          "Development mode: enter any 6-digit code. Email verification is required on the live site."
+        );
+      } else if (data?.previewUrl) {
+        setInfo("Development OTP preview is available in the server logs.");
       }
     } catch (err) {
       setError(
@@ -125,12 +129,16 @@ export default function Signup() {
     setLoading(true);
     setError("");
     try {
-      await api.post("/send-otp", {
+      const { data } = await api.post("/send-otp", {
         email: formData.email.trim(),
         operation: "signup",
       });
       setResendTimer(60);
-      setInfo("A new verification code has been dispatched.");
+      setInfo(
+        data?.developmentOtpBypass
+          ? "Development mode: enter any 6-digit code. Email verification is required on the live site."
+          : "A new verification code has been dispatched."
+      );
     } catch (err) {
       setError(err.response?.data?.error || "Unable to resend OTP.");
     } finally {
@@ -248,7 +256,7 @@ export default function Signup() {
               ? "Step 1 of 3: Provide your academy student identity."
               : step === 2
               ? "Step 2 of 3: Choose your cohort class and security."
-              : `Step 3 of 3: 6-digit OTP sent to ${formData.email}`}
+              : "Step 3 of 3: Enter the 6-digit verification code."}
           </p>
 
           {error && <div className="auth-alert-error">{error}</div>}

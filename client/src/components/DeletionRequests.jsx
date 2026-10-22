@@ -7,12 +7,72 @@ import Tabs from "./ui/Tabs";
 import { CheckIcon, CloseIcon } from "./ui/Icons";
 import "./DeletionRequests.css";
 
+const DEMO_REQUESTS = [
+  {
+    id: "demo-pending-1",
+    paperId: "PPR-2025-014",
+    paperTitle: "Mathematics — Year 2 Term 1 CAT",
+    requestedBy: "Demo Student",
+    requesterRole: "Student",
+    reason: "This upload is a duplicate of the corrected paper.",
+    requestedAt: "2025-04-12T09:30:00.000Z",
+    status: "Pending",
+    isDemo: true,
+  },
+  {
+    id: "demo-pending-2",
+    paperId: "PPR-2025-008",
+    paperTitle: "Physics — Year 1 End of Term Exam",
+    requestedBy: "Sample Learner",
+    requesterRole: "Student",
+    reason: "The file is unreadable and appears to be the wrong document.",
+    requestedAt: "2025-04-10T14:15:00.000Z",
+    status: "Pending",
+    isDemo: true,
+  },
+  {
+    id: "demo-pending-3",
+    paperId: "PPR-2025-003",
+    paperTitle: "Database — Year 3 Revision Paper",
+    requestedBy: "Test Account",
+    requesterRole: "Teacher",
+    reason: "This resource contains outdated course material.",
+    requestedAt: "2025-04-08T11:00:00.000Z",
+    status: "Pending",
+    isDemo: true,
+  },
+  {
+    id: "demo-processed-1",
+    paperId: "PPR-2025-001",
+    paperTitle: "Programming — Year 1 Practice CAT",
+    requestedBy: "Demo Student",
+    requesterRole: "Student",
+    reason: "Duplicate upload.",
+    requestedAt: "2025-04-02T08:45:00.000Z",
+    status: "Approved",
+    isDemo: true,
+  },
+  {
+    id: "demo-processed-2",
+    paperId: "PPR-2024-022",
+    paperTitle: "Networking — Year 2 Mock Exam",
+    requestedBy: "Sample Learner",
+    requesterRole: "Student",
+    reason: "The paper is still needed by other students.",
+    requestedAt: "2025-03-28T13:20:00.000Z",
+    status: "Rejected",
+    isDemo: true,
+  },
+];
+
 export default function DeletionRequests({ onUpdated }) {
   const [requests, setRequests] = useState([]);
   const [activeTab, setActiveTab] = useState("pending");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
+  const [showingDemoData, setShowingDemoData] = useState(false);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -20,12 +80,19 @@ export default function DeletionRequests({ onUpdated }) {
 
     try {
       const response = await authGet("/api/admin/deletion-requests");
-      const list =
+      const responseList =
         response.deletionRequests ||
         response.requests ||
         (Array.isArray(response) ? response : []);
-      setRequests(list);
+      const list = Array.isArray(responseList) ? responseList : [];
+      const hasRequests = Array.isArray(list) && list.length > 0;
+      setShowingDemoData(import.meta.env.DEV && !hasRequests);
+      setRequests(
+        import.meta.env.DEV && !hasRequests ? DEMO_REQUESTS : list
+      );
     } catch (requestError) {
+      setShowingDemoData(false);
+      setRequests([]);
       setError(requestError.message || "Unable to load deletion requests.");
     } finally {
       setLoading(false);
@@ -47,10 +114,27 @@ export default function DeletionRequests({ onUpdated }) {
   );
 
   const updateRequest = async (requestId, action) => {
+    const request = requests.find((item) => (item.id || item._id) === requestId);
+    if (request?.isDemo) {
+      const status = action === "approve" ? "Approved" : "Rejected";
+      setRequests((currentRequests) =>
+        currentRequests.map((item) =>
+          (item.id || item._id) === requestId ? { ...item, status } : item
+        )
+      );
+      setNotice(`Example request marked ${status.toLowerCase()}; this change is not saved.`);
+      return;
+    }
+
     setActionLoading(requestId + action);
     setError("");
+    setNotice("");
     try {
-      await authPatch(`/api/admin/deletion-requests/${requestId}/${action}`, {});
+      const result = await authPatch(
+        `/api/admin/deletion-requests/${requestId}/${action}`,
+        {}
+      );
+      setNotice(result.message || `Deletion request ${action}d.`);
       await loadRequests();
       if (onUpdated) onUpdated();
     } catch (updateError) {
@@ -115,58 +199,47 @@ export default function DeletionRequests({ onUpdated }) {
     {
       title: "Status",
       key: "status",
-      render: (status) => {
+      render: (status, req) => {
         const isPending = status === "Pending";
         const isApproved = status === "Approved";
-        return (
-          <Badge
-            variant={isPending ? "warning" : isApproved ? "success" : "danger"}
-            size="sm"
-            dot
-          >
-            {status}
-          </Badge>
-        );
-      },
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      align: "right",
-      render: (_, req) => {
         const reqId = req.id || req._id;
-        const isPending = req.status === "Pending";
-
-        if (!isPending) {
-          return (
-            <span style={{ fontSize: "0.8rem", color: "var(--color-tertiary, #949EBF)" }}>
-              Processed
-            </span>
-          );
-        }
-
         return (
-          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-            <Button
-              variant="indigo"
-              size="sm"
-              icon={<CheckIcon size={14} />}
-              loading={actionLoading === reqId + "approve"}
-              disabled={!!actionLoading}
-              onClick={() => updateRequest(reqId, "approve")}
-            >
-              Approve
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              icon={<CloseIcon size={14} />}
-              loading={actionLoading === reqId + "reject"}
-              disabled={!!actionLoading}
-              onClick={() => updateRequest(reqId, "reject")}
-            >
-              Reject
-            </Button>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {isPending && (
+              <div style={{ display: "flex", flexWrap: "nowrap", gap: "6px" }}>
+                <Button
+                  variant="indigo"
+                  size="sm"
+                  icon={<CheckIcon size={14} />}
+                  loading={actionLoading === reqId + "approve"}
+                  disabled={!!actionLoading}
+                  onClick={() => updateRequest(reqId, "approve")}
+                  style={{ padding: "8px 12px" }}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={<CloseIcon size={14} />}
+                  loading={actionLoading === reqId + "reject"}
+                  disabled={!!actionLoading}
+                  onClick={() => updateRequest(reqId, "reject")}
+                  style={{ padding: "8px 12px" }}
+                >
+                  Reject
+                </Button>
+              </div>
+            )}
+            {!isPending && (
+              <Badge
+                variant={isApproved ? "success" : "danger"}
+                size="sm"
+                dot
+              >
+                {status}
+              </Badge>
+            )}
           </div>
         );
       },
@@ -210,6 +283,42 @@ export default function DeletionRequests({ onUpdated }) {
           {loading ? "Loading..." : "Reload Queue"}
         </Button>
       </div>
+
+      {showingDemoData && (
+        <div
+          role="status"
+          style={{
+            padding: "12px 18px",
+            background: "rgba(91, 115, 224, 0.08)",
+            border: "1px solid rgba(91, 115, 224, 0.2)",
+            color: "var(--color-indigo-900, #232C6B)",
+            borderRadius: "14px",
+            marginBottom: "20px",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+          }}
+        >
+          Example requests are for display only. Decisions on examples change this view but are not saved.
+        </div>
+      )}
+
+      {notice && (
+        <div
+          role="status"
+          style={{
+            padding: "12px 18px",
+            background: "rgba(16, 185, 129, 0.10)",
+            border: "1px solid rgba(16, 185, 129, 0.25)",
+            color: "#047857",
+            borderRadius: "14px",
+            marginBottom: "20px",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+          }}
+        >
+          {notice}
+        </div>
+      )}
 
       {error && (
         <div

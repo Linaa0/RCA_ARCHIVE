@@ -174,6 +174,31 @@ async function sendTeacherInviteEmail(email, username, token, frontendBaseUrl) {
   );
 }
 
+async function sendDeletionRequestDecisionEmail(email, paperTitle, status) {
+  const { transporter, isReal } = await createMailTransporter();
+  const approved = status === "Approved";
+  const decision = approved ? "approved" : "rejected";
+  const paperName = paperTitle || "the requested paper";
+  const text = approved
+    ? `Your request to delete "${paperName}" has been approved. The paper has been removed from the archive.`
+    : `Your request to delete "${paperName}" has been rejected. The paper remains available in the archive.`;
+  const info = await transporter.sendMail({
+    from: EMAIL_FROM || `"RCA Archive" <${SMTP_USER}>`,
+    replyTo: SMTP_USER,
+    to: email,
+    subject: `RCA Archive deletion request ${decision}`,
+    text,
+    html: `<p>${text}</p><p>Thank you,<br>RCA Archive Team</p>`,
+  });
+
+  const previewUrl = isReal ? null : nodemailer.getTestMessageUrl(info);
+  if (previewUrl) {
+    console.log("📧 Deletion decision email preview:", previewUrl);
+  }
+
+  return { isReal, previewUrl };
+}
+
 async function sendPasswordResetEmail(email, token, frontendBaseUrl) {
   const { transporter, isReal } = await createMailTransporter();
   const resetUrl = buildPasswordSetupUrl(
@@ -399,6 +424,7 @@ module.exports = {
   sendVerificationEmail,
   sendAccountInviteEmail,
   sendTeacherInviteEmail,
+  sendDeletionRequestDecisionEmail,
   sendPasswordResetEmail,
   sendSuspiciousLoginEmail,
   cleanExpiredOtps,

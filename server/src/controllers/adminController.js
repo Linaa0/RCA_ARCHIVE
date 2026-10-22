@@ -18,6 +18,7 @@ const { normalizeClass } = require("../config/classes");
 const {
   sendTeacherInviteEmail,
   sendAccountInviteEmail,
+  sendDeletionRequestDecisionEmail,
   upsertTeacherInvite,
   cleanExpiredPasswordResets,
 } = require("../services/emailService");
@@ -571,8 +572,32 @@ async function approveDeletionRequest(req, res) {
     `[DELETE_APPROVE] requestId=${id} paperId=${request.paperId} approvedBy=${req.user.email}`
   );
 
+  let notificationMessage = "The requester was notified by email.";
+  try {
+    if (!request.requestedByEmail) {
+      notificationMessage = "No requester email is available for notification.";
+    } else {
+      const notification = await sendDeletionRequestDecisionEmail(
+        request.requestedByEmail,
+        request.paperTitle,
+        "Approved"
+      );
+      if (!notification.isReal) {
+        notificationMessage =
+          "Development email preview was generated; no real email was sent.";
+      }
+    }
+  } catch (error) {
+    console.error(
+      `[DELETE_APPROVE] Request ${id} was processed, but notification failed:`,
+      error
+    );
+    notificationMessage =
+      "The request was processed, but the notification email could not be sent.";
+  }
+
   return res.json({
-    message: "Deletion request approved and paper removed.",
+    message: `Deletion request approved. ${notificationMessage}`,
   });
 }
 
@@ -607,8 +632,32 @@ async function rejectDeletionRequest(req, res) {
     `[DELETE_REJECT] requestId=${id} paperId=${request.paperId} rejectedBy=${req.user.email}`
   );
 
+  let notificationMessage = "The requester was notified by email.";
+  try {
+    if (!request.requestedByEmail) {
+      notificationMessage = "No requester email is available for notification.";
+    } else {
+      const notification = await sendDeletionRequestDecisionEmail(
+        request.requestedByEmail,
+        request.paperTitle,
+        "Rejected"
+      );
+      if (!notification.isReal) {
+        notificationMessage =
+          "Development email preview was generated; no real email was sent.";
+      }
+    }
+  } catch (error) {
+    console.error(
+      `[DELETE_REJECT] Request ${id} was processed, but notification failed:`,
+      error
+    );
+    notificationMessage =
+      "The request was processed, but the notification email could not be sent.";
+  }
+
   return res.json({
-    message: "Deletion request rejected.",
+    message: `Deletion request rejected. ${notificationMessage}`,
   });
 }
 

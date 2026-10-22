@@ -19,6 +19,7 @@ import {
   MaterialsIcon,
   TrashIcon,
   LogoutIcon,
+  UserIcon,
 } from "./ui/Icons";
 import "./AdminDashboard.css";
 
@@ -35,17 +36,6 @@ const TABS = [
         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
         <path d="M10 11v6" /><path d="M14 11v6" />
         <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-      </svg>
-    ),
-  },
-  {
-    id: "stats",
-    label: "Statistics",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="20" x2="18" y2="10" />
-        <line x1="12" y1="20" x2="12" y2="4" />
-        <line x1="6" y1="20" x2="6" y2="14" />
       </svg>
     ),
   },
@@ -259,6 +249,15 @@ export default function AdminDashboard() {
           />
 
           <Link
+            to="/profile"
+            className="admin-nav-item"
+            style={{ textDecoration: "none" }}
+          >
+            <UserIcon size={18} />
+            <span>My Profile</span>
+          </Link>
+
+          <Link
             to="/home"
             className="admin-nav-item"
             style={{ textDecoration: "none" }}
@@ -309,7 +308,6 @@ export default function AdminDashboard() {
               {activeTab === "teachers" && "Teacher Directory"}
               {activeTab === "students" && "Student Directory"}
               {activeTab === "deletions" && "Deletion Requests Queue"}
-              {activeTab === "stats" && "Archive Analytics & Statistics"}
             </h1>
             <p className="admin-subtitle">
               {activeTab === "overview" &&
@@ -320,8 +318,6 @@ export default function AdminDashboard() {
                 "Manage student rosters, view cohorts, and issue direct invitations."}
               {activeTab === "deletions" &&
                 "Review, approve, or reject user-submitted paper removal requests."}
-              {activeTab === "stats" &&
-                "Real counts of archive curriculum holdings, paper types, and user activity."}
             </p>
           </div>
 
@@ -335,7 +331,6 @@ export default function AdminDashboard() {
               Refresh Data
             </Button>
 
-            {/* Note: Invite buttons belong strictly to Teachers and Students tabs */}
             {activeTab === "teachers" && (
               <Button
                 variant="primary"
@@ -345,18 +340,6 @@ export default function AdminDashboard() {
                 }}
               >
                 + Invite Teacher
-              </Button>
-            )}
-
-            {activeTab === "students" && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent("open-create-student-modal"));
-                }}
-              >
-                + Create Student
               </Button>
             )}
           </div>
@@ -495,109 +478,6 @@ export default function AdminDashboard() {
         {/* ── DELETIONS TAB ── */}
         {activeTab === "deletions" && (
           <DeletionRequests onUpdated={loadDashboard} />
-        )}
-
-        {/* ── STATISTICS TAB ── */}
-        {activeTab === "stats" && (
-          <section
-            style={{
-              background: "#FFFFFF",
-              borderRadius: "var(--radius-card, 24px)",
-              padding: "36px",
-              border: "1px solid var(--color-border, rgba(63, 79, 168, 0.08))",
-              boxShadow: "var(--shadow-card, 0 8px 24px -4px rgba(35, 44, 107, 0.06))",
-            }}
-          >
-            <div style={{ marginBottom: "28px" }}>
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
-                  color: "var(--color-indigo-500, #5B73E0)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                System Analytics
-              </span>
-              <h3
-                style={{
-                  fontSize: "1.4rem",
-                  fontWeight: 800,
-                  color: "var(--color-ink, #1B2142)",
-                  marginTop: "2px",
-                }}
-              >
-                Archive Repository Metrics
-              </h3>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: "20px",
-                marginBottom: "36px",
-              }}
-            >
-              <StatCard
-                label="Total Registered Users"
-                value={users.length || stats?.totalUsers || 0}
-                subtext="Total database user records"
-                icon={<UsersIcon size={20} />}
-              />
-              <StatCard
-                label="Student Accounts"
-                value={totalStudents}
-                subtext="Active learners"
-                icon={<Avatar size="xs" variant="initials" name="S" style={{ width: 20, height: 20 }} />}
-                color="#5B73E0"
-              />
-              <StatCard
-                label="Teacher Accounts"
-                value={totalTeachersCount}
-                subtext="Faculty contributors"
-                icon={<UsersIcon size={20} />}
-                color="#3F4FA8"
-              />
-              <StatCard
-                label="Past Papers & Notes"
-                value={totalPapersCount}
-                subtext="Verified uploaded documents"
-                icon={<MaterialsIcon size={20} />}
-                color="#10B981"
-              />
-            </div>
-
-            <div
-              style={{
-                background: "var(--color-surface-subtle, #F8F9FD)",
-                borderRadius: "18px",
-                padding: "24px 28px",
-                border: "1px solid var(--color-divider, #E7EBF5)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: "16px",
-              }}
-            >
-              <div>
-                <strong style={{ display: "block", color: "var(--color-ink, #1B2142)", fontSize: "1rem" }}>
-                  Moderation Backlog
-                </strong>
-                <span style={{ fontSize: "0.85rem", color: "var(--color-muted, #6A7399)" }}>
-                  Deletion requests awaiting administrative approval or rejection.
-                </span>
-              </div>
-              <Badge
-                variant={pendingDeletionsCount > 0 ? "warning" : "success"}
-                size="md"
-              >
-                {pendingDeletionsCount} Pending Request(s)
-              </Badge>
-            </div>
-          </section>
         )}
 
         {/* ── Delete confirmation modal ── */}
