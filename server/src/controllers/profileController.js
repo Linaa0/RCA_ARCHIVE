@@ -23,8 +23,18 @@ async function updateMe(req, res) {
     update.class = cls;
   }
 
+  // Gender preference ('male' or 'female')
+  if (req.body.gender !== undefined) {
+    const g = String(req.body.gender).toLowerCase().trim();
+    if (g === "male" || g === "female") {
+      update.gender = g;
+    } else {
+      return res.status(400).json({ error: "Gender must be either 'male' or 'female'" });
+    }
+  }
+
   await getUsersCollection().updateOne({ email: req.user.email }, { $set: update });
-  res.json({ message: "Profile updated", name, class: update.class });
+  res.json({ message: "Profile updated", name, class: update.class, gender: update.gender });
 }
 
 async function changePassword(req, res) {

@@ -23,56 +23,7 @@ import TeacherResources from "./components/teacher/TeacherResources";
 import StudentAssignments from "./components/student/StudentAssignments";
 import StudentAssignmentsWidget from "./components/student/StudentAssignmentsWidget";
 import Profile from "./components/Profile";
-
-const year1Subjects = [
-  "Mathematics",
-  "Physics",
-  "Fundamentals of Programming",
-  "Database",
-  "English",
-  "Networking",
-  "PHP",
-  "JavaScript",
-  "Embedded Systems",
-  "Web User Interface",
-  "Graphical User Interface",
-  "Computer Basics",
-  "Short Courses",
-];
-
-const year2Subjects = [
-  "Mathematics",
-  "Physics",
-  "Data Structures with C++",
-  "Advanced Networking",
-  "OOP and Web Development with Java",
-  "Software Engineering",
-  "Advanced Database",
-  "English",
-  "Embedded Systems (Integrate Hardware with Software)",
-  "Web 3 with Solidity",
-  "3D Modelling with Blender",
-  "Short Courses",
-];
-
-const year3Subjects = [
-  "Mathematics",
-  "Physics",
-  "Machine Learning with Python",
-  "Cybersecurity",
-  "DevOps",
-  "English",
-  "Intelligent Robotics and Some Embedded Systems",
-  "Mobile Apps Development with React Native",
-  "Information Technology with Project Management",
-  "Short Courses",
-];
-
-const allSubjectsByYear = {
-  1: year1Subjects,
-  2: year2Subjects,
-  3: year3Subjects,
-};
+import curriculumService from "./services/curriculum";
 
 function PaperResultCard({ paper }) {
   const date = new Date(paper.uploadedAt).toLocaleDateString();
@@ -142,20 +93,24 @@ function AuthenticatedHome({
   results,
   loading,
   clearSearch,
-  activeYear,
-  setActiveYear,
+  activePromotionId,
+  setActivePromotionId,
   papers,
 }) {
+  const promotions = curriculumService.getPromotions();
+  const currentPromo = curriculumService.getPromotion(activePromotionId) || promotions[0];
+  const subjects = currentPromo ? currentPromo.subjects : [];
+
   return (
     <DashboardShell onSearch={handleSearch} currentSearch={search}>
       {results !== null ? (
         <div
           style={{
-            background: "#ffffff",
+            background: "var(--color-card)",
             borderRadius: "24px",
             padding: "32px",
             boxShadow: "var(--shadow-card)",
-            border: "1px solid var(--card-border)",
+            border: "1px solid var(--color-card-border)",
           }}
         >
           <div
@@ -180,7 +135,7 @@ function AuthenticatedHome({
               >
                 Search Results
               </span>
-              <h2 style={{ fontSize: "1.45rem", fontWeight: 800, marginTop: "2px" }}>
+              <h2 style={{ fontSize: "1.45rem", fontWeight: 800, marginTop: "2px", color: "var(--color-ink)" }}>
                 {loading ? "Searching archive..." : `${results.length} result(s) for "${search}"`}
               </h2>
             </div>
@@ -191,6 +146,7 @@ function AuthenticatedHome({
                 borderRadius: "999px",
                 background: "var(--canvas-bg)",
                 border: "1px solid var(--border-subtle)",
+                color: "var(--text-primary)",
                 fontWeight: 600,
                 fontSize: "0.85rem",
                 cursor: "pointer",
@@ -252,34 +208,40 @@ function AuthenticatedHome({
                   Curriculum Repository
                 </span>
                 <h3 style={{ fontSize: "1.35rem", fontWeight: 800, marginTop: "2px", color: "var(--color-ink)" }}>
-                  Explore Subjects by Cohort
+                  Explore Subjects by Promotion
                 </h3>
               </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                {[1, 2, 3].map((y) => (
-                  <button
-                    key={y}
-                    onClick={() => setActiveYear(y)}
-                    style={{
-                      padding: "8px 22px",
-                      borderRadius: "999px",
-                      fontSize: "0.88rem",
-                      fontWeight: 600,
-                      border: "1px solid var(--color-border-med)",
-                      background: activeYear === y ? "var(--color-indigo-600)" : "var(--color-surface-subtle)",
-                      color: activeYear === y ? "#ffffff" : "var(--color-muted)",
-                      cursor: "pointer",
-                      boxShadow: activeYear === y ? "0 4px 12px rgba(59, 76, 163, 0.25)" : "none",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    Year {y}
-                  </button>
-                ))}
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {promotions.map((promo) => {
+                  const isSelected = (currentPromo?.id || "").toLowerCase() === promo.id.toLowerCase();
+                  return (
+                    <button
+                      key={promo.id}
+                      onClick={() => setActivePromotionId(promo.id)}
+                      style={{
+                        padding: "8px 20px",
+                        borderRadius: "999px",
+                        fontSize: "0.88rem",
+                        fontWeight: 600,
+                        border: isSelected ? "1px solid var(--color-indigo-500)" : "1px solid var(--color-border-med)",
+                        background: isSelected ? "var(--color-indigo-600)" : "var(--color-surface-subtle)",
+                        color: isSelected ? "#ffffff" : "var(--text-secondary)",
+                        cursor: "pointer",
+                        boxShadow: isSelected ? "0 4px 12px rgba(59, 76, 163, 0.25)" : "none",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {promo.id === "Y1GenAI" ? "Year 1 GenAI" : promo.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <SubjectsList subjects={allSubjectsByYear[activeYear]} activeYear={activeYear} />
+            <SubjectsList
+              subjects={subjects}
+              activePromotion={currentPromo}
+            />
           </div>
         </>
       )}
@@ -291,7 +253,7 @@ function App() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeYear, setActiveYear] = useState(2);
+  const [activePromotionId, setActivePromotionId] = useState("Y1");
   const [papers, setPapers] = useState([]);
   const location = useLocation();
 
@@ -306,9 +268,14 @@ function App() {
   useEffect(() => {
     if (location.pathname !== "/" && location.pathname !== "/home") return;
     const params = new URLSearchParams(location.search);
-    const yearParam = parseInt(params.get("year"), 10);
-    if ([1, 2, 3].includes(yearParam) && yearParam !== activeYear) {
-      setActiveYear(yearParam);
+    const promoParam = params.get("promotion") || params.get("year");
+    if (promoParam) {
+      const match = curriculumService.getPromotion(promoParam);
+      if (match && match.id !== activePromotionId) {
+        setActivePromotionId(match.id);
+      } else if (["1", "2", "3"].includes(promoParam)) {
+        setActivePromotionId(`Y${promoParam}`);
+      }
     }
     if (location.hash) {
       setTimeout(() => {
@@ -316,7 +283,7 @@ function App() {
         if (target) target.scrollIntoView({ behavior: "smooth" });
       }, 100);
     }
-  }, [location, activeYear]);
+  }, [location, activePromotionId]);
 
   const handleSearch = async (term) => {
     const query = typeof term === "string" ? term : search;
@@ -460,8 +427,8 @@ function App() {
                 results={results}
                 loading={loading}
                 clearSearch={clearSearch}
-                activeYear={activeYear}
-                setActiveYear={setActiveYear}
+                activePromotionId={activePromotionId}
+                setActivePromotionId={setActivePromotionId}
                 papers={papers}
               />
             </PrivateRoute>

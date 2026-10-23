@@ -329,6 +329,18 @@ async function resetDb() {
       updatedAt: now,
     };
 
+    if (process.env.SEED_ADMIN_GENDER && ["male", "female"].includes(process.env.SEED_ADMIN_GENDER.toLowerCase().trim())) {
+      adminUser.gender = process.env.SEED_ADMIN_GENDER.toLowerCase().trim();
+    }
+
+    if (process.env.SEED_TEACHER_GENDER && ["male", "female"].includes(process.env.SEED_TEACHER_GENDER.toLowerCase().trim())) {
+      teacherUser.gender = process.env.SEED_TEACHER_GENDER.toLowerCase().trim();
+    }
+
+    if (process.env.SEED_STUDENT_GENDER && ["male", "female"].includes(process.env.SEED_STUDENT_GENDER.toLowerCase().trim())) {
+      studentUser.gender = process.env.SEED_STUDENT_GENDER.toLowerCase().trim();
+    }
+
     const usersCol = db.collection("users");
     await usersCol.insertMany([adminUser, teacherUser, studentUser]);
 

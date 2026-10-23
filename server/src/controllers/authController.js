@@ -11,6 +11,7 @@ const {
   getUsersCollection,
   getOtpCollection,
   getPasswordResetCollection,
+  getPendingSignupsCollection,
 } = require("../models");
 const { findUserByEmail } = require("../middleware/authMiddleware");
 const {
@@ -56,43 +57,137 @@ async function sendOtp(req, res) {
     return res.status(400).json({ error: "Email and operation are required" });
   }
 
-  if (!isValidEmail(email)) {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail)) {
     return res.status(400).json({ error: "Invalid email format" });
   }
 
-  const otpCollection = getOtpCollection();
-  const userExists = await findUserByEmail(email);
+  const userExists = await findUserByEmail(normalizedEmail);
 
   if (operation === "signup") {
     if (userExists) {
       return res.status(400).json({ error: "Email already registered" });
     }
-  } else if (operation === "login" || operation === "reset-password") {
-    if (!userExists) {
+
+    const pendingSignups = getPendingSignupsCollection();
+    const existingPending = await pendingSignups.findOne({ email: normalizedEmail });
+
+    // 60-second cooldown enforcement
+    if (existingPending && existingPending.lastSentAt) {
+      const elapsed = Date.now() - existingPending.lastSentAt;
+      if (elapsed < 60 * 1000) {
+        const remainingSec = Math.ceil((60 * 1000 - elapsed) / 1000);
+        return res.status(429).json({
+          error: `Please wait ${remainingSec}s before requesting a new code.`,
+          retryAfter: remainingSec,
+        });
+      }
+    }
+
+    // Optional profile validation for signup
+    if (req.body.password) {
+      const passwordCheck = validatePasswordStrength(req.body.password);
+      if (!passwordCheck.valid) {
+        return res.status(400).json({ error: passwordCheck.message });
+      }
+    }
+
+    if (req.body.gender && !["male", "female"].includes(String(req.body.gender).toLowerCase())) {
+      return res.status(400).json({ error: "Gender must be either 'male' or 'female'." });
+    }
+
+    const otp = generateOtp();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const hashedPassword = req.body.password
+      ? await bcrypt.hash(req.body.password, 10)
+      : existingPending?.password || null;
+
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    const pendingDoc = {
+      email: normalizedEmail,
+      fullName: (req.body.fullName || req.body.name || existingPending?.fullName || "").trim(),
+      username: (req.body.username || existingPending?.username || normalizedEmail.split("@")[0]).trim(),
+      password: hashedPassword,
+      class: normalizeClass(req.body.class || existingPending?.class || "Y1A"),
+      gender: req.body.gender || existingPending?.gender || "female",
+      hashedOtp,
+      attempts: 0,
+      expiresAt,
+      lastSentAt: Date.now(),
+      createdAt: new Date(),
+    };
+
+    await pendingSignups.updateOne(
+      { email: normalizedEmail },
+      { $set: pendingDoc },
+      { upsert: true }
+    );
+
+    // Keep legacy OTP collection updated as fallback
+    const otpCollection = getOtpCollection();
+    await otpCollection.deleteMany({ email: normalizedEmail, operation: "signup" });
+    await otpCollection.insertOne({
+      email: normalizedEmail,
+      code: otp,
+      operation: "signup",
+      expiresAt: Date.now() + 15 * 60 * 1000,
+    });
+
+    try {
+      const { previewUrl, isReal } = await sendVerificationEmail(normalizedEmail, otp);
+      console.log(`[OTP] Generated signup OTP for ${normalizedEmail}: ${otp}`);
+
       return res.json({
-        message: "If this email is registered, you'll receive an OTP shortly.",
+        message: isReal
+          ? "Verification code sent successfully. Check your email."
+          : "Verification code sent! Check the server logs for the preview URL.",
+        previewUrl,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (err) {
+      console.error("[OTP_ERROR] Failed to send signup OTP email:", err);
+      if (NODE_ENV !== "production") {
+        return res.json({
+          message: "Verification email failed to send, but check server logs for the code.",
+          error: err.message,
+          previewUrl: null,
+          expiresAt: expiresAt.toISOString(),
+        });
+      }
+      return res.status(500).json({
+        error: "Failed to send verification email. Please try again later.",
       });
     }
   }
 
+  // Operation is login or reset-password
+  if (!userExists) {
+    return res.json({
+      message: "If this email is registered, you will receive an OTP shortly.",
+    });
+  }
+
   await cleanExpiredOtps();
   const otp = generateOtp();
-  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+  const expiresAt = Date.now() + 10 * 60 * 1000;
 
+  const otpCollection = getOtpCollection();
   await otpCollection.deleteMany({
-    email: email.toLowerCase(),
+    email: normalizedEmail,
     operation,
   });
   await otpCollection.insertOne({
-    email: email.toLowerCase(),
+    email: normalizedEmail,
     code: otp,
     operation,
     expiresAt,
   });
 
   try {
-    const { previewUrl, isReal } = await sendVerificationEmail(email, otp);
-    console.log(`[OTP] Generated OTP for ${email} (${operation}): ${otp}`);
+    const { previewUrl, isReal } = await sendVerificationEmail(normalizedEmail, otp);
+    console.log(`[OTP] Generated OTP for ${normalizedEmail} (${operation}): ${otp}`);
 
     return res.json({
       message: isReal
@@ -102,8 +197,6 @@ async function sendOtp(req, res) {
     });
   } catch (err) {
     console.error("[OTP_ERROR] Detailed OTP email error:", err);
-    console.log(`[OTP] Generated OTP for ${email} (${operation}): ${otp}`);
-
     if (NODE_ENV !== "production") {
       return res.json({
         message: "OTP email failed to send, but check server logs for the code.",
@@ -173,7 +266,7 @@ async function forgotPassword(req, res) {
       previewUrl,
     });
   } catch (err) {
-    console.error("❌ Password reset email failed:", err);
+    console.error(" Password reset email failed:", err);
     if (!isRealSmtpConfigured()) {
       const resetUrl = buildPasswordSetupUrl(getFrontendBaseUrl(req), token);
       return res.json({
@@ -302,17 +395,17 @@ async function resetPassword(req, res) {
 }
 
 async function signup(req, res) {
-  const { email, password, otp, role, username } = req.body;
+  const { email, otp, password, role, username } = req.body;
 
-  if (!email || !password || !username) {
+  if (!email || !otp) {
     return res
       .status(400)
-      .json({ error: "Email, password, and username are required" });
+      .json({ error: "Email and verification code are required" });
   }
 
-  const passwordCheck = validatePasswordStrength(password);
-  if (!passwordCheck.valid) {
-    return res.status(400).json({ error: passwordCheck.message });
+  const normalizedEmail = normalizeEmail(email);
+  if (!isValidEmail(normalizedEmail)) {
+    return res.status(400).json({ error: "Invalid email format" });
   }
 
   if (role === "teacher") {
@@ -321,30 +414,121 @@ async function signup(req, res) {
     });
   }
 
-  const normalizedEmail = normalizeEmail(email);
-  if (!isValidEmail(normalizedEmail)) {
-    return res.status(400).json({ error: "Invalid email format" });
-  }
-
   const users = getUsersCollection();
-  const otpCollection = getOtpCollection();
-
-  const exists = await findUserByEmail(email);
+  const exists = await findUserByEmail(normalizedEmail);
   if (exists) {
     return res.status(400).json({ error: "Email already registered" });
   }
 
+  const pendingSignups = getPendingSignupsCollection();
+  const pending = await pendingSignups.findOne({ email: normalizedEmail });
+
+  if (pending) {
+    if (pending.expiresAt && new Date(pending.expiresAt) <= new Date()) {
+      return res.status(400).json({
+        error: "Verification code has expired. Please request a new code.",
+        codeExpired: true,
+      });
+    }
+
+    if (pending.attempts >= 5) {
+      await pendingSignups.deleteOne({ email: normalizedEmail });
+      return res.status(400).json({
+        error: "Too many invalid attempts. This code has been invalidated. Please request a new code.",
+        codeInvalidated: true,
+      });
+    }
+
+    const match = await bcrypt.compare(String(otp).trim(), pending.hashedOtp);
+    if (!match) {
+      await pendingSignups.updateOne(
+        { email: normalizedEmail },
+        { $inc: { attempts: 1 } }
+      );
+      const remaining = 5 - (pending.attempts + 1);
+      if (remaining <= 0) {
+        await pendingSignups.deleteOne({ email: normalizedEmail });
+        return res.status(400).json({
+          error: "Too many invalid attempts. This code has been invalidated. Please request a new code.",
+          codeInvalidated: true,
+          remainingAttempts: 0,
+        });
+      }
+      return res.status(400).json({
+        error: `Incorrect verification code. ${remaining} attempt(s) remaining.`,
+        remainingAttempts: remaining,
+      });
+    }
+
+    // Hash password from request if pending had no password yet
+    let finalPasswordHash = pending.password;
+    if (!finalPasswordHash && password) {
+      const passwordCheck = validatePasswordStrength(password);
+      if (!passwordCheck.valid) {
+        return res.status(400).json({ error: passwordCheck.message });
+      }
+      finalPasswordHash = await bcrypt.hash(password, 10);
+    }
+
+    if (!finalPasswordHash) {
+      return res.status(400).json({ error: "Password is required for registration." });
+    }
+
+    const resolvedRole = resolveRole(normalizedEmail, "student");
+    const user = {
+      id: Date.now().toString(),
+      email: normalizedEmail,
+      name: pending.fullName || req.body.fullName || req.body.name || pending.username,
+      username: pending.username || (username ? username.trim() : normalizedEmail.split("@")[0]),
+      password: finalPasswordHash,
+      role: resolvedRole,
+      class: normalizeClass(pending.class || req.body.class || "Y1A"),
+      gender: pending.gender || req.body.gender || undefined,
+      status: "active",
+      createdAt: new Date().toISOString(),
+    };
+
+    await users.insertOne(user);
+    await pendingSignups.deleteOne({ email: normalizedEmail });
+
+    // Clean legacy OTP collection
+    const otpCollection = getOtpCollection();
+    await otpCollection.deleteMany({
+      email: normalizedEmail,
+      operation: "signup",
+    });
+
+    return res.json({
+      message: "Account created successfully!",
+      role: user.role,
+      email: normalizedEmail,
+      username: user.username,
+    });
+  }
+
+  // Fallback for legacy OTP flow if pending_signups has no record
+  const otpCollection = getOtpCollection();
   await cleanExpiredOtps();
   const otpRecord = await otpCollection.findOne({
     email: normalizedEmail,
     operation: "signup",
   });
 
-  if (!otpRecord || !otp || otpRecord.code !== otp) {
+  if (!otpRecord || otpRecord.code !== String(otp).trim()) {
     return res.status(400).json({
-      error: "Invalid or expired OTP. Please request a new verification code.",
+      error: "No pending registration found or code expired. Please request a new code.",
       requiresOtp: true,
+      codeExpired: true,
     });
+  }
+
+  if (!password) {
+    return res.status(400).json({ error: "Password is required to finish registration." });
+  }
+
+  const passwordCheck = validatePasswordStrength(password);
+  if (!passwordCheck.valid) {
+    return res.status(400).json({ error: passwordCheck.message });
   }
 
   await otpCollection.deleteMany({
@@ -353,14 +537,15 @@ async function signup(req, res) {
   });
 
   const hashed = await bcrypt.hash(password, 10);
-
   const user = {
     id: Date.now().toString(),
     email: normalizedEmail,
-    username: username.trim() || normalizedEmail.split("@")[0],
+    name: (req.body.fullName || req.body.name || username || "").trim(),
+    username: (username || normalizedEmail.split("@")[0]).trim(),
     password: hashed,
     role: resolveRole(normalizedEmail, "student"),
     class: normalizeClass(req.body.class),
+    gender: req.body.gender || undefined,
     status: "active",
     createdAt: new Date().toISOString(),
   };
@@ -370,7 +555,7 @@ async function signup(req, res) {
   res.json({
     message: "Account created successfully!",
     role: user.role,
-    email,
+    email: normalizedEmail,
     username: user.username,
   });
 }

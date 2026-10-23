@@ -57,12 +57,16 @@ export default function Profile() {
     applyTheme(newTheme);
   };
 
-  const handleGenderChange = (newGender) => {
+  const handleGenderChange = async (newGender) => {
     setGender(newGender);
     try {
       localStorage.setItem("rca_user_gender", newGender);
       window.dispatchEvent(new Event("profile-gender-changed"));
-    } catch (e) {}
+      await api.put("/me", { gender: newGender });
+      setUser((prev) => (prev ? { ...prev, gender: newGender } : prev));
+    } catch (e) {
+      console.warn("Could not persist gender to profile:", e.message);
+    }
   };
 
   const saveName = async (e) => {

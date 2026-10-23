@@ -122,7 +122,7 @@ async function createTeacher(req, res) {
       previewUrl,
     });
   } catch (err) {
-    console.error("❌ Teacher invite email failed:", err);
+    console.error("Teacher invite email failed:", err);
     return res.status(500).json({
       error:
         "Teacher created but email failed to send. Use 'Resend invite' to retry.",
@@ -338,14 +338,22 @@ async function listStudents(req, res) {
 
 async function createStudent(req, res) {
   try {
-    const { name, email } = req.body || {};
+    const { name, email, gender } = req.body || {};
     const normalizedName = typeof name === "string" ? name.trim() : "";
     const normalizedEmail =
       typeof email === "string" ? normalizeEmail(email) : "";
+    const normalizedGender =
+      typeof gender === "string" ? gender.toLowerCase().trim() : "";
 
     if (!normalizedName || !normalizedEmail) {
       return res.status(400).json({
         message: "Name and email are required to invite a student.",
+      });
+    }
+
+    if (!normalizedGender || !["male", "female"].includes(normalizedGender)) {
+      return res.status(400).json({
+        message: "Gender is required and must be either 'male' or 'female'.",
       });
     }
 
@@ -368,6 +376,7 @@ async function createStudent(req, res) {
       password: null,
       role: "student",
       class: normalizeClass(req.body.class),
+      gender: normalizedGender,
       status: "pending_password_setup",
       createdAt: now,
       updatedAt: now,

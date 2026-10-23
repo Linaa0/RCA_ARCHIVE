@@ -30,6 +30,8 @@ async function connectToMongo() {
     db.collection("appeals").createIndex({ assignmentId: 1, studentId: 1 }),
     db.collection("teacherResources").createIndex({ id: 1 }, { unique: true }),
     db.collection("teacherResources").createIndex({ teacherId: 1, type: 1, uploadedAt: -1 }),
+    db.collection("pending_signups").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    db.collection("pending_signups").createIndex({ email: 1 }, { unique: true }),
   ]);
 
   return db;
@@ -80,6 +82,10 @@ function getTeacherResourcesCollection() {
   return getDb().collection("teacherResources");
 }
 
+function getPendingSignupsCollection() {
+  return getDb().collection("pending_signups");
+}
+
 async function closeDb() {
   if (client) {
     await client.close();
@@ -101,5 +107,6 @@ module.exports = {
   getSubmissionsCollection,
   getAppealsCollection,
   getTeacherResourcesCollection,
+  getPendingSignupsCollection,
   closeDb,
 };

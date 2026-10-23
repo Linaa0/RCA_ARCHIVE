@@ -348,14 +348,14 @@ function SubjectPage() {
       )}
 
       <nav className="subject-nav">
-        <Link to="/home" className="back-link">← Back to Home</Link>
+        <Link to="/home" className="back-link">Back to Home</Link>
       </nav>
 
       <div className="subject-header">
-        <h2>{subject}: Year {year}</h2>
+        <h2>{subject}: {year === "Y1GenAI" ? "Year 1 GenAI" : (String(year).toLowerCase().startsWith("y") ? `Year ${year.slice(1)}` : (["1", "2", "3"].includes(String(year)) ? `Year ${year}` : year))}</h2>
         {canUpload ? (
           <button className="upload-toggle-btn" onClick={() => setShowUpload(!showUpload)}>
-            {showUpload ? "Cancel" : "Upload Paper / Note"}
+            {showUpload ? "Cancel" : "Upload Paper or Note"}
           </button>
         ) : null}
       </div>

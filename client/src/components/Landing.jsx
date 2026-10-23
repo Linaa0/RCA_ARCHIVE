@@ -23,48 +23,32 @@ import "./Landing.css";
 import Logo from "./ui/Logo";
 import Button from "./ui/Button";
 import ProgressRing from "./ui/ProgressRing";
-import { RCA_CLASSES } from "./ui/ClassChips";
+import ThemeToggle from "./ui/ThemeToggle";
+import WaterDecoration from "./ui/WaterDecoration";
+import curriculumService from "../services/curriculum";
 import api from "../services/api";
-
-const SUBJECTS_BY_YEAR = {
-  1: [
-    "Fundamentals of Programming",
-    "Mathematics I",
-    "Database Management",
-    "Networking Essentials",
-    "Web User Interface",
-    "Physics and Mechanics",
-    "Embedded Systems",
-    "Communication and English",
-  ],
-  2: [
-    "Data Structures and Algorithms (C++)",
-    "OOP and Web Development (Java)",
-    "Software Engineering Principles",
-    "Advanced Database Systems",
-    "Enterprise Networking",
-    "Web3 and Smart Contracts",
-    "3D Modelling with Blender",
-    "Discrete Mathematics",
-  ],
-  3: [
-    "Machine Learning and AI (Python)",
-    "Cybersecurity and Threat Defense",
-    "DevOps and Infrastructure Automation",
-    "Intelligent Robotics Systems",
-    "Mobile Applications (React Native)",
-    "IT Project Management",
-    "Microcontroller Architecture",
-  ],
-};
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClassIndex, setSelectedClassIndex] = useState(0);
+  const [promotions, setPromotions] = useState(() => curriculumService.getPromotions());
+  const [selectedPromoIndex, setSelectedPromoIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [realStats, setRealStats] = useState({ papers: 0, users: 0 });
   const [statsLoaded, setStatsLoaded] = useState(false);
+
+  // Sync with curriculum updates
+  useEffect(() => {
+    const handleCurriculum = (e) => {
+      if (Array.isArray(e.detail) && e.detail.length > 0) {
+        setPromotions(e.detail);
+      }
+    };
+    window.addEventListener("curriculum-updated", handleCurriculum);
+    curriculumService.fetchCurriculum().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setPromotions(data);
+    });
+    return () => window.removeEventListener("curriculum-updated", handleCurriculum);
+  }, []);
 
   // Fetch verified stats from API without inventing numbers
   useEffect(() => {
@@ -86,21 +70,19 @@ export default function Landing() {
     };
   }, []);
 
-  const handleHeroSearch = (e) => {
-    e.preventDefault();
-    if (!searchTerm.trim()) return;
-    navigate(`/home?search=${encodeURIComponent(searchTerm.trim())}`);
+  const currentPromo = promotions[selectedPromoIndex] || promotions[0] || {
+    id: "Y1",
+    label: "Year 1",
+    classes: ["Y1A", "Y1B", "Y1C"],
+    subjects: [],
   };
 
-  const currentClass = RCA_CLASSES[selectedClassIndex] || RCA_CLASSES[0];
-  const classSubjects = SUBJECTS_BY_YEAR[currentClass.year] || SUBJECTS_BY_YEAR[1];
-
-  const handlePrevClass = () => {
-    setSelectedClassIndex((prev) => (prev === 0 ? RCA_CLASSES.length - 1 : prev - 1));
+  const handlePrevPromo = () => {
+    setSelectedPromoIndex((prev) => (prev === 0 ? promotions.length - 1 : prev - 1));
   };
 
-  const handleNextClass = () => {
-    setSelectedClassIndex((prev) => (prev === RCA_CLASSES.length - 1 ? 0 : prev + 1));
+  const handleNextPromo = () => {
+    setSelectedPromoIndex((prev) => (prev === promotions.length - 1 ? 0 : prev + 1));
   };
 
   return (
@@ -125,6 +107,7 @@ export default function Landing() {
 
           {/* Auth Actions */}
           <div className="landing-navbar-actions">
+            <ThemeToggle />
             <Button
               variant="outline"
               size="sm"
@@ -210,21 +193,6 @@ export default function Landing() {
                 Sign In to Archive
               </Button>
             </div>
-
-            {/* Pill Search Form */}
-            <form className="hero-search-bar" onSubmit={handleHeroSearch}>
-              <Search size={18} className="hero-search-icon" />
-              <input
-                type="text"
-                placeholder="Search by subject, module or term (e.g. Data Structures)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                aria-label="Search past papers and resources"
-              />
-              <button type="submit" className="hero-search-submit">
-                Search
-              </button>
-            </form>
           </div>
 
           {/* Right Column: Circular Masked Mockup with Pale Overlap & Scattered Dots */}
@@ -483,18 +451,18 @@ export default function Landing() {
                     </div>
                     <div className="device-card-mock">
                       <div className="device-card-header">
-                        <span className="device-class-tag">{currentClass.label}</span>
+                        <span className="device-class-tag">{currentPromo.label}</span>
                         <span className="device-status-badge">Active</span>
                       </div>
-                      <strong className="device-subject-name">{classSubjects[0]}</strong>
-                      <span className="device-meta">Year {currentClass.year} • 12 Resources</span>
+                      <strong className="device-subject-name">{currentPromo.subjects?.[0] || "Programming"}</strong>
+                      <span className="device-meta">{currentPromo.label} Curriculum</span>
                     </div>
                     <div className="device-card-mock subtle">
                       <div className="device-card-header">
-                        <span className="device-class-tag">{currentClass.label}</span>
+                        <span className="device-class-tag">{currentPromo.label}</span>
                       </div>
-                      <strong className="device-subject-name">{classSubjects[1]}</strong>
-                      <span className="device-meta">Year {currentClass.year} • 8 Resources</span>
+                      <strong className="device-subject-name">{currentPromo.subjects?.[1] || "Mathematics"}</strong>
+                      <span className="device-meta">{currentPromo.label} Curriculum</span>
                     </div>
                   </div>
                 </div>
@@ -534,16 +502,16 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          6. BROWSE BY CLASS CAROUSEL WITH ARROWS
+          6. BROWSE BY PROMOTION CAROUSEL WITH ARROWS
           ==================================================================== */}
       <section id="classes" className="landing-classes-section">
         <div className="landing-container">
           <div className="classes-header-row">
             <div>
-              <span className="section-eyebrow">Campus Directory</span>
-              <h2 className="section-title">Browse by class cohort</h2>
+              <span className="section-eyebrow">Academic Curriculum</span>
+              <h2 className="section-title">Browse by promotion</h2>
               <p className="section-subtext">
-                Select a class stream to preview active syllabus modules and revision past papers.
+                Select an accredited RCA promotion to preview syllabus subjects and revision past papers.
               </p>
             </div>
 
@@ -552,46 +520,48 @@ export default function Landing() {
               <button
                 type="button"
                 className="carousel-arrow-btn"
-                onClick={handlePrevClass}
-                aria-label="Previous class stream"
+                onClick={handlePrevPromo}
+                aria-label="Previous promotion"
               >
                 <ChevronLeft size={20} />
               </button>
               <button
                 type="button"
                 className="carousel-arrow-btn"
-                onClick={handleNextClass}
-                aria-label="Next class stream"
+                onClick={handleNextPromo}
+                aria-label="Next promotion"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
           </div>
 
-          {/* Interactive Class Chips Track */}
+          {/* Interactive Promotion Chips Track */}
           <div className="classes-chips-track">
-            {RCA_CLASSES.map((cls, idx) => {
-              const isSelected = selectedClassIndex === idx;
+            {promotions.map((promo, idx) => {
+              const isSelected = selectedPromoIndex === idx;
               return (
                 <button
-                  key={cls.id}
+                  key={promo.id}
                   type="button"
                   className={`class-chip-pill ${isSelected ? "selected" : ""}`}
-                  onClick={() => setSelectedClassIndex(idx)}
+                  onClick={() => setSelectedPromoIndex(idx)}
                 >
-                  {cls.label}
+                  {promo.label}
                 </button>
               );
             })}
           </div>
 
-          {/* Class Content Showcase Card */}
-          <div className="class-showcase-panel">
-            <div className="class-showcase-header">
+          {/* Promotion Content Showcase Card */}
+          <div className="class-showcase-panel" style={{ position: "relative", overflow: "hidden" }}>
+            <WaterDecoration variant="stat" />
+
+            <div className="class-showcase-header" style={{ position: "relative", zIndex: 1 }}>
               <div>
-                <span className="showcase-cohort-tag">Cohort Focus</span>
+                <span className="showcase-cohort-tag">Curriculum Focus</span>
                 <h3 className="showcase-cohort-title">
-                  {currentClass.label}: Year {currentClass.year}, Stream {currentClass.stream}
+                  {currentPromo.label} ({currentPromo.classes ? currentPromo.classes.join(", ") : currentPromo.id})
                 </h3>
               </div>
               <div className="showcase-types-row">
@@ -601,19 +571,19 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="showcase-modules-grid">
-              {classSubjects.map((sub, sIdx) => (
+            <div className="showcase-modules-grid" style={{ position: "relative", zIndex: 1 }}>
+              {(currentPromo.subjects || []).map((sub, sIdx) => (
                 <div
                   key={sIdx}
                   className="showcase-module-card"
-                  onClick={() => navigate(`/login?redirect=/subject/${currentClass.year}/${encodeURIComponent(sub)}`)}
+                  onClick={() => navigate(`/login?redirect=/subject/${encodeURIComponent(currentPromo.id)}/${encodeURIComponent(sub)}`)}
                 >
                   <div className="module-card-icon">
                     <BookOpen size={18} />
                   </div>
                   <div className="module-card-info">
                     <strong>{sub}</strong>
-                    <span>Year {currentClass.year} Curriculum</span>
+                    <span>{currentPromo.label} Curriculum</span>
                   </div>
                   <ArrowRight size={16} className="module-card-arrow" />
                 </div>

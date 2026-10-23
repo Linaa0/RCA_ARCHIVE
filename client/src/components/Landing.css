@@ -881,15 +881,16 @@
 }
 
 .device-card-mock {
-  background: #FFFFFF;
+  background: var(--color-surface, #FFFFFF);
   border-radius: 14px;
   padding: 12px;
-  box-shadow: 0 2px 8px rgba(35, 44, 107, 0.06);
-  border: 1px solid rgba(63, 79, 168, 0.08);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border, rgba(63, 79, 168, 0.08));
 }
 
 .device-card-mock.subtle {
-  opacity: 0.75;
+  background: var(--color-surface-subtle, #F8F9FD);
+  border: 1px solid var(--color-border, rgba(63, 79, 168, 0.08));
 }
 
 .device-card-header {
@@ -902,29 +903,38 @@
 .device-class-tag {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #3F4FA8;
-  background: #EEF0F6;
+  color: #1E2B7A;
+  background: #E0E7FF;
   padding: 2px 8px;
   border-radius: var(--radius-pill, 999px);
+}
+
+[data-theme="dark"] .device-class-tag {
+  color: #FFFFFF;
+  background: #232C6B;
 }
 
 .device-status-badge {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #10B981;
+  color: #047857;
+}
+
+[data-theme="dark"] .device-status-badge {
+  color: #34D399;
 }
 
 .device-subject-name {
   display: block;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1B2142;
+  color: var(--color-ink, #1B2142);
   margin-bottom: 4px;
 }
 
 .device-meta {
   font-size: 0.7rem;
-  color: #6A7399;
+  color: var(--color-muted, #515B85);
 }
 
 .about-text-col {
@@ -1327,7 +1337,7 @@
 
 .footer-brand-sub {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .footer-links-col {
@@ -1509,4 +1519,31 @@
   .footer-columns-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Dark Mode High-Contrast Rules for Badges and Eyebrows */
+[data-theme="dark"] .hero-kicker-pill,
+[data-theme="dark"] .mockup-term-chip,
+[data-theme="dark"] .graphic-badge,
+[data-theme="dark"] .showcase-pill {
+  color: var(--color-indigo-300, #C7D2FE) !important;
+  background: rgba(165, 180, 252, 0.14) !important;
+  border-color: rgba(165, 180, 252, 0.28) !important;
+}
+
+[data-theme="dark"] .section-eyebrow,
+[data-theme="dark"] .service-tag {
+  color: var(--color-indigo-400, #A5B4FC) !important;
+}
+
+[data-theme="dark"] .card-highlight-indigo {
+  background: #232C6B !important;
+  color: #FFFFFF !important;
+  border-color: #303E8A !important;
+}
+
+[data-theme="dark"] .class-chip-pill.selected {
+  background: #3B4CA3 !important;
+  color: #FFFFFF !important;
+  border-color: #5B73E0 !important;
 }

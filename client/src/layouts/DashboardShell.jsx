@@ -25,6 +25,8 @@ import { clearAuthStorage, getStoredRole, getStoredUser, isAuthenticated } from 
 import { toggleTheme, getInitialTheme } from "../utils/theme";
 import Logo from "../components/ui/Logo";
 import Avatar from "../components/ui/Avatar";
+import ThemeToggle from "../components/ui/ThemeToggle";
+import UserMenu from "../components/ui/UserMenu";
 
 export default function DashboardShell({ children, onSearch, currentSearch = "" }) {
   const location = useLocation();
@@ -243,28 +245,8 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
 
           {/* Header Actions */}
           <div className="topbar-actions">
-            {/* Theme Switcher Button */}
-            <button
-              type="button"
-              className="topbar-theme-toggle"
-              onClick={handleToggleTheme}
-              title={`Switch to ${currentTheme === "dark" ? "light" : "dark"} mode`}
-              aria-label="Toggle visual theme"
-            >
-              {currentTheme === "dark" ? <SunIcon size={19} /> : <MoonIcon size={19} />}
-            </button>
-
-            {/* Profile Avatar Quicklink */}
-            {loggedIn && (
-              <div
-                className="topbar-profile-link"
-                onClick={() => navigate("/settings")}
-                title="Account Settings"
-              >
-                <Avatar name={displayName} size="xs" />
-                <span className="topbar-profile-name">{displayName}</span>
-              </div>
-            )}
+            <ThemeToggle size="md" />
+            {loggedIn && <UserMenu />}
           </div>
         </header>
 

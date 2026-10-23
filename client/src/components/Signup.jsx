@@ -4,17 +4,22 @@ import AuthBrandPanel from "./ui/AuthBrandPanel";
 import Input from "./ui/Input";
 import Select from "./ui/Select";
 import Button from "./ui/Button";
+import ThemeToggle from "./ui/ThemeToggle";
 import { RCA_CLASSES } from "./ui/ClassChips";
 import { CheckIcon, EyeIcon } from "./ui/Icons";
+import studentBoy from "../assets/figures/student-boy.png";
+import studentGirl from "../assets/figures/student-girl.png";
 import api from "../services/api";
 import "./Login.css";
+
+const PROGRESS_STORAGE_KEY = "rca_signup_progress";
 
 export default function Signup() {
   const navigate = useNavigate();
 
   // 3-step registration wizard
   // Step 1: full name + email
-  // Step 2: username + password with strength meter + class selection
+  // Step 2: username + password with strength meter + class selection + gender
   // Step 3: 6-digit OTP in segmented input with resend timer
   const [step, setStep] = useState(1);
 
@@ -25,6 +30,7 @@ export default function Signup() {
     password: "",
     confirmPassword: "",
     class: "Y1A",
+    gender: "female",
   });
 
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -34,8 +40,35 @@ export default function Signup() {
   const [info, setInfo] = useState("");
   const [resendTimer, setResendTimer] = useState(60);
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [isCodeExpired, setIsCodeExpired] = useState(false);
 
   const otpInputsRef = useRef([]);
+
+  // Restore non-sensitive progress from localStorage on mount (no password stored)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PROGRESS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.email) {
+          setFormData((prev) => ({
+            ...prev,
+            email: parsed.email || prev.email,
+            name: parsed.name || parsed.fullName || prev.name,
+            username: parsed.username || prev.username,
+            class: parsed.class || prev.class,
+            gender: parsed.gender || prev.gender,
+          }));
+          if (parsed.step === 3) {
+            setStep(3);
+            setInfo(`Resuming verification for ${parsed.email}.`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not read signup progress:", e.message);
+    }
+  }, []);
 
   // Resend countdown timer for Step 3
   useEffect(() => {
@@ -96,6 +129,16 @@ export default function Signup() {
     setStep(2);
   };
 
+  // "I already have a code" button on Step 1
+  const handleJumpToCode = () => {
+    if (!formData.email.trim()) {
+      setError("Please enter your student email first to verify your code.");
+      return;
+    }
+    setError("");
+    setStep(3);
+  };
+
   // Step 2 -> Step 3: Send OTP
   const handleSendOtpStep2 = async (e) => {
     e.preventDefault();
@@ -107,26 +150,50 @@ export default function Signup() {
       setError("Password must be at least 6 characters.");
       return;
     }
+    if (!formData.gender) {
+      setError("Please select your gender.");
+      return;
+    }
 
     setLoading(true);
     setError("");
+    setIsCodeExpired(false);
     try {
       const { data } = await api.post("/send-otp", {
         email: formData.email.trim(),
         operation: "signup",
+        fullName: formData.name.trim(),
+        username: formData.username.trim(),
+        password: formData.password,
+        class: formData.class,
+        gender: formData.gender,
       });
+
+      // Persist non-sensitive progress in localStorage (never store password)
+      try {
+        localStorage.setItem(
+          PROGRESS_STORAGE_KEY,
+          JSON.stringify({
+            step: 3,
+            email: formData.email.trim(),
+            name: formData.name.trim(),
+            username: formData.username.trim(),
+            class: formData.class,
+            gender: formData.gender,
+            expiresAt: data?.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          })
+        );
+      } catch (err) {}
+
       setResendTimer(60);
       setStep(3);
-      if (data?.previewUrl) {
-        setInfo("Verification code dispatched to your email.");
-      }
+      setInfo("Verification code dispatched to your email. Valid for 15 minutes.");
     } catch (err) {
-      setError(
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to send verification code."
-      );
+      const respError = err.response?.data?.error || err.response?.data?.message || err.message || "Failed to send verification code.";
+      setError(respError);
+      if (err.response?.data?.retryAfter) {
+        setResendTimer(err.response.data.retryAfter);
+      }
     } finally {
       setLoading(false);
     }
@@ -137,18 +204,57 @@ export default function Signup() {
     if (resendTimer > 0 || loading) return;
     setLoading(true);
     setError("");
+    setIsCodeExpired(false);
     try {
-      await api.post("/send-otp", {
+      const { data } = await api.post("/send-otp", {
         email: formData.email.trim(),
         operation: "signup",
+        fullName: formData.name.trim(),
+        username: formData.username.trim(),
+        password: formData.password,
+        class: formData.class,
+        gender: formData.gender,
       });
       setResendTimer(60);
-      setInfo("A new verification code has been dispatched.");
+      setInfo("A new verification code has been dispatched to your email.");
+      try {
+        localStorage.setItem(
+          PROGRESS_STORAGE_KEY,
+          JSON.stringify({
+            step: 3,
+            email: formData.email.trim(),
+            name: formData.name.trim(),
+            username: formData.username.trim(),
+            class: formData.class,
+            gender: formData.gender,
+            expiresAt: data?.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          })
+        );
+      } catch (e) {}
     } catch (err) {
       setError(err.response?.data?.error || "Unable to resend code.");
     } finally {
       setLoading(false);
     }
+  };
+
+  // "Use a different email" handler
+  const handleUseDifferentEmail = () => {
+    try {
+      localStorage.removeItem(PROGRESS_STORAGE_KEY);
+    } catch (e) {}
+    setError("");
+    setInfo("");
+    setIsCodeExpired(false);
+    setOtpDigits(["", "", "", "", "", ""]);
+    setStep(1);
+  };
+
+  // "Edit details" handler
+  const handleEditDetails = () => {
+    setError("");
+    setInfo("");
+    setStep(2);
   };
 
   // Handle segmented OTP input
@@ -184,24 +290,39 @@ export default function Signup() {
     setError("");
     try {
       await api.post("/signup", {
-        username: formData.username.trim(),
-        fullName: formData.name.trim(),
         email: formData.email.trim(),
+        otp: otpCode,
+        fullName: formData.name.trim(),
+        username: formData.username.trim(),
         password: formData.password,
         class: formData.class,
-        otp: otpCode,
+        gender: formData.gender,
       });
+
+      // Clear pending signup storage upon success
+      try {
+        localStorage.removeItem(PROGRESS_STORAGE_KEY);
+        if (formData.gender) {
+          localStorage.setItem("rca_user_gender", formData.gender);
+        }
+      } catch (err) {}
 
       setSignupSuccess(true);
       setTimeout(() => {
-        navigate("/login");
-      }, 1500);
+        navigate("/login", {
+          state: {
+            email: formData.email.trim(),
+            message: "Account created successfully. Please sign in with your credentials.",
+          },
+        });
+      }, 1200);
     } catch (err) {
-      setError(
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Verification failed. Please check the code."
-      );
+      const resp = err.response?.data;
+      const msg = resp?.error || resp?.message || "Verification failed. Please check the code.";
+      setError(msg);
+      if (resp?.codeExpired) {
+        setIsCodeExpired(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -215,13 +336,17 @@ export default function Signup() {
       {/* ── Right Auth Form Panel (Compact, 100dvh, No Scroll) ── */}
       <section className="auth-form-pane">
         <div className="auth-form-card">
-          {/* Back to Portal Link */}
-          <Link to="/" className="auth-back-link">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            <span>Back to Portal</span>
-          </Link>
+          {/* Top navigation row with Back link and Theme Toggle */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <Link to="/" className="auth-back-link" style={{ margin: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              <span>Back to Portal</span>
+            </Link>
+
+            <ThemeToggle />
+          </div>
 
           {/* Wizard Step Progress Indicator */}
           <div className="wizard-progress-bar">
@@ -261,11 +386,27 @@ export default function Signup() {
               : step === 1
               ? "Step 1 of 3: Provide your full name and student email."
               : step === 2
-              ? "Step 2 of 3: Pick a username, password, and class cohort."
-              : "Step 3 of 3: Enter the 6 digit code sent to your inbox."}
+              ? "Step 2 of 3: Pick a username, password, class cohort, and avatar."
+              : `Step 3 of 3: Enter the 6 digit code sent to ${formData.email || "your inbox"}.`}
           </p>
 
-          {error && <div className="auth-alert-error">{error}</div>}
+          {error && (
+            <div className="auth-alert-error" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <span>{error}</span>
+              {isCodeExpired && step === 3 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendOtp}
+                  loading={loading}
+                  style={{ alignSelf: "flex-start", marginTop: "4px" }}
+                >
+                  Send a new code
+                </Button>
+              )}
+            </div>
+          )}
+
           {info && !error && <div className="auth-alert-info">{info}</div>}
 
           {/* ── STEP 1: Full Name and Email ── */}
@@ -300,13 +441,22 @@ export default function Signup() {
                 Continue to Account Setup
               </Button>
 
-              <div className="auth-switch-prompt">
-                Already registered? <Link to="/login">Sign In</Link>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", fontSize: "0.82rem" }}>
+                <button
+                  type="button"
+                  onClick={handleJumpToCode}
+                  style={{ background: "none", border: "none", color: "var(--color-primary)", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                >
+                  I already have a code
+                </button>
+                <div className="auth-switch-prompt" style={{ margin: 0 }}>
+                  Already registered? <Link to="/login">Sign In</Link>
+                </div>
               </div>
             </form>
           )}
 
-          {/* ── STEP 2: Username, Password with Strength Meter, and Class ── */}
+          {/* ── STEP 2: Username, Password with Strength Meter, Class, and Gender ── */}
           {step === 2 && !signupSuccess && (
             <form onSubmit={handleSendOtpStep2} className="compact-auth-form">
               <Input
@@ -370,7 +520,65 @@ export default function Signup() {
                 }))}
               />
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
+              {/* Gender Choice: 2 Selectable Cards with Illustrated Avatars */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "8px" }}>
+                  Student Gender (Required)
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, gender: "female" }))}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--radius-card-sm, 12px)",
+                      border: formData.gender === "female" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+                      background: formData.gender === "female" ? "var(--color-surface-raised, rgba(91, 115, 224, 0.08))" : "var(--color-surface)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                      <img src={studentGirl} alt="Female Student Avatar" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <strong style={{ display: "block", fontSize: "0.88rem", color: "var(--color-text-primary)" }}>Female</strong>
+                      <span style={{ fontSize: "0.72rem", color: "var(--color-text-tertiary)" }}>Female figure</span>
+                    </div>
+                    {formData.gender === "female" && <CheckIcon size={16} color="var(--color-primary)" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, gender: "male" }))}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--radius-card-sm, 12px)",
+                      border: formData.gender === "male" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+                      background: formData.gender === "male" ? "var(--color-surface-raised, rgba(91, 115, 224, 0.08))" : "var(--color-surface)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                      <img src={studentBoy} alt="Male Student Avatar" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <strong style={{ display: "block", fontSize: "0.88rem", color: "var(--color-text-primary)" }}>Male</strong>
+                      <span style={{ fontSize: "0.72rem", color: "var(--color-text-tertiary)" }}>Male figure</span>
+                    </div>
+                    {formData.gender === "male" && <CheckIcon size={16} color="var(--color-primary)" />}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
                 <Button
                   variant="secondary"
                   size="md"
@@ -396,9 +604,18 @@ export default function Signup() {
           {/* ── STEP 3: Segmented 6-digit OTP ── */}
           {step === 3 && !signupSuccess && (
             <form onSubmit={handleCompleteSignup} className="compact-auth-form">
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-primary)", display: "block" }}>
-                6 Digit Verification Code
-              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-primary)", display: "block" }}>
+                  6 Digit Verification Code
+                </label>
+                <button
+                  type="button"
+                  onClick={handleEditDetails}
+                  style={{ background: "none", border: "none", color: "var(--color-primary)", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+                >
+                  Edit details
+                </button>
+              </div>
 
               {/* Segmented Inputs */}
               <div className="segmented-otp-row">
@@ -417,7 +634,7 @@ export default function Signup() {
                 ))}
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--color-text-secondary)", margin: "4px 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--color-text-secondary)", margin: "6px 0" }}>
                 <span>Did not receive code?</span>
                 {resendTimer > 0 ? (
                   <span>Resend in {resendTimer}s</span>
@@ -432,15 +649,15 @@ export default function Signup() {
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                 <Button
                   variant="secondary"
                   size="md"
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={handleUseDifferentEmail}
                   style={{ flex: 1 }}
                 >
-                  Back
+                  Use a different email
                 </Button>
                 <Button
                   variant="primary"

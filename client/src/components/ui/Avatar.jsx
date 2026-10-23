@@ -1,20 +1,26 @@
 import React from "react";
 import { UserIcon } from "./Icons";
+import studentBoySvg from "../../assets/avatars/student-boy.svg";
+import studentGirlSvg from "../../assets/avatars/student-girl.svg";
+import neutralSvg from "../../assets/avatars/neutral.svg";
 
 /**
  * RCA Archive Standard Default Avatar
  * - If a custom image URL (src) is provided, displays the image
+ * - If gender is specified ('male' | 'female' | 'neutral'), displays the corresponding SVG avatar
  * - Otherwise displays a clean, elegant initials circle or minimal person glyph
  * - Works seamlessly in both Light and Dark themes
  */
 export default function Avatar({
   name = "User",
   src = null,
+  gender = null,
   size = "md",
   className = "",
   style = {},
   showStatus = false,
   status = "online",
+  variant = null,
 }) {
   const sizeMap = {
     xs: 28,
@@ -37,6 +43,14 @@ export default function Avatar({
 
   const initials = getInitials(name);
 
+  let effectiveSrc = src;
+  if (!effectiveSrc && variant !== "initials") {
+    const g = typeof gender === "string" ? gender.toLowerCase().trim() : "";
+    if (g === "male") effectiveSrc = studentBoySvg;
+    else if (g === "female") effectiveSrc = studentGirlSvg;
+    else if (g === "neutral") effectiveSrc = neutralSvg;
+  }
+
   return (
     <div
       className={`rca-avatar ${className}`}
@@ -52,9 +66,9 @@ export default function Avatar({
         ...style,
       }}
     >
-      {src ? (
+      {effectiveSrc ? (
         <img
-          src={src}
+          src={effectiveSrc}
           alt={name}
           style={{
             width: "100%",

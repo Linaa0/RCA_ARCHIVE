@@ -52,7 +52,7 @@ export default function Button({
     },
     outline: {
       background: "var(--color-surface, #FFFFFF)",
-      color: "var(--color-indigo-700, #3F4FA8)",
+      color: "var(--color-indigo-500, #4B62CE)",
       border: "1.5px solid var(--color-border-med, rgba(63, 79, 168, 0.16))",
       boxShadow: "var(--shadow-xs)",
     },

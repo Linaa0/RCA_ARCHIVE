@@ -25,7 +25,7 @@ export default function Logo({
     md: 52,
     lg: 120,
     navbar: 52,
-    sidebar: 56,
+    sidebar: 60,
     auth: 120,
     footer: 48,
   };

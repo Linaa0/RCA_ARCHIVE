@@ -22,7 +22,20 @@ async function listPapers(req, res) {
   const filter = {};
 
   if (subject) filter.subject = subject;
-  if (year) filter.year = year;
+  if (year) {
+    const yr = String(year).trim();
+    if (yr === "Y1" || yr === "1") {
+      filter.$or = [{ year: "1" }, { year: 1 }, { year: "Y1" }, { promotion: "Y1" }];
+    } else if (yr === "Y1GenAI" || yr === "Y1 GenAI") {
+      filter.$or = [{ year: "Y1GenAI" }, { promotion: "Y1GenAI" }, { class: "Y1GenAI" }];
+    } else if (yr === "Y2" || yr === "2") {
+      filter.$or = [{ year: "2" }, { year: 2 }, { year: "Y2" }, { promotion: "Y2" }];
+    } else if (yr === "Y3" || yr === "3") {
+      filter.$or = [{ year: "3" }, { year: 3 }, { year: "Y3" }, { promotion: "Y3" }];
+    } else {
+      filter.year = year;
+    }
+  }
   if (type && type !== "All Types") filter.type = type;
   if (search) {
     const regex = new RegExp(escapeRegExp(search), "i");

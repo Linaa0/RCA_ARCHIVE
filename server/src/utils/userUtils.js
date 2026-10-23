@@ -21,6 +21,7 @@ function safeUserFields(user) {
     role: user.role,
     status: user.status || "active",
     class: user.class || "",
+    gender: user.gender || undefined,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     createdBy: user.createdBy,

@@ -7,6 +7,8 @@ import EmptyState from "./ui/EmptyState";
 import Avatar from "./ui/Avatar";
 import studentGirl from "../assets/figures/student-girl.png";
 import studentBoy from "../assets/figures/student-boy.png";
+import neutralAvatar from "../assets/avatars/neutral.svg";
+import WaterDecoration from "./ui/WaterDecoration";
 import {
   MaterialsIcon,
   EyeIcon,
@@ -28,18 +30,19 @@ export default function DashboardHome({
 
   const [gender, setGender] = useState(() => {
     if (typeof localStorage !== "undefined") {
-      return localStorage.getItem("rca_user_gender") || user?.gender || "female";
+      const stored = localStorage.getItem("rca_user_gender");
+      if (stored) return stored;
     }
-    return "female";
+    return user?.gender || null;
   });
 
   useEffect(() => {
     const handleGenderChange = () => {
-      setGender(localStorage.getItem("rca_user_gender") || "female");
+      setGender(localStorage.getItem("rca_user_gender") || user?.gender || null);
     };
     window.addEventListener("profile-gender-changed", handleGenderChange);
     return () => window.removeEventListener("profile-gender-changed", handleGenderChange);
-  }, []);
+  }, [user]);
 
   const [assignments, setAssignments] = useState([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
@@ -116,6 +119,8 @@ export default function DashboardHome({
       {/* ── Greeting Card with Student Vector Avatar ── */}
       <div
         style={{
+          position: "relative",
+          overflow: "hidden",
           background: "linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg) 100%)",
           borderRadius: "var(--radius-card)",
           padding: "32px 36px",
@@ -128,7 +133,9 @@ export default function DashboardHome({
           flexWrap: "wrap",
         }}
       >
-        <div style={{ flex: 1, minWidth: "260px" }}>
+        <WaterDecoration variant="hero" />
+
+        <div style={{ flex: 1, minWidth: "260px", position: "relative", zIndex: 1 }}>
           <span
             style={{
               fontSize: "0.75rem",
@@ -167,6 +174,16 @@ export default function DashboardHome({
               ? `Access ${totalPapers} academic past papers, lecture notes, and assignments indexed for Rwanda Coding Academy cohorts.`
               : "Explore the archive repository or contribute past papers for your cohort."}
           </p>
+
+          {!gender && (
+            <div style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 14px", background: "var(--color-surface-subtle)", borderRadius: "var(--radius-pill)", border: "1px dashed var(--color-border-med)", fontSize: "0.8rem", color: "var(--color-primary)" }}>
+              <span>Choose your avatar</span>
+              <Link to="/profile" style={{ fontWeight: 700, textDecoration: "underline", color: "var(--color-primary)" }}>
+                Set in profile
+              </Link>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: "10px", marginTop: "18px" }}>
             <Button
               variant="primary"
@@ -186,10 +203,12 @@ export default function DashboardHome({
           </div>
         </div>
 
-        {/* Student Dashboard Figure (Female or Male based on preference) */}
+        {/* Student Dashboard Figure (Female, Male, or Neutral based on preference) */}
         <div
           className="dashboard-figure-wrap"
           style={{
+            position: "relative",
+            zIndex: 1,
             width: "136px",
             height: "136px",
             borderRadius: "50%",
@@ -204,8 +223,8 @@ export default function DashboardHome({
           }}
         >
           <img
-            src={gender === "male" ? studentBoy : studentGirl}
-            alt={gender === "male" ? "Male Student Figure" : "Female Student Figure"}
+            src={gender === "male" ? studentBoy : gender === "female" ? studentGirl : neutralAvatar}
+            alt={gender === "male" ? "Male Student Figure" : gender === "female" ? "Female Student Figure" : "Neutral Student Figure"}
             loading="lazy"
             style={{
               width: "100%",

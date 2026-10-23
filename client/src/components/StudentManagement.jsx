@@ -1,14 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { authDelete, authGet } from "../utils/apiClient";
+import { authDelete, authGet, authPost } from "../utils/apiClient";
 import Table from "./ui/Table";
 import Badge from "./ui/Badge";
 import Button from "./ui/Button";
 import IconButton from "./ui/IconButton";
 import Input from "./ui/Input";
+import Select from "./ui/Select";
 import Modal from "./ui/Modal";
 import Avatar from "./ui/Avatar";
 import EmptyState from "./ui/EmptyState";
-import { TrashIcon, SearchIcon, UsersIcon } from "./ui/Icons";
+import { RCA_CLASSES } from "./ui/ClassChips";
+import studentBoy from "../assets/figures/student-boy.png";
+import studentGirl from "../assets/figures/student-girl.png";
+import { TrashIcon, SearchIcon, UsersIcon, CheckIcon } from "./ui/Icons";
+
+const EMPTY_STUDENT_FORM = {
+  name: "",
+  email: "",
+  class: "Y1A",
+  gender: "female",
+};
 
 export default function StudentManagement({ onUpdated }) {
   const [students, setStudents] = useState([]);
@@ -18,6 +29,9 @@ export default function StudentManagement({ onUpdated }) {
   const [success, setSuccess] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [formData, setFormData] = useState(EMPTY_STUDENT_FORM);
+  const [saving, setSaving] = useState(false);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -70,6 +84,46 @@ export default function StudentManagement({ onUpdated }) {
     }
   };
 
+  const handleOpenInviteModal = () => {
+    setFormData(EMPTY_STUDENT_FORM);
+    setError("");
+    setSuccess("");
+    setIsInviteOpen(true);
+  };
+
+  const handleInviteSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.email.trim()) {
+      setError("Name and email are required.");
+      return;
+    }
+    if (!formData.gender) {
+      setError("Please select a student gender.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await authPost("/api/admin/students", {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        class: formData.class,
+        gender: formData.gender,
+      });
+      const newStudent = response.student || response;
+      setStudents((prev) => [newStudent, ...prev]);
+      setSuccess("Student invitation sent successfully.");
+      setIsInviteOpen(false);
+      setFormData(EMPTY_STUDENT_FORM);
+      if (onUpdated) onUpdated();
+    } catch (err) {
+      setError(err.message || "Failed to invite student.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const columns = [
     {
       title: "Student",
@@ -78,7 +132,7 @@ export default function StudentManagement({ onUpdated }) {
         const displayName = s.name || s.username || "Unnamed Student";
         return (
           <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, maxWidth: "240px" }}>
-            <Avatar name={displayName} size="sm" variant="initials" />
+            <Avatar name={displayName} gender={s.gender} size="sm" />
             <div style={{ minWidth: 0, overflow: "hidden" }}>
               <strong
                 title={displayName}
@@ -206,6 +260,13 @@ export default function StudentManagement({ onUpdated }) {
           >
             {loading ? "Loading..." : "Refresh"}
           </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleOpenInviteModal}
+          >
+            Invite Student
+          </Button>
         </div>
       </div>
 
@@ -292,6 +353,124 @@ export default function StudentManagement({ onUpdated }) {
             Delete Student
           </Button>
         </div>
+      </Modal>
+
+      {/* Invite Student Modal */}
+      <Modal
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        title="Invite New Student"
+        description="Send an official onboarding invitation to an RCA student with their cohort and profile setup."
+      >
+        <form onSubmit={handleInviteSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "14px" }}>
+          <Input
+            label="Full Name"
+            name="name"
+            placeholder="e.g. Marie Claire"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+            autoFocus
+          />
+
+          <Input
+            label="Student Email Address"
+            type="email"
+            name="email"
+            placeholder="student@rca.ac.rw"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
+          />
+
+          <Select
+            label="Assigned Cohort Class"
+            name="class"
+            value={formData.class}
+            onChange={(e) => setFormData({ ...formData, class: e.target.value })}
+            options={RCA_CLASSES.map((c) => ({
+              value: c.id,
+              label: `${c.label} (Year ${c.year})`,
+            }))}
+          />
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "8px" }}>
+              Student Gender (Required)
+            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, gender: "female" })}
+                style={{
+                  padding: "12px",
+                  borderRadius: "var(--radius-card-sm, 12px)",
+                  border: formData.gender === "female" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+                  background: formData.gender === "female" ? "var(--color-surface-raised, rgba(91, 115, 224, 0.08))" : "var(--color-surface)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ width: "36px", height: "36px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                  <img src={studentGirl} alt="Female Avatar" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ display: "block", fontSize: "0.88rem", color: "var(--color-text-primary)" }}>Female</strong>
+                  <span style={{ fontSize: "0.74rem", color: "var(--color-text-tertiary)" }}>Female student</span>
+                </div>
+                {formData.gender === "female" && <CheckIcon size={16} color="var(--color-primary)" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, gender: "male" })}
+                style={{
+                  padding: "12px",
+                  borderRadius: "var(--radius-card-sm, 12px)",
+                  border: formData.gender === "male" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+                  background: formData.gender === "male" ? "var(--color-surface-raised, rgba(91, 115, 224, 0.08))" : "var(--color-surface)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ width: "36px", height: "36px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                  <img src={studentBoy} alt="Male Avatar" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ display: "block", fontSize: "0.88rem", color: "var(--color-text-primary)" }}>Male</strong>
+                  <span style={{ fontSize: "0.74rem", color: "var(--color-text-tertiary)" }}>Male student</span>
+                </div>
+                {formData.gender === "male" && <CheckIcon size={16} color="var(--color-primary)" />}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px" }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              onClick={() => setIsInviteOpen(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              loading={saving}
+            >
+              Send Invitation
+            </Button>
+          </div>
+        </form>
       </Modal>
     </section>
   );

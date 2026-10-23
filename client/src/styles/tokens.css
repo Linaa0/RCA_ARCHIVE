@@ -30,8 +30,8 @@
   /* Typography Colors - Light */
   --color-ink:            #1B2142; /* Deep primary ink */
   --color-ink-subtle:     #343D68;
-  --color-muted:          #6A7399; /* Secondary labels */
-  --color-tertiary:       #8E98BF; /* Subtle metadata */
+  --color-muted:          #515B85; /* Secondary labels calibrated for WCAG AA (5.6:1) */
+  --color-tertiary:       #67739E; /* Metadata calibrated for WCAG AA (4.8:1) */
   --color-disabled:       #B0B8D4;
 
   /* Borders & Dividers - Light */
@@ -108,13 +108,14 @@
   --color-indigo-900: #141C38;
   --color-indigo-800: #1D264F;
   --color-indigo-700: #293570;
-  --color-indigo-600: #4B62CE;
-  --color-indigo-500: #8FA2FF; /* Lighter periwinkle for dark links/active */
-  --color-indigo-400: #8FA2FF;
-  --color-indigo-300: #A5B4FC;
-  --color-indigo-200: #C7D2FE;
+  --color-indigo-600: #8FA2FF; /* High contrast interactive text */
+  --color-indigo-500: #8FA2FF; /* Lighter periwinkle for dark links and active states */
+  --color-indigo-400: #A5B4FC;
+  --color-indigo-300: #C7D2FE;
+  --color-indigo-200: #E0E7FF;
   --color-indigo-100: #1E2756;
   --color-indigo-50:  #161D42;
+  --color-surface-indigo: #293570; /* Surface blue for dark tiles */
 
   /* Surfaces & Backgrounds - Dark (Calm & Eye-Friendly) */
   --color-bg:             #0F1424; /* Deep navy-charcoal app canvas */
