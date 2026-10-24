@@ -655,7 +655,12 @@ Every location in the codebase where user or paper data could potentially be del
    - Verified MongoDB collections and disk storage cleanly.
 5. **Client Production Bundle Build (`npm run build`)**:
    - Vite built all client modules in 19.94s with 0 errors.
-6. **Constraint Compliance**:
+6. **Continuous Integration Workflow Fixes (`.github/workflows/ci.yml`)**:
+   - Fixed `cache-dependency-path` in `actions/setup-node@v4` by pointing to `server/package-lock.json` and `client/package-lock.json` instead of `package.json`, which caused setup-node to abort immediately.
+   - Added container health check to `mongodb` service with mongosh ping evaluation so runner waits for MongoDB initialization before starting tests.
+   - Guarded `seededAccountsLogin.test.js` to skip cleanly when optional seed credentials are not populated in CI environment.
+   - Configured `jsonTransport` in `emailService.js` under test environment to prevent external network timeouts.
+7. **Constraint Compliance**:
    - Work conducted on branch main without branch creation or unapproved commits.
    - Zero emojis, zero em dashes, and zero en dashes used.
    - No secrets printed or logged.

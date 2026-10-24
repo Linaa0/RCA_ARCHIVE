@@ -123,6 +123,13 @@ async function createMailTransporter() {
     }
   }
 
+  if (currentEnv === "test") {
+    const transporter = nodemailer.createTransport({
+      jsonTransport: true,
+    });
+    return { transporter, isReal: false };
+  }
+
   // Non-production environment
   if (isRealSmtpConfigured()) {
     try {
