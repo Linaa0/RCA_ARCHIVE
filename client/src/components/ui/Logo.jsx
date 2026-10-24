@@ -15,35 +15,41 @@ export default function Logo({
   size = "md",
   showWordmark = true,
   wordmarkColor,
+  layout = "row",
+  withPlate = false,
   className = "",
   style = {},
   onClick,
 }) {
   const sizeMap = {
-    xs: 24,
-    sm: 40,
-    md: 52,
-    lg: 120,
-    navbar: 52,
-    sidebar: 60,
+    xs: 28,
+    sm: 44,
+    md: 60,
+    lg: 96,
+    navbar: 76,
+    sidebar: 80,
     auth: 120,
-    footer: 48,
+    footer: 72,
   };
 
-  const pixelSize = typeof size === "number" ? size : (sizeMap[size] || 52);
+  const pixelSize = typeof size === "number" ? size : (sizeMap[size] || 60);
 
   const isWhite =
     variant === "white" ||
     variant === "knockout" ||
     variant === "dark";
 
-  // Crisp silhouette for dark/knockout with soft glow; full-color with subtle depth for light
-  const imgFilter = isWhite
+  const showPlate = withPlate || variant === "plate";
+
+  // Crisp silhouette for dark/knockout; full-color with subtle depth for light or plate
+  const imgFilter = isWhite && !showPlate
     ? "brightness(0) invert(1) drop-shadow(0 2px 8px rgba(255, 255, 255, 0.22))"
     : "drop-shadow(0 2px 8px rgba(35, 44, 107, 0.12))";
 
-  const defaultTextColor = isWhite ? "#FFFFFF" : "var(--color-ink, #1B2142)";
+  const defaultTextColor = (isWhite || variant === "white") ? "#FFFFFF" : "var(--color-ink, #1B2142)";
   const textColor = wordmarkColor || defaultTextColor;
+
+  const isColumn = layout === "column";
 
   return (
     <div
@@ -51,8 +57,9 @@ export default function Logo({
       onClick={onClick}
       style={{
         display: "inline-flex",
-        alignItems: "center",
-        gap: pixelSize >= 80 ? "18px" : pixelSize <= 44 ? "12px" : "14px",
+        flexDirection: isColumn ? "column" : "row",
+        alignItems: isColumn ? "flex-start" : "center",
+        gap: isColumn ? "10px" : (pixelSize >= 72 ? "16px" : pixelSize <= 44 ? "10px" : "12px"),
         cursor: onClick ? "pointer" : "default",
         userSelect: "none",
         background: "transparent",
@@ -62,26 +69,43 @@ export default function Logo({
         ...style,
       }}
     >
-      <img
-        src={rcaLogo}
-        alt="Rwanda Coding Academy"
+      <div
         style={{
-          width: `${pixelSize}px`,
-          height: `${pixelSize}px`,
-          objectFit: "contain",
-          filter: imgFilter,
-          display: "block",
-          flexShrink: 0,
-          transition: "filter var(--transition-base), transform var(--transition-fast)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          ...(showPlate
+            ? {
+                background: "#FFFFFF",
+                borderRadius: "50%",
+                padding: `${Math.max(6, Math.round(pixelSize * 0.08))}px`,
+                boxShadow: "0 4px 18px rgba(0, 0, 0, 0.18)",
+                flexShrink: 0,
+              }
+            : { flexShrink: 0 }),
         }}
-      />
+      >
+        <img
+          src={rcaLogo}
+          alt="Rwanda Coding Academy"
+          style={{
+            width: `${pixelSize}px`,
+            height: `${pixelSize}px`,
+            objectFit: "contain",
+            filter: imgFilter,
+            display: "block",
+            flexShrink: 0,
+            transition: "filter var(--transition-base), transform var(--transition-fast)",
+          }}
+        />
+      </div>
       {showWordmark && (
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
           <span
             style={{
               fontFamily: "var(--font-family, 'Quicksand', sans-serif)",
               fontWeight: 700,
-              fontSize: pixelSize >= 80 ? "1.85rem" : pixelSize <= 48 ? "1.1rem" : "1.3rem",
+              fontSize: pixelSize >= 80 ? "1.6rem" : pixelSize >= 70 ? "1.4rem" : pixelSize <= 48 ? "1.1rem" : "1.25rem",
               letterSpacing: "-0.03em",
               color: textColor,
               whiteSpace: "nowrap",
@@ -89,14 +113,16 @@ export default function Logo({
           >
             RCA Archive
           </span>
-          {pixelSize >= 80 && (
+          {pixelSize >= 76 && (
             <span
               style={{
                 fontFamily: "var(--font-family, 'Quicksand', sans-serif)",
-                fontSize: "0.9rem",
-                color: isWhite ? "rgba(255, 255, 255, 0.75)" : "var(--color-muted, #6A7399)",
+                fontSize: "0.85rem",
+                color: (isWhite && !showPlate) || wordmarkColor === "#FFFFFF"
+                  ? "rgba(255, 255, 255, 0.78)"
+                  : "var(--color-muted, #6A7399)",
                 fontWeight: 500,
-                marginTop: "4px",
+                marginTop: "3px",
                 letterSpacing: "-0.01em",
               }}
             >

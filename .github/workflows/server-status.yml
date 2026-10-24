@@ -1,0 +1,82 @@
+name: Server Health and Status Inspection
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run once daily at 06:00 UTC
+    - cron: "0 6 * * *"
+
+concurrency:
+  group: rca-archive-server-status
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    runs-on: self-hosted
+    env:
+      RCA_ARCHIVE_CONFIG_ENV: /opt/configs/rca_archive/.env
+      RCA_ARCHIVE_APP_DIR: /opt/apps/rca_archive
+      RCA_ARCHIVE_PM2_NAME: rca-archive-backend
+
+    steps:
+      - name: System Resource Summary
+        run: |
+          echo "=== Disk Utilization ==="
+          df -h /
+          echo ""
+          echo "=== Memory Utilization ==="
+          free -h
+          echo ""
+          echo "=== Uptime and Load Average ==="
+          uptime
+
+      - name: Safe PM2 Process Status
+        run: |
+          echo "=== PM2 Process Metrics ==="
+          pm2 jlist 2>/dev/null | node -e '
+            let data = "";
+            process.stdin.on("data", chunk => data += chunk);
+            process.stdin.on("end", () => {
+              try {
+                const list = JSON.parse(data);
+                if (!Array.isArray(list) || list.length === 0) {
+                  console.log("No PM2 processes currently active for this runner user.");
+                  return;
+                }
+                for (const p of list) {
+                  const uptimeMin = p.pm2_env.pm_uptime ? Math.round((Date.now() - p.pm2_env.pm_uptime) / 60000) : 0;
+                  const memoryMb = Math.round((p.monit?.memory || 0) / 1048576);
+                  const cpuPercent = p.monit?.cpu || 0;
+                  console.log(`Process: ${p.name}`);
+                  console.log(`  PID: ${p.pid}`);
+                  console.log(`  Status: ${p.pm2_env.status}`);
+                  console.log(`  Restarts: ${p.pm2_env.restart_time}`);
+                  console.log(`  Uptime: ${uptimeMin} minutes`);
+                  console.log(`  CPU: ${cpuPercent}%`);
+                  console.log(`  Memory: ${memoryMb} MB`);
+                }
+              } catch (e) {
+                console.log("Could not parse PM2 metrics safely.");
+              }
+            });'
+
+      - name: Local HTTP Health Verification
+        run: |
+          PORT=$(grep -E '^PORT=' "${RCA_ARCHIVE_CONFIG_ENV}" | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//')
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+            PORT=5009
+          fi
+
+          echo "=== Testing /api/health on port ${PORT} ==="
+          HEALTH=$(curl -fsS --max-time 10 "http://127.0.0.1:${PORT}/api/health")
+          echo "Response: ${HEALTH}"
+
+          echo ""
+          echo "=== Testing /api/curriculum on port ${PORT} ==="
+          CURRICULUM=$(curl -fsS --max-time 10 "http://127.0.0.1:${PORT}/api/curriculum")
+          echo "Curriculum status: OK"
+
+      - name: Data Integrity and Counts Summary
+        run: |
+          cd "${RCA_ARCHIVE_APP_DIR}/server"
+          node scripts/data-check.js

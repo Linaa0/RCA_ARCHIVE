@@ -78,6 +78,8 @@ export function getStoredToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+const MUST_CHANGE_PASSWORD_KEY = "must_change_password";
+
 export function clearAuthStorage() {
   if (typeof window === "undefined") {
     return;
@@ -88,6 +90,7 @@ export function clearAuthStorage() {
   localStorage.removeItem(USERNAME_KEY);
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(SESSION_EXPIRES_AT_KEY);
+  localStorage.removeItem(MUST_CHANGE_PASSWORD_KEY);
 }
 
 export function isAuthenticated() {
@@ -110,6 +113,7 @@ export function getStoredUser() {
       email: null,
       username: null,
       role: null,
+      mustChangePassword: false,
     };
   }
 
@@ -118,10 +122,20 @@ export function getStoredUser() {
     email: localStorage.getItem(EMAIL_KEY),
     username: localStorage.getItem(USERNAME_KEY),
     role: localStorage.getItem(ROLE_KEY),
+    mustChangePassword: localStorage.getItem(MUST_CHANGE_PASSWORD_KEY) === "true",
   };
 }
 
-export function persistAuth({ token, email, username, role }) {
+export function setStoredMustChangePassword(mustChange) {
+  if (typeof window === "undefined") return;
+  if (mustChange) {
+    localStorage.setItem(MUST_CHANGE_PASSWORD_KEY, "true");
+  } else {
+    localStorage.removeItem(MUST_CHANGE_PASSWORD_KEY);
+  }
+}
+
+export function persistAuth({ token, email, username, role, mustChangePassword, user }) {
   if (typeof window === "undefined") {
     return;
   }
@@ -137,14 +151,29 @@ export function persistAuth({ token, email, username, role }) {
 
   if (email) {
     localStorage.setItem(EMAIL_KEY, email);
+  } else if (user?.email) {
+    localStorage.setItem(EMAIL_KEY, user.email);
   }
 
   if (username) {
     localStorage.setItem(USERNAME_KEY, username);
+  } else if (user?.username) {
+    localStorage.setItem(USERNAME_KEY, user.username);
   }
 
   if (role) {
     localStorage.setItem(ROLE_KEY, role);
+  } else if (user?.role) {
+    localStorage.setItem(ROLE_KEY, user.role);
+  }
+
+  const shouldChange = mustChangePassword !== undefined
+    ? Boolean(mustChangePassword)
+    : Boolean(user?.mustChangePassword);
+  if (shouldChange) {
+    localStorage.setItem(MUST_CHANGE_PASSWORD_KEY, "true");
+  } else {
+    localStorage.removeItem(MUST_CHANGE_PASSWORD_KEY);
   }
 
   localStorage.setItem(SESSION_EXPIRES_AT_KEY, String(expiresAt));

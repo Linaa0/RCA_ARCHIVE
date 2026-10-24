@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import Button from "../ui/Button";
 import Modal from "../ui/Modal";
-import { PlusIcon, UploadIcon } from "../ui/Icons";
+import { EyeIcon, PlusIcon, UploadIcon } from "../ui/Icons";
 import { RCA_CLASSES } from "../ui/ClassChips";
 import AssignmentTable from "../assignments/AssignmentTable";
 import { formatDateTime, toLocalInput, errorMessage } from "../assignments/common";
@@ -277,7 +277,7 @@ export default function TeacherAssignments() {
         ) : (
           <AssignmentTable
             rows={assignments}
-            emptyText="You haven’t given any assignment yet. Click “Give assignment”."
+            emptyText="You have not given any assignment yet. Click Give assignment."
             renderActions={(a) =>
               a.isDemo ? (
                 <span className="th-cell-sub">Sample</span>
@@ -319,7 +319,17 @@ export default function TeacherAssignments() {
             <div className="asg-section-title">Instructions</div>
             <div className="asg-desc" style={{ marginTop: 0 }}>{viewing.description || "No instructions written."}</div>
             {viewing.hasAttachment && (
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: 14, display: "flex", gap: "10px", alignItems: "center" }}>
+                <a
+                  href={`/view/${viewing.id}?type=assignment&name=${encodeURIComponent(viewing.attachmentName)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none" }}
+                >
+                  <Button size="sm" variant="primary">
+                    <EyeIcon size={14} /> View
+                  </Button>
+                </a>
                 <Button size="sm" variant="outline" onClick={() => downloadFrom(`/assignments/${viewing.id}/attachment`, viewing.attachmentName)}>
                   Download {viewing.attachmentName}
                 </Button>
@@ -331,7 +341,7 @@ export default function TeacherAssignments() {
 
       <Modal isOpen={Boolean(confirmDelete)} onClose={() => setConfirmDelete(null)} title="Delete assignment?" maxWidth="440px">
         <p style={{ fontSize: "0.92rem", lineHeight: 1.5 }}>
-          “{confirmDelete?.title}” will be removed together with all its submissions and appeals. This cannot be undone.
+          "{confirmDelete?.title}" will be removed together with all its submissions and appeals. This cannot be undone.
         </p>
         <div className="asg-form-actions" style={{ marginTop: 18 }}>
           <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>

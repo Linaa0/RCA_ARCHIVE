@@ -55,7 +55,7 @@ export default function Landing() {
     let isMounted = true;
     Promise.all([
       api.get("/papers").catch(() => ({ data: [] })),
-      api.get("/api/admin/stats").catch(() => ({ data: {} })),
+      api.get("/stats").catch(() => ({ data: {} })),
     ]).then(([papersRes, statsRes]) => {
       if (!isMounted) return;
       const papersCount = Array.isArray(papersRes.data)
@@ -700,7 +700,7 @@ export default function Landing() {
           <div className="footer-columns-grid">
             {/* Col 1: Brand Info */}
             <div className="footer-brand-col">
-              <Logo variant="knockout" size="md" />
+              <Logo variant="knockout" size="footer" />
               <p className="footer-brand-text">
                 Rwanda Coding Academy academic knowledge archive and curriculum revision portal.
                 Dedicated to empowering young software engineering talents.

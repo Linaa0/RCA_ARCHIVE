@@ -94,29 +94,39 @@ export default function AuthBrandPanel() {
           </p>
         </div>
 
-        {/* ── Rotating Resource Stack (Pause on Hover) ── */}
+        {/* ── Rotating Resource Stack Deck (Pause on Hover) ── */}
         <div
           className="auth-stack-container"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {/* Card 3 (furthest back) */}
-          <div className="auth-card-preview card-layer-3" key={`preview-3-${thirdCard.id}`}>
-            <span className="auth-card-pill">{thirdCard.cohort}</span>
-            <span className="auth-card-sub-text">{thirdCard.subject}</span>
-          </div>
-
-          {/* Card 2 (middle preview) */}
-          <div className="auth-card-preview card-layer-2" key={`preview-2-${nextCard.id}`}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span className="auth-card-pill">{nextCard.cohort}</span>
-              <span className="auth-card-type-tag">{nextCard.type}</span>
+          {/* Card 3 (furthest back peek: shifted up and right, scale 0.90, opacity 0.82) */}
+          <div className="auth-deck-card card-layer-3" key={`preview-3-${thirdCard.id}`}>
+            <div className="auth-deck-card-inner">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span className="auth-card-pill">{thirdCard.cohort}</span>
+                <span className="auth-card-type-tag">{thirdCard.type}</span>
+              </div>
+              <span className="auth-card-preview-title">{thirdCard.subject}</span>
             </div>
-            <span className="auth-card-sub-text">{nextCard.title}</span>
           </div>
 
-          {/* Card 1 (Front active card with slide and fade transition) */}
-          <div className="auth-card-front" key={`active-${activeCard.id}`}>
+          {/* Card 2 (middle peek: shifted up and right, scale 0.95, opacity 0.92) */}
+          <div className="auth-deck-card card-layer-2" key={`preview-2-${nextCard.id}`}>
+            <div className="auth-deck-card-inner">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span className="auth-card-pill">{nextCard.cohort}</span>
+                  <span className="auth-card-type-tag">{nextCard.type}</span>
+                </div>
+                <span className="auth-card-format">{nextCard.format}</span>
+              </div>
+              <span className="auth-card-preview-title">{nextCard.title}</span>
+            </div>
+          </div>
+
+          {/* Card 1 (Front active card: fully visible, light card, dark text) */}
+          <div className="auth-deck-card auth-card-front" key={`active-${activeCard.id}`}>
             <div className="auth-card-header">
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span className="auth-card-pill active-pill">{activeCard.cohort}</span>

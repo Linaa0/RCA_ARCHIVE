@@ -69,7 +69,7 @@ async function getResourceFile(req, res) {
   if (!resource) return res.status(404).json({ error: "Resource not found." });
 
   const filePath = path.join(SUBMISSIONS_DIR, path.basename(resource.filename));
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: "Resource file is missing." });
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: "This file is no longer available on storage." });
 
   const ext = path.extname(resource.originalName).toLowerCase();
   res.type(MIME_TYPES[ext] || "application/octet-stream");

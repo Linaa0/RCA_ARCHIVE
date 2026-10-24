@@ -64,23 +64,145 @@ async function listPapers(req, res) {
   res.json(result);
 }
 
+const crypto = require("crypto");
+const { JWT_SECRET } = require("../config/env");
+const { emitPaperEvent, emitDeletionEvent } = require("../services/socketService");
+
+function signAccessLink(paperId, action, expiresAt) {
+  const data = `${paperId}:${action}:${expiresAt}`;
+  const sig = crypto.createHmac("sha256", JWT_SECRET).update(data).digest("base64url");
+  return `${paperId}.${action}.${expiresAt}.${sig}`;
+}
+
+function verifyAccessLink(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 4) return null;
+  const [paperId, action, expiresAtStr, sig] = parts;
+  const expiresAt = Number(expiresAtStr);
+  if (Number.isNaN(expiresAt)) return null;
+  if (Date.now() > expiresAt) {
+    return { expired: true, paperId, action };
+  }
+  const data = `${paperId}:${action}:${expiresAtStr}`;
+  const expectedSig = crypto.createHmac("sha256", JWT_SECRET).update(data).digest("base64url");
+  try {
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expectedSig);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return null;
+    }
+  } catch (_) {
+    return null;
+  }
+  return { valid: true, paperId, action, expiresAt };
+}
+
+function formatContentDisposition(type, originalName) {
+  const cleanName = (originalName || "document.pdf")
+    .replace(/[\r\n\0]/g, "")
+    .trim();
+
+  const asciiFallback = cleanName
+    .replace(/[^\x20-\x7E]/g, "_")
+    .replace(/["\\]/g, "");
+
+  const encodedName = encodeURIComponent(cleanName)
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, "%2A");
+
+  return `${type}; filename="${asciiFallback}"; filename*=UTF-8''${encodedName}`;
+}
+
+async function createAccessLink(req, res) {
+  const { id } = req.params;
+  const paper = await getPaperById(id);
+  if (!paper) {
+    return res.status(404).json({ error: "Paper not found" });
+  }
+
+  const filePath = path.join(UPLOADS_DIR, paper.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "This file is no longer available on storage." });
+  }
+
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+  const viewToken = signAccessLink(paper.id, "view", expiresAt);
+  const downloadToken = signAccessLink(paper.id, "download", expiresAt);
+
+  const ext = path.extname(paper.originalName || paper.filename || ".pdf");
+  const originalName = paper.originalName || `${paper.title || "document"}${ext}`;
+
+  res.json({
+    paperId: paper.id,
+    title: paper.title,
+    originalName,
+    expiresAt,
+    viewUrl: `/api/papers/access/${viewToken}/view`,
+    downloadUrl: `/api/papers/access/${downloadToken}/download`,
+  });
+}
+
+async function accessPaperFile(req, res) {
+  const { token, mode } = req.params;
+  const verified = verifyAccessLink(token);
+  if (!verified) {
+    return res.status(403).json({ error: "Invalid access signature." });
+  }
+  if (verified.expired) {
+    return res.status(410).json({ error: "This access link has expired. Please request a new link." });
+  }
+
+  const paper = await getPaperById(verified.paperId);
+  if (!paper) {
+    return res.status(404).json({ error: "Paper not found." });
+  }
+
+  const filePath = path.join(UPLOADS_DIR, paper.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "This file is no longer available on storage." });
+  }
+
+  const ext = path.extname(paper.originalName || paper.filename).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+  const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
+
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+  if (mode === "download" || verified.action === "download") {
+    res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
+    res.setHeader("Content-Type", contentType);
+    return res.sendFile(filePath);
+  }
+
+  res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
+  res.setHeader("Content-Type", contentType);
+  return res.sendFile(filePath);
+}
+
 async function getPaperFile(req, res) {
   const paper = await getPaperById(req.params.id);
   if (!paper) return res.status(404).json({ error: "Paper not found" });
 
   const filePath = path.join(UPLOADS_DIR, paper.filename);
   if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "File not found" });
+    return res.status(404).json({ error: "This file is no longer available on storage." });
   }
+
+  const ext = path.extname(paper.originalName || paper.filename).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+  const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
+
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
 
   if (req.query.download === "1") {
-    return res.download(filePath, paper.originalName);
+    res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
+    res.setHeader("Content-Type", contentType);
+    return res.sendFile(filePath);
   }
 
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename="${paper.originalName}"`
-  );
+  res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
+  res.setHeader("Content-Type", contentType);
   return res.sendFile(filePath);
 }
 
@@ -90,18 +212,17 @@ async function viewPaper(req, res) {
 
   const filePath = path.join(UPLOADS_DIR, paper.filename);
   if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "File not found" });
+    return res.status(404).json({ error: "This file is no longer available on storage." });
   }
 
-  const ext = path.extname(paper.originalName).toLowerCase();
+  const ext = path.extname(paper.originalName || paper.filename).toLowerCase();
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
+  const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.setHeader("Content-Type", contentType);
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename="${paper.originalName}"`
-  );
-  return res.sendFile(filePath, { headers: { "Content-Type": contentType } });
+  res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
+  return res.sendFile(filePath);
 }
 
 async function downloadPaper(req, res) {
@@ -110,10 +231,17 @@ async function downloadPaper(req, res) {
 
   const filePath = path.join(UPLOADS_DIR, paper.filename);
   if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "File not found" });
+    return res.status(404).json({ error: "This file is no longer available on storage." });
   }
 
-  return res.download(filePath, paper.originalName);
+  const ext = path.extname(paper.originalName || paper.filename).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+  const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
+
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
+  return res.sendFile(filePath);
 }
 
 async function ratePaper(req, res) {
@@ -176,10 +304,12 @@ async function updatePaper(req, res) {
 
   await papers.updateOne({ id }, { $set: update });
   const updatedPaper = await papers.findOne({ id });
+  const summary = buildRatingSummary(updatedPaper);
+  emitPaperEvent("updated", summary);
 
   return res.json({
     message: "Paper updated successfully.",
-    paper: buildRatingSummary(updatedPaper),
+    paper: summary,
   });
 }
 
@@ -188,7 +318,18 @@ async function deletePaper(req, res) {
   const paper = await papers.findOne({ id: req.params.id });
   if (!paper) return res.status(404).json({ error: "Paper not found" });
 
-  await permanentlyDeletePaperRecord(paper, "admin direct delete", req.user);
+  const isUploader =
+    Boolean(paper.uploadedById && String(paper.uploadedById) === String(req.user.id)) ||
+    Boolean(paper.uploadedBy && paper.uploadedBy === req.user.username) ||
+    Boolean(paper.uploadedByEmail && paper.uploadedByEmail === req.user.email);
+
+  if (req.user.role !== "admin" && !isUploader) {
+    return res.status(403).json({ error: "You can only delete papers that you uploaded." });
+  }
+
+  const auditReason = req.user.role === "admin" ? "admin direct delete" : "uploader direct delete";
+  await permanentlyDeletePaperRecord(paper, auditReason, req.user);
+  emitPaperEvent("deleted", { id: req.params.id });
   res.json({ message: "Paper deleted successfully" });
 }
 
@@ -235,6 +376,7 @@ async function requestDeletePaper(req, res) {
   };
 
   await deletionRequests.insertOne(request);
+  emitDeletionEvent("created", request, paper.uploadedById);
 
   console.log(
     `[DELETE_REQUEST] id=${request.id} paperId=${paper.id} by=${req.user.email} role=${req.user.role}`
@@ -268,4 +410,9 @@ module.exports = {
   deletePaper,
   requestDeletePaper,
   getStats,
+  createAccessLink,
+  accessPaperFile,
+  formatContentDisposition,
+  signAccessLink,
+  verifyAccessLink,
 };

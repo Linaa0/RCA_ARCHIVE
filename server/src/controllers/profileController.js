@@ -14,27 +14,64 @@ async function updateMe(req, res) {
   const name = String(req.body.name || "").trim().slice(0, 80);
   if (name.length < 2) return res.status(400).json({ error: "Name must be at least 2 characters" });
 
-  const update = { name, username: name, updatedAt: new Date().toISOString() };
+  const update = { name, updatedAt: new Date().toISOString() };
 
-  // Students choose their class (it decides which assignments they receive)
-  if (req.user.role === "student" && req.body.class !== undefined) {
-    const cls = normalizeClass(req.body.class);
-    if (!cls) return res.status(400).json({ error: "Please choose a valid class" });
-    update.class = cls;
+  // Username update
+  if (req.body.username !== undefined) {
+    const username = String(req.body.username).trim().slice(0, 30);
+    if (username.length < 3) return res.status(400).json({ error: "Username must be at least 3 characters" });
+    if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
+      return res.status(400).json({ error: "Username can only contain letters, numbers, underscores, dots, and hyphens" });
+    }
+    const existing = await getUsersCollection().findOne({
+      username: { $regex: new RegExp(`^${username}$`, "i") },
+      email: { $ne: req.user.email },
+    });
+    if (existing) {
+      return res.status(409).json({ error: "Username is already taken" });
+    }
+    update.username = username;
   }
 
-  // Gender preference ('male' or 'female')
-  if (req.body.gender !== undefined) {
-    const g = String(req.body.gender).toLowerCase().trim();
-    if (g === "male" || g === "female") {
-      update.gender = g;
+  // Enrolled class is locked after signup; only allow setting once if missing
+  if (req.user.role === "student" && req.body.class !== undefined) {
+    if (req.user.class) {
+      // Class already set, locked until annual promotion
     } else {
-      return res.status(400).json({ error: "Gender must be either 'male' or 'female'" });
+      const cls = normalizeClass(req.body.class);
+      if (!cls) return res.status(400).json({ error: "Please choose a valid class" });
+      update.class = cls;
     }
   }
 
+  // Gender is locked after signup; only allow setting once if missing
+  if (req.body.gender !== undefined) {
+    if (!req.user.gender) {
+      const g = String(req.body.gender).toLowerCase().trim();
+      if (g === "male" || g === "female") {
+        update.gender = g;
+      }
+    }
+  }
+
+  // Notification preferences
+  if (req.body.notifications !== undefined && typeof req.body.notifications === "object") {
+    update.notifications = {
+      inAppAlerts: Boolean(req.body.notifications.inAppAlerts),
+      dueReminders: Boolean(req.body.notifications.dueReminders),
+      emailNotifications: Boolean(req.body.notifications.emailNotifications),
+    };
+  }
+
   await getUsersCollection().updateOne({ email: req.user.email }, { $set: update });
-  res.json({ message: "Profile updated", name, class: update.class, gender: update.gender });
+  res.json({
+    message: "Profile updated",
+    name,
+    username: update.username || req.user.username,
+    class: update.class !== undefined ? update.class : req.user.class,
+    gender: update.gender !== undefined ? update.gender : req.user.gender,
+    notifications: update.notifications,
+  });
 }
 
 async function changePassword(req, res) {

@@ -7,7 +7,7 @@ import EmptyState from "./ui/EmptyState";
 import Avatar from "./ui/Avatar";
 import studentGirl from "../assets/figures/student-girl.png";
 import studentBoy from "../assets/figures/student-boy.png";
-import neutralAvatar from "../assets/avatars/neutral.svg";
+import neutralFigure from "../assets/figures/neutral-figure.svg";
 import WaterDecoration from "./ui/WaterDecoration";
 import {
   MaterialsIcon,
@@ -175,15 +175,6 @@ export default function DashboardHome({
               : "Explore the archive repository or contribute past papers for your cohort."}
           </p>
 
-          {!gender && (
-            <div style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 14px", background: "var(--color-surface-subtle)", borderRadius: "var(--radius-pill)", border: "1px dashed var(--color-border-med)", fontSize: "0.8rem", color: "var(--color-primary)" }}>
-              <span>Choose your avatar</span>
-              <Link to="/profile" style={{ fontWeight: 700, textDecoration: "underline", color: "var(--color-primary)" }}>
-                Set in profile
-              </Link>
-            </div>
-          )}
-
           <div style={{ display: "flex", gap: "10px", marginTop: "18px" }}>
             <Button
               variant="primary"
@@ -223,7 +214,7 @@ export default function DashboardHome({
           }}
         >
           <img
-            src={gender === "male" ? studentBoy : gender === "female" ? studentGirl : neutralAvatar}
+            src={gender === "male" ? studentBoy : gender === "female" ? studentGirl : neutralFigure}
             alt={gender === "male" ? "Male Student Figure" : gender === "female" ? "Female Student Figure" : "Neutral Student Figure"}
             loading="lazy"
             style={{
@@ -510,6 +501,8 @@ export default function DashboardHome({
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
                       <Link
                         to={`/view/${paperId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         style={{
                           padding: "6px 14px",
                           borderRadius: "999px",
@@ -627,6 +620,8 @@ export default function DashboardHome({
                   </span>
                   <Link
                     to={`/view/${up.id || up._id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{ color: "var(--color-primary)", fontWeight: 700, textDecoration: "none", flexShrink: 0 }}
                   >
                     View

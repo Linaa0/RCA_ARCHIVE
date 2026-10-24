@@ -9,6 +9,7 @@ import Modal from "./ui/Modal";
 import Avatar from "./ui/Avatar";
 import EmptyState from "./ui/EmptyState";
 import { TrashIcon, SearchIcon, UsersIcon } from "./ui/Icons";
+import CredentialsModal from "./CredentialsModal";
 import "./TeacherManagement.css";
 
 const EMPTY_FORM = { name: "", email: "" };
@@ -24,6 +25,8 @@ export default function TeacherManagement({ onUpdated }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [credentialsModalData, setCredentialsModalData] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -85,13 +88,36 @@ export default function TeacherManagement({ onUpdated }) {
       });
       const newTeacher = created.teacher || created;
       setTeachers((prev) => [newTeacher, ...prev]);
-      setSuccess("Teacher invitation sent successfully.");
+      if (created.credentials?.temporaryPassword) {
+        setCredentialsModalData(created.credentials);
+      }
+      setSuccess("Teacher invited successfully.");
       handleCloseModal();
       if (onUpdated) onUpdated();
     } catch (err) {
       setError(err.message || "Failed to invite teacher.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResendCredentials = async (teacher) => {
+    setResendingId(teacher.id || teacher._id);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await authPost("/api/admin/teachers/resend-credentials", {
+        email: teacher.email,
+      });
+      if (res.credentials?.temporaryPassword) {
+        setCredentialsModalData(res.credentials);
+      }
+      setSuccess(`New credentials generated for ${teacher.email}.`);
+      loadTeachers();
+    } catch (err) {
+      setError(err.message || "Failed to resend credentials.");
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -172,9 +198,16 @@ export default function TeacherManagement({ onUpdated }) {
     {
       title: "Account Status",
       key: "status",
-      render: (status) => {
-        const isPending = status === "pending_password_setup";
-        const isDisabled = status === "disabled";
+      render: (_, t) => {
+        if (t.invitedNotSignedIn) {
+          return (
+            <Badge variant="warning" dot size="sm">
+              Invited, not yet signed in
+            </Badge>
+          );
+        }
+        const isPending = t.status === "pending_password_setup";
+        const isDisabled = t.status === "disabled";
         return (
           <Badge
             variant={isDisabled ? "neutral" : isPending ? "warning" : "success"}
@@ -191,7 +224,16 @@ export default function TeacherManagement({ onUpdated }) {
       key: "actions",
       align: "right",
       render: (_, teacher) => (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px" }}>
+          <Button
+            variant="outline"
+            size="xs"
+            loading={resendingId === (teacher.id || teacher._id)}
+            onClick={() => handleResendCredentials(teacher)}
+            style={{ fontSize: "0.78rem", padding: "4px 8px" }}
+          >
+            Resend credentials
+          </Button>
           <IconButton
             icon={<TrashIcon size={15} />}
             title={`Delete ${teacher.name || teacher.email}`}
@@ -380,6 +422,12 @@ export default function TeacherManagement({ onUpdated }) {
           </Button>
         </div>
       </Modal>
+
+      <CredentialsModal
+        isOpen={Boolean(credentialsModalData)}
+        onClose={() => setCredentialsModalData(null)}
+        credentials={credentialsModalData}
+      />
     </section>
   );
 }

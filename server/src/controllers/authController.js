@@ -50,6 +50,8 @@ function canUseAdminBootstrapRoute(req) {
   return providedSecret === ADMIN_BOOTSTRAP_SECRET;
 }
 
+const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+
 async function sendOtp(req, res) {
   const { email, operation } = req.body;
 
@@ -70,6 +72,44 @@ async function sendOtp(req, res) {
       return res.status(400).json({ error: "Email already registered" });
     }
 
+    const { fullName, name, username, gender, password } = req.body;
+    const studentName = (fullName || name || "").trim();
+    if (!studentName || studentName.length < 2 || studentName.length > 60) {
+      return res.status(400).json({ error: "Full name is required (2 to 60 characters)." });
+    }
+
+    const studentUsername = (username || "").trim().toLowerCase();
+    if (!studentUsername || !/^[a-z][a-z0-9_.]{2,23}$/.test(studentUsername)) {
+      return res.status(400).json({
+        error: "Username must be 3 to 24 characters, start with a letter, and contain only lowercase letters, digits, underscores, or dots.",
+      });
+    }
+
+    const reservedUsernames = ["admin", "root", "support", "rca", "moderator", "system", "teacher", "student", "faculty"];
+    if (reservedUsernames.includes(studentUsername)) {
+      return res.status(400).json({ error: "This username is reserved. Please choose another." });
+    }
+
+    if (!gender || !["male", "female"].includes(String(gender).toLowerCase())) {
+      return res.status(400).json({ error: "Gender is required and must be either 'male' or 'female'." });
+    }
+
+    if (!req.body.class) {
+      return res.status(400).json({ error: "Class is required." });
+    }
+
+    const normalizedClass = normalizeClass(req.body.class);
+    if (!normalizedClass) {
+      return res.status(400).json({ error: "Invalid cohort class selected." });
+    }
+
+    if (password) {
+      const passwordCheck = validatePasswordStrength(password);
+      if (!passwordCheck.valid) {
+        return res.status(400).json({ error: passwordCheck.message });
+      }
+    }
+
     const pendingSignups = getPendingSignupsCollection();
     const existingPending = await pendingSignups.findOne({ email: normalizedEmail });
 
@@ -85,33 +125,21 @@ async function sendOtp(req, res) {
       }
     }
 
-    // Optional profile validation for signup
-    if (req.body.password) {
-      const passwordCheck = validatePasswordStrength(req.body.password);
-      if (!passwordCheck.valid) {
-        return res.status(400).json({ error: passwordCheck.message });
-      }
-    }
-
-    if (req.body.gender && !["male", "female"].includes(String(req.body.gender).toLowerCase())) {
-      return res.status(400).json({ error: "Gender must be either 'male' or 'female'." });
-    }
-
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
-    const hashedPassword = req.body.password
-      ? await bcrypt.hash(req.body.password, 10)
+    const hashedPassword = password
+      ? await bcrypt.hash(password, 10)
       : existingPending?.password || null;
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     const pendingDoc = {
       email: normalizedEmail,
-      fullName: (req.body.fullName || req.body.name || existingPending?.fullName || "").trim(),
-      username: (req.body.username || existingPending?.username || normalizedEmail.split("@")[0]).trim(),
+      fullName: studentName,
+      username: studentUsername,
       password: hashedPassword,
-      class: normalizeClass(req.body.class || existingPending?.class || "Y1A"),
-      gender: req.body.gender || existingPending?.gender || "female",
+      class: normalizedClass,
+      gender: String(gender).toLowerCase(),
       hashedOtp,
       attempts: 0,
       expiresAt,
@@ -125,19 +153,8 @@ async function sendOtp(req, res) {
       { upsert: true }
     );
 
-    // Keep legacy OTP collection updated as fallback
-    const otpCollection = getOtpCollection();
-    await otpCollection.deleteMany({ email: normalizedEmail, operation: "signup" });
-    await otpCollection.insertOne({
-      email: normalizedEmail,
-      code: otp,
-      operation: "signup",
-      expiresAt: Date.now() + 15 * 60 * 1000,
-    });
-
     try {
       const { previewUrl, isReal } = await sendVerificationEmail(normalizedEmail, otp);
-      console.log(`[OTP] Generated signup OTP for ${normalizedEmail}: ${otp}`);
 
       return res.json({
         message: isReal
@@ -147,8 +164,9 @@ async function sendOtp(req, res) {
         expiresAt: expiresAt.toISOString(),
       });
     } catch (err) {
-      console.error("[OTP_ERROR] Failed to send signup OTP email:", err);
-      if (NODE_ENV !== "production") {
+      console.error("[OTP_ERROR] Failed to send signup OTP email:", err.message);
+      const currentEnv = process.env.NODE_ENV || NODE_ENV || "production";
+      if (currentEnv !== "production") {
         return res.json({
           message: "Verification email failed to send, but check server logs for the code.",
           error: err.message,
@@ -157,7 +175,7 @@ async function sendOtp(req, res) {
         });
       }
       return res.status(500).json({
-        error: "Failed to send verification email. Please try again later.",
+        error: "We could not send the email right now. Please try again in a minute.",
       });
     }
   }
@@ -171,6 +189,7 @@ async function sendOtp(req, res) {
 
   await cleanExpiredOtps();
   const otp = generateOtp();
+  const hashedCode = await bcrypt.hash(otp, 10);
   const expiresAt = Date.now() + 10 * 60 * 1000;
 
   const otpCollection = getOtpCollection();
@@ -180,14 +199,13 @@ async function sendOtp(req, res) {
   });
   await otpCollection.insertOne({
     email: normalizedEmail,
-    code: otp,
+    hashedCode,
     operation,
     expiresAt,
   });
 
   try {
     const { previewUrl, isReal } = await sendVerificationEmail(normalizedEmail, otp);
-    console.log(`[OTP] Generated OTP for ${normalizedEmail} (${operation}): ${otp}`);
 
     return res.json({
       message: isReal
@@ -196,16 +214,17 @@ async function sendOtp(req, res) {
       previewUrl,
     });
   } catch (err) {
-    console.error("[OTP_ERROR] Detailed OTP email error:", err);
-    if (NODE_ENV !== "production") {
+    console.error("[OTP_ERROR] Failed to send OTP email:", err.message);
+    const currentEnv = process.env.NODE_ENV || NODE_ENV || "production";
+    if (currentEnv !== "production") {
       return res.json({
-        message: "OTP email failed to send, but check server logs for the code.",
+        message: "OTP email failed to send in dev mode.",
         error: err.message,
       });
     }
 
     return res.status(500).json({
-      error: "Failed to send OTP email. Please try again later.",
+      error: "We could not send the email right now. Please try again in a minute.",
     });
   }
 }
@@ -229,6 +248,8 @@ async function forgotPassword(req, res) {
 
   const user = await findUserByEmail(email);
   if (!user) {
+    // Timing defense: perform dummy comparison so response time matches active user lookup
+    await bcrypt.compare("dummy_password", DUMMY_HASH);
     return res.json({
       message:
         "If this email is registered, you'll receive a password reset link shortly.",
@@ -266,8 +287,9 @@ async function forgotPassword(req, res) {
       previewUrl,
     });
   } catch (err) {
-    console.error(" Password reset email failed:", err);
-    if (!isRealSmtpConfigured()) {
+    console.error("[RESET_ERROR] Password reset email failed:", err.message);
+    const currentEnv = process.env.NODE_ENV || NODE_ENV || "production";
+    if (currentEnv !== "production") {
       const resetUrl = buildPasswordSetupUrl(getFrontendBaseUrl(req), token);
       return res.json({
         message:
@@ -276,8 +298,7 @@ async function forgotPassword(req, res) {
       });
     }
     return res.status(500).json({
-      error:
-        "Failed to send password reset email. Please try again later. Verify server SMTP logs for details.",
+      error: "We could not send the email right now. Please try again in a minute.",
     });
   }
 }
@@ -423,98 +444,7 @@ async function signup(req, res) {
   const pendingSignups = getPendingSignupsCollection();
   const pending = await pendingSignups.findOne({ email: normalizedEmail });
 
-  if (pending) {
-    if (pending.expiresAt && new Date(pending.expiresAt) <= new Date()) {
-      return res.status(400).json({
-        error: "Verification code has expired. Please request a new code.",
-        codeExpired: true,
-      });
-    }
-
-    if (pending.attempts >= 5) {
-      await pendingSignups.deleteOne({ email: normalizedEmail });
-      return res.status(400).json({
-        error: "Too many invalid attempts. This code has been invalidated. Please request a new code.",
-        codeInvalidated: true,
-      });
-    }
-
-    const match = await bcrypt.compare(String(otp).trim(), pending.hashedOtp);
-    if (!match) {
-      await pendingSignups.updateOne(
-        { email: normalizedEmail },
-        { $inc: { attempts: 1 } }
-      );
-      const remaining = 5 - (pending.attempts + 1);
-      if (remaining <= 0) {
-        await pendingSignups.deleteOne({ email: normalizedEmail });
-        return res.status(400).json({
-          error: "Too many invalid attempts. This code has been invalidated. Please request a new code.",
-          codeInvalidated: true,
-          remainingAttempts: 0,
-        });
-      }
-      return res.status(400).json({
-        error: `Incorrect verification code. ${remaining} attempt(s) remaining.`,
-        remainingAttempts: remaining,
-      });
-    }
-
-    // Hash password from request if pending had no password yet
-    let finalPasswordHash = pending.password;
-    if (!finalPasswordHash && password) {
-      const passwordCheck = validatePasswordStrength(password);
-      if (!passwordCheck.valid) {
-        return res.status(400).json({ error: passwordCheck.message });
-      }
-      finalPasswordHash = await bcrypt.hash(password, 10);
-    }
-
-    if (!finalPasswordHash) {
-      return res.status(400).json({ error: "Password is required for registration." });
-    }
-
-    const resolvedRole = resolveRole(normalizedEmail, "student");
-    const user = {
-      id: Date.now().toString(),
-      email: normalizedEmail,
-      name: pending.fullName || req.body.fullName || req.body.name || pending.username,
-      username: pending.username || (username ? username.trim() : normalizedEmail.split("@")[0]),
-      password: finalPasswordHash,
-      role: resolvedRole,
-      class: normalizeClass(pending.class || req.body.class || "Y1A"),
-      gender: pending.gender || req.body.gender || undefined,
-      status: "active",
-      createdAt: new Date().toISOString(),
-    };
-
-    await users.insertOne(user);
-    await pendingSignups.deleteOne({ email: normalizedEmail });
-
-    // Clean legacy OTP collection
-    const otpCollection = getOtpCollection();
-    await otpCollection.deleteMany({
-      email: normalizedEmail,
-      operation: "signup",
-    });
-
-    return res.json({
-      message: "Account created successfully!",
-      role: user.role,
-      email: normalizedEmail,
-      username: user.username,
-    });
-  }
-
-  // Fallback for legacy OTP flow if pending_signups has no record
-  const otpCollection = getOtpCollection();
-  await cleanExpiredOtps();
-  const otpRecord = await otpCollection.findOne({
-    email: normalizedEmail,
-    operation: "signup",
-  });
-
-  if (!otpRecord || otpRecord.code !== String(otp).trim()) {
+  if (!pending) {
     return res.status(400).json({
       error: "No pending registration found or code expired. Please request a new code.",
       requiresOtp: true,
@@ -522,37 +452,84 @@ async function signup(req, res) {
     });
   }
 
-  if (!password) {
-    return res.status(400).json({ error: "Password is required to finish registration." });
+  if (pending.expiresAt && new Date(pending.expiresAt) <= new Date()) {
+    return res.status(400).json({
+      error: "Verification code has expired. Please request a new code.",
+      codeExpired: true,
+    });
   }
 
-  const passwordCheck = validatePasswordStrength(password);
-  if (!passwordCheck.valid) {
-    return res.status(400).json({ error: passwordCheck.message });
+  if (pending.attempts >= 5) {
+    await pendingSignups.deleteOne({ email: normalizedEmail });
+    return res.status(400).json({
+      error: "Too many invalid attempts. This code has been invalidated. Please request a new code.",
+      codeInvalidated: true,
+    });
   }
 
-  await otpCollection.deleteMany({
-    email: normalizedEmail,
-    operation: "signup",
-  });
+  const match = await bcrypt.compare(String(otp).trim(), pending.hashedOtp);
+  if (!match) {
+    await pendingSignups.updateOne(
+      { email: normalizedEmail },
+      { $inc: { attempts: 1 } }
+    );
+    const remaining = 5 - (pending.attempts + 1);
+    if (remaining <= 0) {
+      await pendingSignups.deleteOne({ email: normalizedEmail });
+      return res.status(400).json({
+        error: "Too many invalid attempts. This code has been invalidated. Please request a new code.",
+        codeInvalidated: true,
+        remainingAttempts: 0,
+      });
+    }
+    return res.status(400).json({
+      error: `Incorrect verification code. ${remaining} attempt(s) remaining.`,
+      remainingAttempts: remaining,
+    });
+  }
 
-  const hashed = await bcrypt.hash(password, 10);
+  // Hash password from request if pending had no password yet
+  let finalPasswordHash = pending.password;
+  if (!finalPasswordHash && password) {
+    const passwordCheck = validatePasswordStrength(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ error: passwordCheck.message });
+    }
+    finalPasswordHash = await bcrypt.hash(password, 10);
+  }
+
+  if (!finalPasswordHash) {
+    return res.status(400).json({ error: "Password is required for registration." });
+  }
+
+  const finalClass = pending.class || normalizeClass(req.body.class);
+  if (!finalClass) {
+    return res.status(400).json({ error: "Cohort class is required." });
+  }
+
+  const finalGender = pending.gender || req.body.gender;
+  if (!finalGender || !["male", "female"].includes(String(finalGender).toLowerCase())) {
+    return res.status(400).json({ error: "Gender is required and must be either 'male' or 'female'." });
+  }
+
+  const resolvedRole = resolveRole(normalizedEmail, "student");
   const user = {
     id: Date.now().toString(),
     email: normalizedEmail,
-    name: (req.body.fullName || req.body.name || username || "").trim(),
-    username: (username || normalizedEmail.split("@")[0]).trim(),
-    password: hashed,
-    role: resolveRole(normalizedEmail, "student"),
-    class: normalizeClass(req.body.class),
-    gender: req.body.gender || undefined,
+    name: pending.fullName || (req.body.fullName || req.body.name || "").trim() || pending.username,
+    username: pending.username || (username ? username.trim().toLowerCase() : normalizedEmail.split("@")[0]),
+    password: finalPasswordHash,
+    role: resolvedRole,
+    class: finalClass,
+    gender: String(finalGender).toLowerCase(),
     status: "active",
     createdAt: new Date().toISOString(),
   };
 
   await users.insertOne(user);
+  await pendingSignups.deleteOne({ email: normalizedEmail });
 
-  res.json({
+  return res.json({
     message: "Account created successfully!",
     role: user.role,
     email: normalizedEmail,
@@ -562,15 +539,40 @@ async function signup(req, res) {
 
 async function login(req, res) {
   const { password } = req.body;
-  const email = req.body.email || req.body.identifier;
+  const identifier = (req.body.email || req.body.identifier || "").trim().toLowerCase();
 
-  if (!email || !password) {
+  if (!identifier || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
-  const user = await findUserByEmail(email);
+  const clientIp = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1";
+
+  // Lockout check (15 minutes, 5 attempts, per email and IP)
+  const lockout = await checkFailedAttempts(identifier, clientIp);
+  if (lockout.locked) {
+    res.set("Retry-After", String(lockout.retryAfterSeconds));
+    return res.status(429).json({
+      error: `Too many failed login attempts. Please try again in ${lockout.remainingMinutes} minute(s).`,
+      retryAfter: lockout.retryAfterSeconds,
+    });
+  }
+
+  const user = await findUserByEmail(identifier);
   if (!user) {
-    return res.status(400).json({ error: "User not found" });
+    // Timing defense: run dummy comparison so execution time matches real bcrypt hash
+    await bcrypt.compare(password, DUMMY_HASH);
+    const failure = await recordFailedAttempt(req, identifier, clientIp, null);
+    if (failure.locked) {
+      res.set("Retry-After", String(failure.retryAfterSeconds));
+      return res.status(429).json({
+        error: `Account locked. Too many failed login attempts. Please try again in ${failure.remainingMinutes} minute(s).`,
+        retryAfter: failure.retryAfterSeconds,
+      });
+    }
+    return res.status(400).json({
+      error: "Incorrect email or password",
+      attemptsLeft: failure.attemptsLeft,
+    });
   }
 
   if (user.status === "disabled") {
@@ -583,37 +585,38 @@ async function login(req, res) {
     });
   }
 
-  const normalizedEmail = normalizeEmail(user.email);
-  const initialAttempts = await checkFailedAttempts(normalizedEmail);
-
-  if (initialAttempts >= 3) {
-    return res.status(429).json({
-      error:
-        "Too many failed login attempts. Please try again later or check your email for further instructions.",
+  if (user.invitedNotSignedIn && user.tempPasswordExpiresAt && Date.now() > user.tempPasswordExpiresAt) {
+    return res.status(403).json({
+      error: "Your temporary credentials have expired. Please ask an administrator to resend your credentials.",
     });
   }
 
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
-    const { attemptsLeft } = await recordFailedAttempt(
-      req,
-      normalizedEmail,
-      user,
-      initialAttempts
-    );
-
+    const failure = await recordFailedAttempt(req, user.email, clientIp, user);
+    if (failure.locked) {
+      res.set("Retry-After", String(failure.retryAfterSeconds));
+      return res.status(429).json({
+        error: `Account locked. Too many failed login attempts. Please try again in ${failure.remainingMinutes} minute(s).`,
+        retryAfter: failure.retryAfterSeconds,
+      });
+    }
     return res.status(400).json({
-      error: "Wrong password",
-      attemptsLeft,
+      error: "Incorrect email or password",
+      attemptsLeft: failure.attemptsLeft,
     });
   }
 
-  await clearFailedAttemptsForEmail(normalizedEmail);
+  await clearFailedAttemptsForEmail(user.email, clientIp);
 
-  // Role is decided by the email lists in config/roles.js
-  const role = resolveRole(normalizedEmail, user.role);
+  const users = getUsersCollection();
+  if (user.invitedNotSignedIn) {
+    await users.updateOne({ id: user.id }, { $set: { invitedNotSignedIn: false } });
+  }
+
+  // Role resolution
+  const role = resolveRole(user.email, user.role);
   if (role !== user.role) {
-    const users = getUsersCollection();
     await users.updateOne(
       { email: user.email },
       { $set: { role, updatedAt: new Date().toISOString() } }
@@ -624,25 +627,68 @@ async function login(req, res) {
     {
       id: user.id,
       email: user.email,
-      username: user.name || user.username,
+      username: user.username || user.name,
       role,
     },
     JWT_SECRET,
     { expiresIn: "12h" }
   );
 
-  res.json({
+  return res.json({
     token,
     email: user.email,
-    username: user.name || user.username,
+    username: user.username || user.name,
+    name: user.name || user.username,
     role,
+    mustChangePassword: Boolean(user.mustChangePassword),
     user: {
       id: user.id,
       email: user.email,
-      username: user.name || user.username,
+      username: user.username || user.name,
+      name: user.name || user.username,
       role,
+      mustChangePassword: Boolean(user.mustChangePassword),
     },
   });
+}
+
+async function changePassword(req, res) {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Current password and new password are required." });
+  }
+
+  const { validatePassword } = require("../utils/validation");
+  const validation = validatePassword(newPassword);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.message });
+  }
+
+  const users = getUsersCollection();
+  const user = await users.findOne({ id: req.user.id });
+  if (!user || !user.password) {
+    return res.status(404).json({ error: "User account not found." });
+  }
+
+  const matches = await bcrypt.compare(currentPassword, user.password);
+  if (!matches) {
+    return res.status(400).json({ error: "Current password does not match." });
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await users.updateOne(
+    { id: user.id },
+    {
+      $set: {
+        password: hashedPassword,
+        mustChangePassword: false,
+        tempPasswordExpiresAt: null,
+        updatedAt: new Date().toISOString(),
+      },
+    }
+  );
+
+  return res.json({ message: "Password updated successfully." });
 }
 
 async function deleteAccount(req, res) {
@@ -658,51 +704,6 @@ async function deleteAccount(req, res) {
   res.json({ message: "Account deleted successfully" });
 }
 
-async function makeAdmin(req, res) {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ error: "Email required" });
-  }
-
-  if (!canUseAdminBootstrapRoute(req)) {
-    return res.status(403).json({
-      error:
-        "Admin bootstrap is disabled. Set ADMIN_BOOTSTRAP_SECRET in production to enable it.",
-    });
-  }
-
-  const users = getUsersCollection();
-  const result = await users.updateOne(
-    { email: normalizeEmail(email) },
-    {
-      $set: {
-        role: "admin",
-        status: "active",
-        updatedAt: new Date().toISOString(),
-      },
-    }
-  );
-
-  if (result.matchedCount === 0) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  res.json({ message: "User is now admin" });
-}
-
-async function clearFailedAttemptsTest(req, res) {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "Email required" });
-
-  const normalizedEmail = normalizeEmail(email);
-  const deleteResult = await clearFailedAttemptsForEmail(normalizedEmail);
-
-  res.json({
-    message: `Cleared ${deleteResult.deletedCount} failed attempts for ${normalizedEmail}`,
-  });
-}
-
 module.exports = {
   sendOtp,
   sendTeacherOtp,
@@ -710,7 +711,6 @@ module.exports = {
   resetPassword,
   signup,
   login,
+  changePassword,
   deleteAccount,
-  makeAdmin,
-  clearFailedAttemptsTest,
 };

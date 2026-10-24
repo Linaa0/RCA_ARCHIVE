@@ -18,7 +18,7 @@ function getSubjectIcon() {
   };
 }
 
-function SubjectCard({ promotionId, subject }) {
+function SubjectCard({ promotionId, subject, assignmentChip }) {
   const [count, setCount] = useState(null);
   const iconMeta = getSubjectIcon();
 
@@ -46,6 +46,26 @@ function SubjectCard({ promotionId, subject }) {
         </div>
         <h3>{subject}</h3>
       </div>
+      {assignmentChip && (
+        <span
+          style={{
+            position: "relative",
+            zIndex: 1,
+            display: "inline-block",
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            background: "rgba(239, 68, 68, 0.12)",
+            color: "var(--color-danger, #EF4444)",
+            border: "1px solid rgba(239, 68, 68, 0.25)",
+            padding: "2px 8px",
+            borderRadius: "999px",
+            marginBottom: "8px",
+            width: "fit-content",
+          }}
+        >
+          {assignmentChip}
+        </span>
+      )}
       <p style={{ position: "relative", zIndex: 1 }}>{count === null ? "0 file(s)" : `${count} file(s)`}</p>
       <div className="subject-card-footer" style={{ position: "relative", zIndex: 1 }}>
         <span className="subject-link-text">Past Papers and Notes</span>
@@ -63,6 +83,36 @@ function SubjectCard({ promotionId, subject }) {
 function SubjectsList({ subjects = [], activePromotion, activeYear }) {
   const promoId = typeof activePromotion === "object" ? activePromotion?.id : activePromotion || (activeYear ? `Y${activeYear}` : "Y1");
   const promoLabel = typeof activePromotion === "object" ? activePromotion?.label : (activePromotion === "Y1GenAI" ? "Year 1 GenAI" : (activeYear ? `Year ${activeYear}` : activePromotion || "Curriculum"));
+
+  const [assignments, setAssignments] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    api.get("/assignments")
+      .then(({ data }) => {
+        if (active) {
+          setAssignments(Array.isArray(data?.assignments) ? data.assignments : []);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const getChipForSubject = (subj) => {
+    const sName = (subj || "").toLowerCase();
+    const match = assignments.find((a) => {
+      const aSubj = (a.subject || "").toLowerCase();
+      const notExpired = new Date(a.deadline) > new Date();
+      return aSubj === sName && notExpired;
+    });
+    if (!match) return null;
+    const target = (match.classes && match.classes[0]) || match.targetClass || "Active";
+    const d = new Date(match.deadline);
+    const month = d.toLocaleString("default", { month: "short" });
+    return `${target}, due ${d.getDate()} ${month}`;
+  };
 
   return (
     <div className="subjects-wrapper-grid-only" id="subjects">
@@ -82,7 +132,12 @@ function SubjectsList({ subjects = [], activePromotion, activeYear }) {
 
       <div className="subjects-grid">
         {subjects.map((subject, index) => (
-          <SubjectCard key={`${promoId}-${index}`} promotionId={promoId} subject={subject} />
+          <SubjectCard
+            key={`${promoId}-${index}`}
+            promotionId={promoId}
+            subject={subject}
+            assignmentChip={getChipForSubject(subject)}
+          />
         ))}
       </div>
     </div>

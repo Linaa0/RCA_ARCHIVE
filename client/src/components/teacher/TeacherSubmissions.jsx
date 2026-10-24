@@ -3,7 +3,7 @@ import api from "../../services/api";
 import Button from "../ui/Button";
 import { DownloadIcon } from "../ui/Icons";
 import { formatDateTime, errorMessage } from "../assignments/common";
-import { downloadFrom, fetchBlob, saveBlob } from "../assignments/fileUtils";
+import { downloadFrom, fetchBlob, saveBlob, getBlobErrorMessage } from "../assignments/fileUtils";
 import { DEMO_SUBMISSION_CLASSES, DEMO_SUBMISSIONS } from "./demoData";
 import "../assignments/assignments.css";
 
@@ -70,34 +70,18 @@ export default function TeacherSubmissions() {
       } else {
         saveBlob(new Blob([row.text || ""], { type: "text/plain" }), `${row.studentName} - ${row.assignmentTitle}.txt`);
       }
-    } catch {
-      setError("Download failed.");
+    } catch (err) {
+      const msg = await getBlobErrorMessage(err, "This file is no longer available. Ask the student to submit again.");
+      setError(msg);
     }
   };
 
-  const viewSubmission = async (row) => {
-    const previewTab = window.open("about:blank", "_blank");
-    if (!previewTab) {
-      setError("Allow pop-ups to open the submission in a new tab.");
-      return;
-    }
-    previewTab.opener = null;
-    previewTab.document.title = row.assignmentTitle;
-    previewTab.document.body.textContent = "Opening submission…";
-
-    try {
-      if (!row.hasFile) {
-        const page = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(row.assignmentTitle)}</title><style>body{font:16px/1.7 system-ui,sans-serif;max-width:900px;margin:48px auto;padding:0 24px;color:#1b2142}h1{font-size:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}</style></head><body><h1>${escapeHtml(row.assignmentTitle)}</h1><pre>${escapeHtml(row.text || "No written response was included.")}</pre></body></html>`;
-        previewTab.location.href = URL.createObjectURL(new Blob([page], { type: "text/html" }));
-        return;
-      }
-
-      const blob = await fetchBlob(`/submissions/${row.id}/file?inline=1`);
-      previewTab.location.href = URL.createObjectURL(blob);
-    } catch {
-      previewTab.close();
-      setError("Could not open this submission.");
-    }
+  const viewSubmission = (row) => {
+    window.open(
+      `/view/${row.id}?type=submission&name=${encodeURIComponent(row.fileName || "")}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   const downloadAll = async () => {
@@ -106,8 +90,8 @@ export default function TeacherSubmissions() {
     try {
       await downloadFrom(`/teacher/submissions/download-all?class=${encodeURIComponent(selected.key)}`, `${selected.label} submissions.zip`);
     } catch (err) {
-      // blob responses hide the JSON error, so use a generic message
-      setError(err?.response?.status === 413 ? "Too many files for one download. Download them one by one." : "Could not download all files.");
+      const msg = await getBlobErrorMessage(err, "Could not download all files.");
+      setError(msg);
     } finally {
       setBusy(false);
     }

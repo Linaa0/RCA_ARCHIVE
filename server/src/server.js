@@ -1,6 +1,7 @@
 const app = require("./app");
 const {
   PORT,
+  MONGO_DB_NAME,
   SMTP_HOST,
   SMTP_PORT,
   SMTP_USER,
@@ -16,7 +17,7 @@ const {
 async function startServer() {
   try {
     await connectToMongo();
-    console.log("Connected to MongoDB successfully!");
+    console.log(`Connected to MongoDB successfully! Database: ${MONGO_DB_NAME}`);
 
     console.log("Server Configuration:");
     console.log(`   - PORT: ${PORT}`);
@@ -40,7 +41,12 @@ async function startServer() {
       }
     }
 
-    const server = app.listen(PORT, () => {
+    const http = require("http");
+    const { initSocketServer } = require("./services/socketService");
+    const server = http.createServer(app);
+    initSocketServer(server);
+
+    server.listen(PORT, () => {
       console.log(`\n[OK] RCA Backend running on http://localhost:${PORT}`);
     });
 

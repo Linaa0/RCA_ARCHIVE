@@ -1,23 +1,34 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Button from "./ui/Button";
 import Badge from "./ui/Badge";
 import Input from "./ui/Input";
-import Select from "./ui/Select";
 import Avatar from "./ui/Avatar";
-import { LogoutIcon } from "./ui/Icons";
-import { RCA_CLASSES } from "./ui/ClassChips";
 import { clearAuthStorage, persistAuth } from "../utils/auth";
-import { applyTheme, getInitialTheme } from "../utils/theme";
+import { applyTheme, getThemePreference } from "../utils/theme";
 import { errorMessage } from "./assignments/common";
-import studentGirl from "../assets/figures/student-girl.png";
-import studentBoy from "../assets/figures/student-boy.png";
+
+function computePasswordStrength(pw) {
+  if (!pw) return { score: 0, label: "", color: "transparent" };
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+
+  if (score <= 1) return { score: 1, label: "Weak", color: "#EF4444" };
+  if (score === 2) return { score: 2, label: "Fair", color: "#F59E0B" };
+  if (score <= 4) return { score: 3, label: "Good", color: "#3B82F6" };
+  return { score: 4, label: "Strong", color: "#10B981" };
+}
 
 export default function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [cls, setCls] = useState("");
   const [nameMsg, setNameMsg] = useState({ type: "", text: "" });
   const [savingName, setSavingName] = useState(false);
@@ -34,12 +45,22 @@ export default function Profile() {
   const [pwMsg, setPwMsg] = useState({ type: "", text: "" });
   const [savingPw, setSavingPw] = useState(false);
 
-  const [currentTheme, setCurrentTheme] = useState(() => {
-    if (typeof document !== "undefined") {
-      return document.documentElement.getAttribute("data-theme") || getInitialTheme();
-    }
-    return "light";
+  const [themePref, setThemePref] = useState(() => getThemePreference());
+
+  // Notification settings
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem("rca_notifications_prefs");
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return {
+      inAppAlerts: true,
+      dueReminders: true,
+      emailNotifications: true,
+    };
   });
+  const [notifMsg, setNotifMsg] = useState({ type: "", text: "" });
+  const [savingNotif, setSavingNotif] = useState(false);
 
   useEffect(() => {
     api
@@ -47,39 +68,38 @@ export default function Profile() {
       .then(({ data }) => {
         setUser(data.user);
         setName(data.user.name || data.user.username || "");
+        setUsername(data.user.username || "");
         setCls(data.user.class || "");
+        if (data.user.gender) {
+          setGender(data.user.gender);
+          localStorage.setItem("rca_user_gender", data.user.gender);
+        }
+        if (data.user.notifications) {
+          setNotifications(data.user.notifications);
+        }
       })
       .catch((err) => setNameMsg({ type: "error", text: errorMessage(err, "Could not load your profile.") }));
   }, []);
 
   const handleThemeChange = (newTheme) => {
-    setCurrentTheme(newTheme);
+    setThemePref(newTheme);
     applyTheme(newTheme);
   };
 
-  const handleGenderChange = async (newGender) => {
-    setGender(newGender);
-    try {
-      localStorage.setItem("rca_user_gender", newGender);
-      window.dispatchEvent(new Event("profile-gender-changed"));
-      await api.put("/me", { gender: newGender });
-      setUser((prev) => (prev ? { ...prev, gender: newGender } : prev));
-    } catch (e) {
-      console.warn("Could not persist gender to profile:", e.message);
-    }
-  };
-
-  const saveName = async (e) => {
+  const saveDetails = async (e) => {
     e.preventDefault();
     setNameMsg({ type: "", text: "" });
     setSavingName(true);
     try {
-      const payload = { name };
-      if (user?.role === "student" && cls) payload.class = cls;
+      const payload = { name, username };
       const { data } = await api.put("/me", payload);
-      persistAuth({ username: data.name });
-      setUser((u) => ({ ...u, name: data.name, username: data.name, class: data.class || u.class }));
-      setNameMsg({ type: "success", text: "Profile details updated." });
+      persistAuth({ username: data.username || data.name });
+      setUser((u) => ({
+        ...u,
+        name: data.name,
+        username: data.username,
+      }));
+      setNameMsg({ type: "success", text: "Profile details updated successfully." });
     } catch (err) {
       setNameMsg({ type: "error", text: errorMessage(err) });
     } finally {
@@ -103,9 +123,19 @@ export default function Profile() {
     }
   };
 
-  const logout = () => {
-    clearAuthStorage();
-    navigate("/login");
+  const saveNotifications = async (e) => {
+    e.preventDefault();
+    setNotifMsg({ type: "", text: "" });
+    setSavingNotif(true);
+    try {
+      localStorage.setItem("rca_notifications_prefs", JSON.stringify(notifications));
+      await api.put("/me", { notifications });
+      setNotifMsg({ type: "success", text: "Notification preferences saved." });
+    } catch (err) {
+      setNotifMsg({ type: "error", text: errorMessage(err) });
+    } finally {
+      setSavingNotif(false);
+    }
   };
 
   if (!user) {
@@ -117,10 +147,11 @@ export default function Profile() {
   }
 
   const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+  const pwStrength = computePasswordStrength(newPassword);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-      {/* ── Page Header ── */}
+      {/* Page Header */}
       <header
         style={{
           display: "flex",
@@ -148,31 +179,19 @@ export default function Profile() {
               fontWeight: 700,
               color: "var(--color-text-primary)",
               marginTop: "4px",
-              marginBottom: "4px",
               letterSpacing: "-0.02em",
             }}
           >
-            Profile and Preferences
+            Settings & Profile
           </h1>
-          <p
-            style={{
-              fontSize: "0.92rem",
-              color: "var(--color-text-secondary)",
-              lineHeight: 1.45,
-              margin: 0,
-            }}
-          >
-            Manage your personal profile, credentials, and appearance preferences.
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.92rem", marginTop: "4px" }}>
+            Manage your account identity, security credentials, appearance theme, and notifications.
           </p>
         </div>
-
-        <Button variant="outline" size="sm" icon={<LogoutIcon size={16} />} onClick={logout}>
-          Log Out
-        </Button>
       </header>
 
-      {/* ── User ID Card ── */}
-      <div
+      {/* Account Overview Card */}
+      <section
         style={{
           background: "var(--color-surface)",
           borderRadius: "var(--radius-card)",
@@ -185,46 +204,38 @@ export default function Profile() {
           flexWrap: "wrap",
         }}
       >
-        <Avatar name={user.name || user.email} size="lg" variant="initials" />
+        <Avatar name={user.name || user.username} size="lg" />
         <div style={{ flex: 1, minWidth: "220px" }}>
-          <h2
-            style={{
-              fontSize: "1.35rem",
-              fontWeight: 700,
-              color: "var(--color-text-primary)",
-              margin: 0,
-              marginBottom: "4px",
-            }}
-          >
-            {user.name || user.username}
-          </h2>
-          <span style={{ fontSize: "0.88rem", color: "var(--color-text-secondary)", display: "block", marginBottom: "8px" }}>
-            {user.email}
-          </span>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <h2 style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
+              {user.name || user.username}
+            </h2>
             <Badge variant="indigo" size="sm">
               {roleLabel}
             </Badge>
-            {user.class && (
-              <Badge variant="neutral" size="sm">
-                Class {user.class}
+            {user.role === "student" && user.class && (
+              <Badge variant="info" size="sm">
+                Cohort {user.class}
               </Badge>
             )}
           </div>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.88rem", margin: "6px 0 0" }}>
+            {user.email} &bull; @{user.username || "username"}
+          </p>
         </div>
-      </div>
+      </section>
 
-      {/* ── 2-Column Settings Grid ── */}
+      {/* Two-Column Layout: Profile Details and Security */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
           gap: "24px",
         }}
       >
-        {/* Name and Cohort Form */}
+        {/* Profile Details Form */}
         <form
-          onSubmit={saveName}
+          onSubmit={saveDetails}
           style={{
             background: "var(--color-surface)",
             borderRadius: "var(--radius-card)",
@@ -237,7 +248,7 @@ export default function Profile() {
           }}
         >
           <h3 style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
-            Personal Details
+            Profile Details
           </h3>
 
           {nameMsg.text && (
@@ -264,25 +275,39 @@ export default function Profile() {
             required
           />
 
+          <Input
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            maxLength={30}
+            required
+          />
+
           {user.role === "student" && (
             <div>
-              <Select
+              <Input
                 label="Enrolled Class"
-                value={cls}
-                onChange={(e) => setCls(e.target.value)}
-                options={[
-                  { value: "", label: "Select your class..." },
-                  ...RCA_CLASSES.map((c) => ({
-                    value: c.id,
-                    label: `${c.label} (Year ${c.year})`,
-                  })),
-                ]}
+                value={cls ? `${cls} (Year ${cls.startsWith("Y") ? cls.charAt(1) : cls})` : "Not assigned"}
+                disabled
+                readOnly
               />
               <span style={{ fontSize: "0.78rem", color: "var(--color-text-tertiary)", marginTop: "4px", display: "block" }}>
-                Class assignments and peer materials are filtered by your cohort.
+                Class is assigned during registration and remains locked until annual promotion.
               </span>
             </div>
           )}
+
+          <div>
+            <Input
+              label="Gender"
+              value={gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : "Not specified"}
+              disabled
+              readOnly
+            />
+            <span style={{ fontSize: "0.78rem", color: "var(--color-text-tertiary)", marginTop: "4px", display: "block" }}>
+              Gender is set during registration and cannot be modified.
+            </span>
+          </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
             <Button type="submit" variant="primary" size="sm" loading={savingName}>
@@ -343,7 +368,31 @@ export default function Profile() {
               autoComplete="new-password"
               required
             />
-            <span style={{ fontSize: "0.78rem", color: "var(--color-text-tertiary)", marginTop: "4px", display: "block" }}>
+
+            {/* Password Strength Meter */}
+            {newPassword && (
+              <div style={{ marginTop: "8px" }}>
+                <div style={{ display: "flex", gap: "4px", height: "5px", marginBottom: "6px" }}>
+                  {[1, 2, 3, 4].map((step) => (
+                    <div
+                      key={step}
+                      style={{
+                        flex: 1,
+                        borderRadius: "2px",
+                        background: step <= pwStrength.score ? pwStrength.color : "var(--color-border)",
+                        transition: "background 0.3s ease",
+                      }}
+                    />
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.76rem" }}>
+                  <span style={{ color: "var(--color-text-tertiary)" }}>Password strength:</span>
+                  <span style={{ fontWeight: 700, color: pwStrength.color }}>{pwStrength.label}</span>
+                </div>
+              </div>
+            )}
+
+            <span style={{ fontSize: "0.78rem", color: "var(--color-text-tertiary)", marginTop: "6px", display: "block" }}>
               At least 8 characters with letters, numbers, and special characters.
             </span>
           </div>
@@ -356,7 +405,7 @@ export default function Profile() {
         </form>
       </div>
 
-      {/* ── Appearance & Theme Settings ── */}
+      {/* Appearance & Theme Settings (Light, Dark, System) */}
       <div
         style={{
           background: "var(--color-surface)",
@@ -370,177 +419,168 @@ export default function Profile() {
           Appearance Theme
         </h3>
         <p style={{ fontSize: "0.88rem", color: "var(--color-text-secondary)", marginBottom: "20px" }}>
-          Choose between clean light mode or high contrast dark mode for your working environment.
+          Choose your visual preference or sync automatically with your device system settings.
         </p>
 
-        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+          {/* Light Mode */}
           <button
             type="button"
             onClick={() => handleThemeChange("light")}
             style={{
-              flex: 1,
-              minWidth: "160px",
               padding: "16px",
               borderRadius: "var(--radius-card)",
-              border: currentTheme === "light" ? "2px solid var(--color-indigo-600)" : "1px solid var(--color-border)",
+              border: themePref === "light" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
               background: "var(--color-surface-subtle)",
               color: "var(--color-ink)",
               cursor: "pointer",
               textAlign: "left",
-              boxShadow: currentTheme === "light" ? "0 4px 14px rgba(63, 79, 168, 0.15)" : "none",
+              boxShadow: themePref === "light" ? "0 4px 14px rgba(63, 79, 168, 0.15)" : "none",
               transition: "all var(--transition-fast)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <strong style={{ fontSize: "0.95rem" }}>Light Mode</strong>
-              {currentTheme === "light" && <Badge variant="indigo" size="sm">Active</Badge>}
+              {themePref === "light" && <Badge variant="indigo" size="sm">Active</Badge>}
             </div>
             <span style={{ fontSize: "0.8rem", color: "var(--color-muted)" }}>
-              Standard lavender gray canvas with white surfaces.
+              Standard lavender gray canvas with crisp white surfaces.
             </span>
           </button>
 
+          {/* Dark Mode */}
           <button
             type="button"
             onClick={() => handleThemeChange("dark")}
             style={{
-              flex: 1,
-              minWidth: "160px",
               padding: "16px",
               borderRadius: "var(--radius-card)",
-              border: currentTheme === "dark" ? "2px solid var(--color-indigo-400)" : "1px solid var(--color-border)",
+              border: themePref === "dark" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
               background: "var(--color-surface-subtle)",
               color: "var(--color-ink)",
               cursor: "pointer",
               textAlign: "left",
-              boxShadow: currentTheme === "dark" ? "0 4px 14px rgba(91, 115, 224, 0.25)" : "none",
+              boxShadow: themePref === "dark" ? "0 4px 14px rgba(91, 115, 224, 0.25)" : "none",
               transition: "all var(--transition-fast)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <strong style={{ fontSize: "0.95rem" }}>Dark Mode</strong>
-              {currentTheme === "dark" && <Badge variant="indigo" size="sm">Active</Badge>}
+              {themePref === "dark" && <Badge variant="indigo" size="sm">Active</Badge>}
             </div>
             <span style={{ fontSize: "0.8rem", color: "var(--color-muted)" }}>
-              High contrast midnight canvas optimized for study sessions.
+              High contrast midnight canvas optimized for focused study.
+            </span>
+          </button>
+
+          {/* System Preference */}
+          <button
+            type="button"
+            onClick={() => handleThemeChange("system")}
+            style={{
+              padding: "16px",
+              borderRadius: "var(--radius-card)",
+              border: themePref === "system" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+              background: "var(--color-surface-subtle)",
+              color: "var(--color-ink)",
+              cursor: "pointer",
+              textAlign: "left",
+              boxShadow: themePref === "system" ? "0 4px 14px rgba(91, 115, 224, 0.25)" : "none",
+              transition: "all var(--transition-fast)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <strong style={{ fontSize: "0.95rem" }}>System Default</strong>
+              {themePref === "system" && <Badge variant="indigo" size="sm">Active</Badge>}
+            </div>
+            <span style={{ fontSize: "0.8rem", color: "var(--color-muted)" }}>
+              Automatically adapt to your operating system theme.
             </span>
           </button>
         </div>
       </div>
 
-      {/* ── Student Dashboard Figure Preference ── */}
-      {user.role === "student" && (
-        <div
-          style={{
-            background: "var(--color-surface)",
-            borderRadius: "var(--radius-card)",
-            padding: "28px 32px",
-            border: "1px solid var(--color-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <h3 style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "6px" }}>
-            Dashboard Student Figure
-          </h3>
-          <p style={{ fontSize: "0.88rem", color: "var(--color-text-secondary)", marginBottom: "20px" }}>
-            Select the illustration displayed on your dashboard greeting card.
-          </p>
+      {/* Notification Preferences */}
+      <form
+        onSubmit={saveNotifications}
+        style={{
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
+          padding: "28px 32px",
+          border: "1px solid var(--color-border)",
+          boxShadow: "var(--shadow-card)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}
+      >
+        <h3 style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
+          Notification Preferences
+        </h3>
+        <p style={{ fontSize: "0.88rem", color: "var(--color-text-secondary)", margin: "0 0 8px" }}>
+          Control which real-time alerts and email updates you receive.
+        </p>
 
-          <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => handleGenderChange("female")}
-              style={{
-                flex: 1,
-                minWidth: "180px",
-                padding: "16px",
-                borderRadius: "var(--radius-card)",
-                border: gender === "female" ? "2px solid var(--color-indigo-600)" : "1px solid var(--color-border)",
-                background: "var(--color-surface-subtle)",
-                color: "var(--color-ink)",
-                cursor: "pointer",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                boxShadow: gender === "female" ? "0 4px 14px rgba(63, 79, 168, 0.15)" : "none",
-                transition: "all var(--transition-fast)",
-              }}
-            >
-              <div
-                style={{
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "50%",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  border: "2px solid var(--color-surface)",
-                  background: "linear-gradient(135deg, rgba(91, 115, 224, 0.2) 0%, rgba(63, 79, 168, 0.1) 100%)",
-                }}
-              >
-                <img
-                  src={studentGirl}
-                  alt="Female Student Figure"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <strong style={{ fontSize: "0.95rem" }}>Female Figure</strong>
-                  {gender === "female" && <Badge variant="indigo" size="sm">Selected</Badge>}
-                </div>
-                <span style={{ fontSize: "0.78rem", color: "var(--color-muted)" }}>Default student figure</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleGenderChange("male")}
-              style={{
-                flex: 1,
-                minWidth: "180px",
-                padding: "16px",
-                borderRadius: "var(--radius-card)",
-                border: gender === "male" ? "2px solid var(--color-indigo-600)" : "1px solid var(--color-border)",
-                background: "var(--color-surface-subtle)",
-                color: "var(--color-ink)",
-                cursor: "pointer",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                boxShadow: gender === "male" ? "0 4px 14px rgba(63, 79, 168, 0.15)" : "none",
-                transition: "all var(--transition-fast)",
-              }}
-            >
-              <div
-                style={{
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "50%",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  border: "2px solid var(--color-surface)",
-                  background: "linear-gradient(135deg, rgba(91, 115, 224, 0.2) 0%, rgba(63, 79, 168, 0.1) 100%)",
-                }}
-              >
-                <img
-                  src={studentBoy}
-                  alt="Male Student Figure"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <strong style={{ fontSize: "0.95rem" }}>Male Figure</strong>
-                  {gender === "male" && <Badge variant="indigo" size="sm">Selected</Badge>}
-                </div>
-                <span style={{ fontSize: "0.78rem", color: "var(--color-muted)" }}>Alternate student figure</span>
-              </div>
-            </button>
+        {notifMsg.text && (
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "0.84rem",
+              fontWeight: 600,
+              background: notifMsg.type === "success" ? "rgba(16, 185, 129, 0.10)" : "rgba(239, 68, 68, 0.10)",
+              color: notifMsg.type === "success" ? "#10B981" : "#EF4444",
+              border: notifMsg.type === "success" ? "1px solid rgba(16, 185, 129, 0.25)" : "1px solid rgba(239, 68, 68, 0.25)",
+            }}
+          >
+            {notifMsg.text}
           </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", color: "var(--color-ink)", fontSize: "0.9rem" }}>
+            <input
+              type="checkbox"
+              checked={notifications.inAppAlerts}
+              onChange={(e) => setNotifications((prev) => ({ ...prev, inAppAlerts: e.target.checked }))}
+              style={{ width: "18px", height: "18px", accentColor: "var(--color-primary)" }}
+            />
+            <span>
+              <strong>Real-time In-App Toasts:</strong> Show floating toast popups for new papers and assignment activity.
+            </span>
+          </label>
+
+          <label style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", color: "var(--color-ink)", fontSize: "0.9rem" }}>
+            <input
+              type="checkbox"
+              checked={notifications.dueReminders}
+              onChange={(e) => setNotifications((prev) => ({ ...prev, dueReminders: e.target.checked }))}
+              style={{ width: "18px", height: "18px", accentColor: "var(--color-primary)" }}
+            />
+            <span>
+              <strong>Deadline Reminders:</strong> Receive unread alert notifications before assignment due dates.
+            </span>
+          </label>
+
+          <label style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", color: "var(--color-ink)", fontSize: "0.9rem" }}>
+            <input
+              type="checkbox"
+              checked={notifications.emailNotifications}
+              onChange={(e) => setNotifications((prev) => ({ ...prev, emailNotifications: e.target.checked }))}
+              style={{ width: "18px", height: "18px", accentColor: "var(--color-primary)" }}
+            />
+            <span>
+              <strong>Email Notifications:</strong> Receive email dispatches for password changes, credentials, and appeal updates.
+            </span>
+          </label>
         </div>
-      )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
+          <Button type="submit" variant="primary" size="sm" loading={savingNotif}>
+            Save Notification Preferences
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

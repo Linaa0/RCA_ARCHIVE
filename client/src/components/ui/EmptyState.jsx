@@ -1,6 +1,6 @@
 import React from "react";
 import Button from "./Button";
-import studentBoy from "../../assets/avatars/student-boy.svg";
+import { MaterialsIcon } from "./Icons";
 
 export default function EmptyState({
   title = "No papers found",
@@ -8,7 +8,6 @@ export default function EmptyState({
   actionText,
   onAction,
   icon,
-  useAvatar = false,
   className = "",
   style = {},
 }) {
@@ -30,70 +29,21 @@ export default function EmptyState({
         ...style,
       }}
     >
-      {useAvatar ? (
-        <div
-          style={{
-            width: "88px",
-            height: "88px",
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, #EEF0F6 0%, #E4E8FA 100%)",
-            border: "3px solid #FFFFFF",
-            boxShadow: "0 8px 20px rgba(63, 79, 168, 0.12)",
-            overflow: "hidden",
-            marginBottom: "18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <img
-            src={studentBoy}
-            alt="Student"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              transform: "scale(1.2) translateY(5%)",
-            }}
-          />
-        </div>
-      ) : icon ? (
-        <div
-          style={{
-            width: "60px",
-            height: "60px",
-            borderRadius: "18px",
-            background: "var(--color-indigo-50, #F4F6FD)",
-            color: "var(--color-indigo-700, #3F4FA8)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: "18px",
-          }}
-        >
-          {icon}
-        </div>
-      ) : (
-        <div
-          style={{
-            width: "60px",
-            height: "60px",
-            borderRadius: "18px",
-            background: "var(--color-indigo-50, #F4F6FD)",
-            color: "var(--color-indigo-700, #3F4FA8)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: "18px",
-          }}
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="9" y1="15" x2="15" y2="15" />
-          </svg>
-        </div>
-      )}
+      <div
+        style={{
+          width: "60px",
+          height: "60px",
+          borderRadius: "18px",
+          background: "var(--color-surface-raised, rgba(91, 115, 224, 0.08))",
+          color: "var(--color-primary)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "18px",
+        }}
+      >
+        {icon || <MaterialsIcon size={28} />}
+      </div>
 
       <h3
         style={{

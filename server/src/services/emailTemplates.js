@@ -49,8 +49,14 @@ function baseLayout({ title, previewText, contentHtml }) {
             <td bgcolor="#232C6B" style="background-color: #232C6B; padding: 24px 32px;">
               <table border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                  <td width="48" valign="middle">
-                    <img src="cid:rcalogo" alt="RCA" width="44" height="44" style="display: block; width: 44px; height: 44px; object-fit: contain;" />
+                  <td width="44" valign="middle">
+                    <table border="0" cellpadding="0" cellspacing="0" width="44" height="44" bgcolor="#3F4FA8" style="width: 44px; height: 44px; background-color: #3F4FA8; border-radius: 10px; text-align: center;">
+                      <tr>
+                        <td align="center" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 800; color: #FFFFFF; letter-spacing: 1px;">
+                          RCA
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                   <td valign="middle" style="padding-left: 14px;">
                     <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.02em;">RCA Archive</span>
@@ -132,57 +138,61 @@ Rwanda Coding Academy, Nyabihu Campus, Western Province, Rwanda.`;
   };
 }
 
-function getInvitationTemplate({ name, role, setupUrl, temporaryPassword }) {
+function getInvitationTemplate({ name, role, email, temporaryPassword, signInUrl }) {
   const roleLabel = role === "admin" ? "administrator" : role === "teacher" ? "teacher" : "student";
-  const subject = `RCA Archive: set up your ${roleLabel} account`;
+  const loginUrl = signInUrl || "http://localhost:3074/login";
+  const subject = `Welcome to RCA Archive: Your ${roleLabel} account`;
   const text = `Hello ${name || "there"},
 
-An RCA Archive ${roleLabel} account has been created for you.
+Welcome to RCA Archive. An account has been created for you with the ${roleLabel} role.
 
-Please complete your profile and set your password using the secure link below:
-${setupUrl}
+Sign-in address: ${loginUrl}
+Email: ${email || "(your email address)"}
+Temporary password: ${temporaryPassword || "(set by administrator)"}
 
-${temporaryPassword ? `Temporary password: ${temporaryPassword}\n\n` : ""}This setup link is valid for 24 hours.
+You can sign in right away using these credentials. After signing in, you will be prompted to set your own password.
 
 Rwanda Coding Academy, Nyabihu Campus, Western Province, Rwanda.`;
 
   const contentHtml = `
-    <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #1B2142;">Set up your ${escapeHtml(roleLabel)} account</h2>
+    <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #1B2142;">Welcome to RCA Archive</h2>
     <p style="margin: 0 0 16px 0; color: #343D68;">Hello <strong>${escapeHtml(name || "there")}</strong>,</p>
-    <p style="margin: 0 0 24px 0; color: #343D68;">
-      An official RCA Archive account has been provisioned for you with the <strong>${escapeHtml(roleLabel)}</strong> role. Please set your account password to begin accessing syllabus past papers and teaching materials:
+    <p style="margin: 0 0 20px 0; color: #343D68;">
+      An official RCA Archive account has been created for you with the <strong>${escapeHtml(roleLabel)}</strong> role. Use the login details below to access the platform:
     </p>
 
+    <div style="margin: 20px 0; padding: 18px 24px; background-color: #F8F9FD; border: 1px solid #E4E8F2; border-radius: 8px;">
+      <div style="margin-bottom: 10px;">
+        <span style="font-size: 13px; color: #6A7399; font-weight: 600;">Sign-in Address:</span>
+        <div style="margin-top: 2px;">
+          <a href="${escapeHtml(loginUrl)}" style="color: #3F4FA8; font-weight: 600; text-decoration: none;">${escapeHtml(loginUrl)}</a>
+        </div>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <span style="font-size: 13px; color: #6A7399; font-weight: 600;">Email:</span>
+        <div style="font-size: 15px; color: #1B2142; font-weight: 600; margin-top: 2px;">${escapeHtml(email || "")}</div>
+      </div>
+      <div>
+        <span style="font-size: 13px; color: #6A7399; font-weight: 600;">Temporary Password:</span>
+        <code style="display: block; font-family: monospace; font-size: 16px; font-weight: 700; color: #232C6B; background: #EEF2FF; padding: 8px 12px; border-radius: 6px; margin-top: 4px;">${escapeHtml(temporaryPassword || "")}</code>
+      </div>
+    </div>
+
     <div style="margin: 28px 0; text-align: center;">
-      <a href="${escapeHtml(setupUrl)}" class="btn-action" style="display: inline-block; background-color: #3F4FA8; color: #FFFFFF !important; font-weight: 700; font-size: 15px; padding: 14px 32px; text-decoration: none; border-radius: 999px;">
-        Set Account Password
+      <a href="${escapeHtml(loginUrl)}" class="btn-action" style="display: inline-block; background-color: #3F4FA8; color: #FFFFFF !important; font-weight: 700; font-size: 15px; padding: 14px 32px; text-decoration: none; border-radius: 999px;">
+        Sign In to Your Account
       </a>
     </div>
 
-    ${
-      temporaryPassword
-        ? `<div style="margin: 20px 0; padding: 12px 18px; background-color: #F8F9FD; border: 1px solid #E4E8F2; border-radius: 8px;">
-            <span style="font-size: 13px; color: #6A7399;">Temporary Password:</span>
-            <code style="display: block; font-size: 15px; font-weight: 700; color: #232C6B; margin-top: 4px;">${escapeHtml(temporaryPassword)}</code>
-          </div>`
-        : ""
-    }
-
-    <p style="margin: 20px 0 8px 0; font-size: 13px; color: #6A7399;">
-      Or copy and paste this link into your browser:
-      <br />
-      <a href="${escapeHtml(setupUrl)}" style="color: #4B62CE; word-break: break-all;">${escapeHtml(setupUrl)}</a>
-    </p>
-
-    <p style="margin: 16px 0 0 0; font-size: 13px; color: #6A7399;">
-      This link is valid for 24 hours.
+    <p style="margin: 16px 0 0 0; font-size: 13px; color: #6A7399; line-height: 1.5;">
+      You can log in immediately with these credentials. Once signed in, you will be able to set your own permanent password.
     </p>
   `;
 
   return {
     subject,
     text,
-    html: baseLayout({ title: subject, previewText: `Set up your ${roleLabel} account on RCA Archive`, contentHtml }),
+    html: baseLayout({ title: subject, previewText: `Your RCA Archive ${roleLabel} login credentials`, contentHtml }),
   };
 }
 

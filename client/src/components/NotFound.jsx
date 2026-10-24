@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from "./ui/Logo";
 import Button from "./ui/Button";
-import studentBoy from "../assets/avatars/student-boy.svg";
+import { SearchIcon } from "./ui/Icons";
 
 export default function NotFound() {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ export default function NotFound() {
 
       <div
         style={{
-          background: "#FFFFFF",
+          background: "var(--color-surface, #FFFFFF)",
           borderRadius: "var(--radius-card, 24px)",
           padding: "48px 40px",
           maxWidth: "480px",
@@ -41,29 +41,18 @@ export default function NotFound() {
       >
         <div
           style={{
-            width: "100px",
-            height: "100px",
+            width: "80px",
+            height: "80px",
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #EEF0F6 0%, #E4E8FA 100%)",
-            border: "3px solid #FFFFFF",
-            boxShadow: "0 8px 20px rgba(35, 44, 107, 0.12)",
-            overflow: "hidden",
+            background: "var(--color-surface-raised, rgba(91, 115, 224, 0.1))",
+            color: "var(--color-primary)",
             marginBottom: "20px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <img
-            src={studentBoy}
-            alt="Student"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              transform: "scale(1.2) translateY(5%)",
-            }}
-          />
+          <SearchIcon size={36} />
         </div>
 
         <span

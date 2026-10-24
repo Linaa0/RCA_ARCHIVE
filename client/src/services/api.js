@@ -5,7 +5,7 @@ const IS_DEV = import.meta.env.DEV;
 const DEFAULT_API_BASE_URL = "https://api.archive.innov.rw/api";
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_URL || (IS_DEV ? "/api" : DEFAULT_API_BASE_URL);
+  import.meta.env.VITE_API_URL || "/api";
 
 export const API_ROOT = API_BASE_URL.replace(/\/api\/?$/, "");
 
@@ -36,8 +36,29 @@ api.interceptors.response.use(
   (error) => {
     const status = error?.response?.status;
 
-    if (status === 401 || status === 403) {
-      clearAuthStorage();
+    if (status === 401) {
+      const hadAuth = Boolean(
+        error.config?.headers?.Authorization || error.config?.headers?.authorization
+      );
+      if (hadAuth) {
+        clearAuthStorage();
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/signup" &&
+          window.location.pathname !== "/"
+        ) {
+          if (!sessionStorage.getItem("login_notice")) {
+            sessionStorage.setItem(
+              "login_notice",
+              "Your session has expired. Please sign in again."
+            );
+          }
+          window.location.href = `/login?redirect=${encodeURIComponent(
+            window.location.pathname + window.location.search
+          )}`;
+        }
+      }
     }
 
     return Promise.reject(error);

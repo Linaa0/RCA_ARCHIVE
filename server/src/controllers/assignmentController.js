@@ -11,6 +11,13 @@ const {
 const { SUBMISSIONS_DIR, removeSubmissionFile } = require("../services/submissionStorage");
 const { createZip } = require("../services/zipService");
 const { CLASSES, CLASS_IDS, classLabel } = require("../config/classes");
+const { MIME_TYPES } = require("../config/constants");
+const { formatContentDisposition } = require("./paperController");
+const {
+  emitAssignmentEvent,
+  emitSubmissionEvent,
+  emitAppealEvent,
+} = require("../services/socketService");
 
 const NO_ID = { projection: { _id: 0 } };
 const newId = () => crypto.randomUUID();
@@ -253,6 +260,7 @@ async function createAssignment(req, res) {
 
   await getAssignmentsCollection().insertOne({ ...assignment });
   const [described] = await describeAssignments([assignment]);
+  emitAssignmentEvent("created", described);
   res.status(201).json({ assignment: described });
 }
 
@@ -313,6 +321,7 @@ async function updateAssignment(req, res) {
 
   await getAssignmentsCollection().updateOne({ id: assignment.id }, { $set: update });
   const [described] = await describeAssignments([{ ...assignment, ...update }]);
+  emitAssignmentEvent("updated", described);
   res.json({ assignment: described });
 }
 
@@ -329,6 +338,7 @@ async function deleteAssignment(req, res) {
     getAppealsCollection().deleteMany({ assignmentId: assignment.id }),
     getAssignmentsCollection().deleteOne({ id: assignment.id }),
   ]);
+  emitAssignmentEvent("deleted", { id: assignment.id, teacherId: assignment.teacherId, classes: assignment.classes });
   res.json({ message: "Assignment deleted" });
 }
 
@@ -343,8 +353,26 @@ async function downloadAttachment(req, res) {
   if (!allowed) return res.status(404).json({ error: "No file attached" });
 
   const full = path.join(SUBMISSIONS_DIR, path.basename(a.attachment.filename));
-  if (!fs.existsSync(full)) return res.status(404).json({ error: "File missing on server" });
-  res.download(full, a.attachment.originalName);
+  if (!fs.existsSync(full)) return res.status(404).json({ error: "This file is no longer available." });
+
+  const originalName = a.attachment.originalName || path.basename(a.attachment.filename);
+  const ext = path.extname(originalName).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("Content-Type", contentType);
+
+  const isInline = req.query.inline === "1" || req.path.endsWith("/view");
+  res.setHeader(
+    "Content-Disposition",
+    formatContentDisposition(isInline ? "inline" : "attachment", originalName)
+  );
+  return res.sendFile(full);
+}
+
+async function viewAttachment(req, res) {
+  req.query.inline = "1";
+  return downloadAttachment(req, res);
 }
 
 // ---------------------------------------------------------------------------
@@ -397,12 +425,14 @@ async function submitAssignment(req, res) {
     late: new Date() > originalDeadline,
   };
   await submissions.insertOne({ ...submission });
+  emitSubmissionEvent("created", submission, assignment.teacherId);
   res.status(201).json({ message: "Assignment submitted", submittedAt: submission.submittedAt });
 }
 
 // Teacher (owner) or the student who wrote it. ?inline=1 shows it in the browser.
 async function downloadSubmissionFile(req, res) {
-  const submission = await getSubmissionsCollection().findOne({ id: req.params.submissionId });
+  const submissionId = req.params.submissionId || req.params.id;
+  const submission = await getSubmissionsCollection().findOne({ id: submissionId });
   if (!submission || !submission.file) return res.status(404).json({ error: "File not found" });
 
   const assignment = await getAssignmentsCollection().findOne({ id: submission.assignmentId }, NO_ID);
@@ -413,17 +443,51 @@ async function downloadSubmissionFile(req, res) {
   if (!isOwnerTeacher && !isAuthor) return res.status(403).json({ error: "Not allowed" });
 
   const full = path.join(SUBMISSIONS_DIR, path.basename(submission.file.filename));
-  if (!fs.existsSync(full)) return res.status(404).json({ error: "File missing on server" });
-
-  if (req.query.inline === "1") {
-    res.type(path.extname(submission.file.filename));
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename*=UTF-8''${encodeURIComponent(submission.file.originalName)}`
-    );
-    return res.sendFile(full);
+  if (!fs.existsSync(full)) {
+    return res.status(404).json({ error: "This file is no longer available. Ask the student to submit again." });
   }
-  res.download(full, submission.file.originalName);
+
+  const originalName = submission.file.originalName || path.basename(submission.file.filename);
+  const ext = path.extname(originalName).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("Content-Type", contentType);
+
+  const isInline = req.query.inline === "1" || req.path.endsWith("/view");
+  res.setHeader(
+    "Content-Disposition",
+    formatContentDisposition(isInline ? "inline" : "attachment", originalName)
+  );
+  return res.sendFile(full);
+}
+
+async function viewSubmissionFile(req, res) {
+  req.query.inline = "1";
+  return downloadSubmissionFile(req, res);
+}
+
+async function getSubmission(req, res) {
+  const submissionId = req.params.submissionId || req.params.id;
+  const submission = await getSubmissionsCollection().findOne({ id: submissionId }, NO_ID);
+  if (!submission) return res.status(404).json({ error: "Submission not found" });
+
+  const assignment = await getAssignmentsCollection().findOne({ id: submission.assignmentId }, NO_ID);
+  if (!assignment) return res.status(404).json({ error: "Assignment not found" });
+
+  const isOwnerTeacher = req.user.role === "teacher" && assignment.teacherId === req.user.id;
+  const isAuthor = req.user.role === "student" && submission.studentId === req.user.id;
+  if (!isOwnerTeacher && !isAuthor) return res.status(403).json({ error: "Not allowed" });
+
+  res.json({
+    id: submission.id,
+    assignmentId: submission.assignmentId,
+    assignmentTitle: assignment.title,
+    studentName: submission.studentName,
+    submittedAt: submission.submittedAt,
+    text: submission.text,
+    file: submission.file,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -503,13 +567,17 @@ async function downloadAllSubmissions(req, res) {
     if (s.file) {
       const full = path.join(SUBMISSIONS_DIR, path.basename(s.file.filename));
       if (fs.existsSync(full)) {
-        const data = fs.readFileSync(full);
+        const data = await fs.promises.readFile(full);
         total += data.length;
         if (total > MAX_ZIP_BYTES) return res.status(413).json({ error: "Too many files for one download. Download them one by one." });
         entries.push({ name: uniqueName(base, path.extname(s.file.filename)), data });
       }
     }
     if (s.text) entries.push({ name: uniqueName(`${base} (written answer)`, ".txt"), data: Buffer.from(s.text, "utf8") });
+  }
+
+  if (entries.length === 0) {
+    return res.status(404).json({ error: "No submission files are available for download. Older files may no longer exist on storage." });
   }
 
   const label = key === "none" ? "No class" : classLabel(key);
@@ -540,7 +608,13 @@ async function createAppeal(req, res) {
   }
 
   const reason = cleanText(req.body.reason, 2000);
-  if (reason.length < 10) return res.status(400).json({ error: "Please explain your reason (at least 10 characters)" });
+  const words = reason.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 50 || words.length > 100) {
+    return res.status(400).json({
+      error: `Your appeal reason must be between 50 and 100 words. Current count: ${words.length} word(s).`,
+      wordCount: words.length,
+    });
+  }
 
   const appeal = {
     id: newId(),
@@ -563,6 +637,7 @@ async function createAppeal(req, res) {
     resolvedAt: null,
   };
   await appeals.insertOne({ ...appeal });
+  emitAppealEvent("created", appeal, assignment.teacherId, req.user.id);
   res.status(201).json({ appeal });
 }
 
@@ -618,7 +693,9 @@ async function resolveAppeal(req, res, decision) {
   }
 
   await getAppealsCollection().updateOne({ id: appeal.id }, { $set: update });
-  res.json({ appeal: withClassLabel({ ...appeal, ...update }) });
+  const resolved = withClassLabel({ ...appeal, ...update });
+  emitAppealEvent("resolved", resolved, appeal.teacherId, appeal.studentId);
+  res.json({ appeal: resolved });
 }
 
 const approveAppeal = (req, res) => resolveAppeal(req, res, "approved");
@@ -678,8 +755,11 @@ module.exports = {
   updateAssignment,
   deleteAssignment,
   downloadAttachment,
+  viewAttachment,
   submitAssignment,
   downloadSubmissionFile,
+  viewSubmissionFile,
+  getSubmission,
   submissionClasses,
   listSubmissions,
   downloadAllSubmissions,

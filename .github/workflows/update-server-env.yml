@@ -1,0 +1,81 @@
+name: Update Server Environment Settings
+
+on:
+  workflow_dispatch:
+    inputs:
+      variable_name:
+        description: "Environment variable name to update (e.g. MAIL_PROVIDER, BREVO_API_KEY, RESEND_API_KEY, SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM)"
+        required: true
+        type: string
+      variable_value:
+        description: "New value for the environment variable"
+        required: true
+        type: string
+      reload_pm2:
+        description: "Reload PM2 process after applying change"
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: rca-archive-env-update
+  cancel-in-progress: false
+
+jobs:
+  update-env:
+    runs-on: self-hosted
+    env:
+      RCA_ARCHIVE_CONFIG_ENV: /opt/configs/rca_archive/.env
+      RCA_ARCHIVE_APP_DIR: /opt/apps/rca_archive
+      RCA_ARCHIVE_PM2_NAME: rca-archive-backend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Apply Environment Setting Update
+        env:
+          TARGET_KEY: ${{ github.event.inputs.variable_name }}
+          TARGET_VAL: ${{ github.event.inputs.variable_value }}
+        run: |
+          echo "::add-mask::${TARGET_VAL}"
+          echo "Applying update for key: ${TARGET_KEY}"
+          node scripts/sync-server-env.js --file="${RCA_ARCHIVE_CONFIG_ENV}" "${TARGET_KEY}=${TARGET_VAL}"
+
+      - name: Reload PM2 and Verify Health Check
+        if: ${{ github.event.inputs.reload_pm2 == 'true' || github.event.inputs.reload_pm2 == true }}
+        run: |
+          echo "Reloading PM2 service: ${RCA_ARCHIVE_PM2_NAME}"
+          cd "${RCA_ARCHIVE_APP_DIR}"
+          pm2 startOrReload ecosystem.config.cjs --update-env
+          pm2 save
+
+          PORT=$(grep -E '^PORT=' "${RCA_ARCHIVE_CONFIG_ENV}" | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//')
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+            PORT=5009
+          fi
+
+          URL="http://127.0.0.1:${PORT}/api/health"
+          echo "Checking health at ${URL}..."
+
+          for i in $(seq 1 30); do
+            if curl -fsS \
+              --connect-timeout 4 \
+              --max-time 15 \
+              --retry 2 \
+              "$URL"; then
+              echo ""
+              echo "Server health check passed on port ${PORT}"
+              exit 0
+            fi
+            echo "Waiting for backend... (${i}/30)"
+            sleep 2
+          done
+
+          echo "ERROR: Server failed health check after reload"
+          exit 1

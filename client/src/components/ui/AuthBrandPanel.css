@@ -90,79 +90,129 @@
   font-weight: 500;
 }
 
-/* ── Rotating Resource Stack Container ── */
+/* ── Rotating Resource Stack Deck Container ── */
 .auth-stack-container {
   position: relative;
-  height: 190px;
-  margin-top: 6px;
+  height: 200px;
+  margin-top: 10px;
   cursor: pointer;
 }
 
-/* Layer 3 (Furthest background card) */
-.card-layer-3 {
+/* Base Deck Card Styles (Light cards with dark text in both themes) */
+.auth-deck-card {
   position: absolute;
-  top: 0;
-  left: 32px;
-  right: 32px;
-  height: 74px;
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 20px;
-  padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transform: scale(0.92);
-  z-index: 1;
-  pointer-events: none;
+  left: 0;
+  right: 0;
+  border-radius: 22px;
+  box-sizing: border-box;
+  transition: transform 650ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
-/* Layer 2 (Middle preview card) */
-.card-layer-2 {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
-  height: 82px;
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 20px;
-  padding: 14px 22px;
+.auth-deck-card-inner {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
-  transform: scale(0.96);
-  z-index: 2;
-  pointer-events: none;
+  gap: 8px;
+  width: 100%;
 }
 
-/* Layer 1 (Front active card) */
+/* Layer 3 (Back card: slightly smaller, shifted up and right, lower opacity) */
+.card-layer-3 {
+  top: 0;
+  height: 80px;
+  background: #E2E8F0;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 20px;
+  padding: 12px 22px;
+  transform: translate3d(18px, -18px, 0) scale(0.91);
+  opacity: 0.82;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+  animation: deckLayer3Enter 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes deckLayer3Enter {
+  from {
+    opacity: 0;
+    transform: translate3d(24px, -24px, 0) scale(0.88);
+  }
+  to {
+    opacity: 0.82;
+    transform: translate3d(18px, -18px, 0) scale(0.91);
+  }
+}
+
+/* Layer 2 (Middle card: slightly smaller, shifted up and right, medium opacity) */
+.card-layer-2 {
+  top: 12px;
+  height: 90px;
+  background: #F1F5F9;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 22px;
+  padding: 14px 24px;
+  transform: translate3d(10px, -10px, 0) scale(0.955);
+  opacity: 0.92;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.24);
+  animation: deckLayer2Enter 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes deckLayer2Enter {
+  from {
+    opacity: 0.75;
+    transform: translate3d(18px, -18px, 0) scale(0.91);
+  }
+  to {
+    opacity: 0.92;
+    transform: translate3d(10px, -10px, 0) scale(0.955);
+  }
+}
+
+/* Layer 1 (Front active card: fully visible, light card, dark text) */
 .auth-card-front {
-  position: absolute;
-  top: 32px;
-  left: 0;
-  right: 0;
+  top: 24px;
   background: #FFFFFF;
   border-radius: 24px;
   padding: 22px 26px;
-  box-shadow: 0 16px 36px -6px rgba(18, 24, 58, 0.35);
-  border: 1px solid rgba(63, 79, 168, 0.12);
+  box-shadow: 0 20px 42px -6px rgba(15, 23, 42, 0.38),
+              0 2px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
   z-index: 3;
-  animation: cardSlideFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  color: var(--color-ink, #1B2142);
+  color: #0F172A;
+  animation: deckFrontEnter 650ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes cardSlideFade {
+@keyframes deckFrontEnter {
   0% {
-    opacity: 0;
-    transform: translateY(14px) scale(0.97);
+    opacity: 0.85;
+    transform: translate3d(10px, -10px, 0) scale(0.955);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Respect prefers-reduced-motion: simple cross fade with no translation */
+@media (prefers-reduced-motion: reduce) {
+  .card-layer-3,
+  .card-layer-2,
+  .auth-card-front {
+    animation: simpleCrossFade 350ms ease-in-out !important;
+    transition: opacity 350ms ease-in-out !important;
+    transform: none !important;
+  }
+
+  @keyframes simpleCrossFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 }
 
@@ -170,37 +220,43 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
+/* Class chip with high contrast AA */
 .auth-card-pill {
   font-size: 0.72rem;
   font-weight: 700;
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.35);
-  color: #FFFFFF;
+  background: #EEF2FF;
+  color: #312E81;
   letter-spacing: 0.04em;
+  border: 1px solid #C7D2FE;
 }
 
 .auth-card-pill.active-pill {
-  background: var(--color-indigo-100, #E4E8FA);
-  color: var(--color-indigo-700, #3F4FA8);
+  background: #4338CA;
+  color: #FFFFFF;
+  border-color: #3730A3;
 }
 
+/* Resource type tag */
 .auth-card-type-tag {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 2px 8px;
   border-radius: 6px;
-  background: var(--color-bg, #EEF0F6);
-  color: var(--color-text-secondary, #5C658E);
+  background: #F1F5F9;
+  color: #1E293B;
+  border: 1px solid #CBD5E1;
 }
 
+/* Small metadata format label */
 .auth-card-format {
   font-size: 0.76rem;
-  color: var(--color-text-tertiary, #8A92B4);
-  font-weight: 500;
+  color: #475569;
+  font-weight: 600;
 }
 
 .auth-card-body {
@@ -209,29 +265,33 @@
   gap: 4px;
 }
 
+/* Subject line with high contrast */
 .auth-card-subject {
   font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--color-indigo-500, #5B73E0);
+  font-weight: 700;
+  color: #3730A3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
+/* Primary title on front card */
 .auth-card-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--color-text-primary, #1B2142);
+  color: #0F172A;
   line-height: 1.35;
   margin: 0;
 }
 
-.auth-card-sub-text {
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: #FFFFFF;
+/* Preview titles on cards 2 and 3 */
+.auth-card-preview-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #1E293B;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
 /* ── Progress Dots ── */

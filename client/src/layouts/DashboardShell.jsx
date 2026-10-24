@@ -27,6 +27,8 @@ import Logo from "../components/ui/Logo";
 import Avatar from "../components/ui/Avatar";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import UserMenu from "../components/ui/UserMenu";
+import SetPasswordModal from "../components/SetPasswordModal";
+import NotificationBell from "../components/NotificationBell";
 
 export default function DashboardShell({ children, onSearch, currentSearch = "" }) {
   const location = useLocation();
@@ -38,6 +40,11 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
   const role = getStoredRole();
   const loggedIn = isAuthenticated();
   const [pendingAppeals, setPendingAppeals] = useState(0);
+
+  const [needsPasswordChange, setNeedsPasswordChange] = useState(Boolean(user?.mustChangePassword));
+  const [showPasswordModal, setShowPasswordModal] = useState(
+    Boolean(user?.mustChangePassword && typeof sessionStorage !== "undefined" && sessionStorage.getItem("pwd_modal_dismissed") !== "true")
+  );
 
   // Sync theme state with DOM
   useEffect(() => {
@@ -90,6 +97,69 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
     }
   };
 
+  const [activeSection, setActiveSection] = useState(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#subjects") return "subjects";
+    return null;
+  });
+
+  // Scroll-spy for student dashboard subjects section
+  useEffect(() => {
+    if (location.pathname !== "/home" && location.pathname !== "/") {
+      setActiveSection(null);
+      return;
+    }
+
+    if (location.hash === "#subjects") {
+      setActiveSection("subjects");
+    }
+
+    const subjectsEl = document.getElementById("subjects");
+    if (!subjectsEl) return;
+
+    const handleScrollSpy = () => {
+      const rect = subjectsEl.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || 800;
+      // When subjects section enters view (top is within upper half of viewport)
+      if (rect.top <= viewportHeight * 0.45 && rect.bottom >= 120) {
+        setActiveSection("subjects");
+      } else if (rect.top > viewportHeight * 0.45) {
+        setActiveSection("academic-years");
+      }
+    };
+
+    window.addEventListener("scroll", handleScrollSpy, { passive: true });
+    handleScrollSpy();
+
+    return () => window.removeEventListener("scroll", handleScrollSpy);
+  }, [location.pathname, location.hash]);
+
+  // Handle nav clicks with smooth scroll for in-page anchors
+  const handleNavItemClick = (item, e) => {
+    setMobileMenuOpen(false);
+    if (item.path === "/subjects" || item.path === "/home#subjects") {
+      if (location.pathname === "/home" || location.pathname === "/") {
+        e.preventDefault();
+        const target = document.getElementById("subjects");
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth" });
+          setActiveSection("subjects");
+          try {
+            window.history.replaceState(null, "", "/home#subjects");
+          } catch (_) {}
+        }
+      }
+    } else if (item.path === "/home") {
+      if (location.pathname === "/home" || location.pathname === "/") {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setActiveSection("academic-years");
+        try {
+          window.history.replaceState(null, "", "/home");
+        } catch (_) {}
+      }
+    }
+  };
+
   // Build role-specific navigation according to exact specifications
   let navItems = [];
   if (role === "admin") {
@@ -98,7 +168,6 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
       { label: "Teachers", path: "/admin?tab=teachers", icon: <UsersIcon size={20} /> },
       { label: "Students", path: "/admin?tab=students", icon: <GraduationCapIcon size={20} /> },
       { label: "Deletion Requests", path: "/admin?tab=deletions", icon: <TrashIcon size={20} /> },
-      { label: "Statistics", path: "/admin?tab=stats", icon: <MaterialsIcon size={20} /> },
       { label: "Settings", path: "/settings", icon: <SettingsIcon size={20} /> },
     ];
   } else if (role === "teacher") {
@@ -127,11 +196,43 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
   // Active navigation checker
   const isItemActive = (itemPath) => {
     const currentFull = `${location.pathname}${location.search}`;
-    if (itemPath === "/home" && (location.pathname === "/home" || location.pathname === "/years")) return true;
-    if (itemPath === "/admin" && location.pathname === "/admin" && !location.search) return true;
-    if (itemPath.includes("?tab=")) return currentFull === itemPath;
-    if (itemPath === "/subjects" && (location.pathname === "/subjects" || location.pathname.startsWith("/subject/"))) return true;
-    if (itemPath === "/settings" && (location.pathname === "/settings" || location.pathname === "/profile")) return true;
+
+    // Admin dashboard vs tabs
+    if (itemPath === "/admin") {
+      return location.pathname === "/admin" && !location.search;
+    }
+    if (itemPath.includes("?tab=")) {
+      return currentFull === itemPath;
+    }
+
+    // Teacher navigation
+    if (itemPath === "/teacher") {
+      return location.pathname === "/teacher" && !location.search;
+    }
+    if (itemPath.startsWith("/teacher/")) {
+      return location.pathname.startsWith(itemPath);
+    }
+
+    // Student navigation (Academic Years vs Subjects scroll-spy)
+    if (itemPath === "/subjects" || itemPath === "/home#subjects") {
+      if (location.pathname === "/subjects" || location.pathname.startsWith("/subject/")) return true;
+      if ((location.pathname === "/home" || location.pathname === "/") && activeSection === "subjects") {
+        return true;
+      }
+      return false;
+    }
+
+    if (itemPath === "/home" || itemPath === "/academic-years") {
+      if ((location.pathname === "/home" || location.pathname === "/" || location.pathname === "/years") && activeSection !== "subjects") {
+        return true;
+      }
+      return false;
+    }
+
+    if (itemPath === "/settings" || itemPath === "/profile") {
+      return location.pathname === "/settings" || location.pathname === "/profile";
+    }
+
     return location.pathname === itemPath;
   };
 
@@ -174,7 +275,7 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
                 key={idx}
                 to={item.path}
                 className={`sidebar-item ${active ? "active" : ""}`}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => handleNavItemClick(item, e)}
               >
                 <span className="sidebar-item-icon">{item.icon}</span>
                 <span className="sidebar-item-label">{item.label}</span>
@@ -246,12 +347,63 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
           {/* Header Actions */}
           <div className="topbar-actions">
             <ThemeToggle size="md" />
+            {loggedIn && <NotificationBell />}
             {loggedIn && <UserMenu />}
           </div>
         </header>
 
+        {/* Persistent Temporary Password Banner */}
+        {needsPasswordChange && (
+          <div
+            style={{
+              background: "rgba(91, 115, 224, 0.12)",
+              borderBottom: "1px solid var(--color-border)",
+              padding: "10px 24px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "0.86rem",
+              color: "var(--color-text-primary)",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+            <span>You are currently using a temporary password. Please set your own permanent password to secure your account.</span>
+            <button
+              type="button"
+              onClick={() => setShowPasswordModal(true)}
+              style={{
+                background: "var(--color-primary)",
+                color: "#FFFFFF",
+                border: "none",
+                padding: "6px 14px",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: "0.82rem",
+              }}
+            >
+              Set your own password
+            </button>
+          </div>
+        )}
+
         {/* Dynamic Page Container */}
         <main className="dashboard-content">{children}</main>
+
+        <SetPasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => {
+            setShowPasswordModal(false);
+            if (typeof sessionStorage !== "undefined") {
+              sessionStorage.setItem("pwd_modal_dismissed", "true");
+            }
+          }}
+          onSuccess={() => {
+            setNeedsPasswordChange(false);
+            setShowPasswordModal(false);
+          }}
+        />
       </div>
     </div>
   );

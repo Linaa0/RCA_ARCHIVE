@@ -7,13 +7,15 @@ export default function BarChart({
   actionLabel,
   onActionClick,
   bars = [],
+  data = [],
   maxHeight = 160,
   className = "",
   style = {},
 }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  const maxValue = Math.max(1, ...bars.map((b) => Number(b.value) || 0));
+  const chartBars = bars.length > 0 ? bars : data;
+  const maxValue = Math.max(1, ...chartBars.map((b) => Number(b.value) || 0));
 
   return (
     <div
@@ -100,10 +102,12 @@ export default function BarChart({
           borderBottom: "1px solid var(--color-divider, #E4E8F2)",
         }}
       >
-        {bars.map((bar, idx) => {
+        {chartBars.map((bar, idx) => {
           const rawVal = Number(bar.value) || 0;
-          const heightPercent = Math.min(100, Math.max(8, (rawVal / maxValue) * 100));
+          const isZero = rawVal === 0;
+          const heightPercent = isZero ? 4 : Math.min(100, Math.max(12, (rawVal / maxValue) * 100));
           const isHovered = hoveredIndex === idx;
+          const unit = bar.unit || (rawVal === 1 ? "paper" : "papers");
 
           return (
             <div
@@ -126,7 +130,7 @@ export default function BarChart({
                 <div
                   style={{
                     position: "absolute",
-                    top: "-24px",
+                    top: "-26px",
                     padding: "3px 8px",
                     borderRadius: "6px",
                     backgroundColor: "var(--color-indigo-950, #191F4D)",
@@ -138,7 +142,7 @@ export default function BarChart({
                     pointerEvents: "none",
                   }}
                 >
-                  {rawVal}
+                  {rawVal} {unit}
                 </div>
               )}
 
@@ -149,11 +153,14 @@ export default function BarChart({
                   maxWidth: "28px",
                   height: `${heightPercent}%`,
                   borderRadius: "8px 8px 3px 3px",
-                  background: isHovered
+                  background: isZero
+                    ? "var(--color-border, rgba(63, 79, 168, 0.12))"
+                    : isHovered
                     ? "var(--color-indigo-500, #5B73E0)"
                     : bar.color || "var(--gradient-accent, linear-gradient(135deg, #5B73E0 0%, #3F4FA8 100%))",
+                  border: isZero ? "1px dashed var(--color-border-med, rgba(63, 79, 168, 0.25))" : "none",
                   transition: "all var(--transition-fast)",
-                  transform: isHovered ? "scaleY(1.04)" : "scaleY(1)",
+                  transform: isHovered && !isZero ? "scaleY(1.04)" : "scaleY(1)",
                   transformOrigin: "bottom",
                 }}
               />
@@ -164,7 +171,7 @@ export default function BarChart({
 
       {/* Labels */}
       <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-        {bars.map((bar, idx) => (
+        {chartBars.map((bar, idx) => (
           <div
             key={bar.label || idx}
             style={{

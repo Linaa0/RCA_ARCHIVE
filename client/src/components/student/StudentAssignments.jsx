@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
 import Button from "../ui/Button";
 import Modal from "../ui/Modal";
+import { EyeIcon } from "../ui/Icons";
 import { formatDateTime, errorMessage, AppealBadge, StudentStatusBadge } from "../assignments/common";
 import { downloadFrom } from "../assignments/fileUtils";
 import "../assignments/assignments.css";
@@ -10,13 +11,17 @@ const TABS = [
   { key: "all", label: "All" },
   { key: "todo", label: "To do" },
   { key: "overdue", label: "Overdue" },
-  { key: "submitted", label: "Submitted" },
 ];
 
+function isAssignmentOverdue(a) {
+  const effective = a.effectiveDeadline || a.deadline;
+  return new Date() > new Date(effective);
+}
+
 function matchesTab(a, tab) {
-  if (tab === "todo") return a.status === "pending" || a.status === "extended";
-  if (tab === "overdue") return a.status === "overdue";
-  if (tab === "submitted") return a.status === "submitted";
+  const overdue = isAssignmentOverdue(a);
+  if (tab === "todo") return !overdue;
+  if (tab === "overdue") return overdue;
   return true;
 }
 
@@ -26,10 +31,6 @@ export default function StudentAssignments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-
-  const [submitFor, setSubmitFor] = useState(null);
-  const [answer, setAnswer] = useState("");
-  const [file, setFile] = useState(null);
 
   const [appealFor, setAppealFor] = useState(null);
   const [reason, setReason] = useState("");
@@ -57,50 +58,26 @@ export default function StudentAssignments() {
     return () => window.clearInterval(interval);
   }, [load]);
 
-  const openSubmit = (a) => {
-    setSubmitFor(a);
-    setAnswer("");
-    setFile(null);
-    setModalError("");
-  };
-
   const openAppeal = (a) => {
     setAppealFor(a);
     setReason("");
     setModalError("");
   };
 
-  const sendSubmission = async (e) => {
-    e.preventDefault();
-    setModalError("");
-    if (!answer.trim() && !file) return setModalError("Write your answer or attach a file.");
-
-    const body = new FormData();
-    body.append("text", answer);
-    if (file) body.append("file", file);
-
-    setSaving(true);
-    try {
-      await api.post(`/assignments/${submitFor.id}/submit`, body);
-      setNotice(`“${submitFor.title}” submitted.`);
-      setSubmitFor(null);
-      load();
-    } catch (err) {
-      setModalError(errorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const appealWordCount = reason.trim().split(/\s+/).filter(Boolean).length;
 
   const sendAppeal = async (e) => {
     e.preventDefault();
     setModalError("");
-    if (reason.trim().length < 10) return setModalError("Please explain your reason (at least 10 characters).");
+
+    if (appealWordCount < 50 || appealWordCount > 100) {
+      return setModalError(`Your appeal reason must be between 50 and 100 words. Currently: ${appealWordCount} word(s).`);
+    }
 
     setSaving(true);
     try {
       await api.post(`/assignments/${appealFor.id}/appeal`, { reason });
-      setNotice(`Your appeal for “${appealFor.title}” was sent to ${appealFor.teacherName || "your teacher"}.`);
+      setNotice(`Your appeal for "${appealFor.title}" was sent to ${appealFor.teacherName || "your teacher"}.`);
       setAppealFor(null);
       load();
     } catch (err) {
@@ -118,7 +95,7 @@ export default function StudentAssignments() {
         <div>
           <span className="asg-eyebrow">My work</span>
           <h1 className="asg-title">My assignments</h1>
-          <p className="asg-sub">Submit before the deadline. If you miss it, you can send an appeal to your teacher.</p>
+          <p className="asg-sub">Review your class assignments and deadlines. If you missed a deadline, you can submit an appeal to your teacher.</p>
         </div>
       </div>
 
@@ -134,112 +111,97 @@ export default function StudentAssignments() {
       </div>
 
       {loading ? (
-        <p className="asg-sub">Loading…</p>
+        <p className="asg-sub">Loading...</p>
       ) : shown.length === 0 ? (
         <div className="asg-panel asg-empty">No assignments here.</div>
       ) : (
         <div className="asg-list">
-          {shown.map((a) => (
-            <div className="asg-card" key={a.id}>
-              <div className="asg-card-top">
-                <div>
-                  <div className="asg-card-title">{a.title}</div>
-                  <div className="asg-meta">
-                    {a.subject || "General"} • From {a.teacherName || "your teacher"}
-                    <br />
-                    Deadline {formatDateTime(a.effectiveDeadline)}
-                    {a.appeal?.status === "approved" && <> (extended from {formatDateTime(a.deadline)})</>}
-                  </div>
-                </div>
-                <div className="asg-badges">
-                  <StudentStatusBadge status={a.status} />
-                  {a.appeal && <AppealBadge status={a.appeal.status} />}
-                </div>
-              </div>
+          {shown.map((a) => {
+            const overdue = isAssignmentOverdue(a);
+            const statusKey = overdue ? "overdue" : (a.appeal?.status === "approved" ? "extended" : "pending");
 
-              {a.description && <div className="asg-desc">{a.description}</div>}
-
-              {a.hasAttachment && (
-                <div style={{ marginTop: 10 }}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => downloadFrom(`/assignments/${a.id}/attachment`, a.attachmentName).catch(() => setError("Could not download the file."))}
-                  >
-                    Download {a.attachmentName}
-                  </Button>
-                </div>
-              )}
-
-              {a.submission && (
-                <div className="asg-meta" style={{ marginTop: 10 }}>
-                  Submitted {formatDateTime(a.submission.submittedAt)}
-                  {a.submission.fileName && <> • {a.submission.fileName}</>}
-                </div>
-              )}
-
-              {a.appeal && (
-                <>
-                  <div className="asg-quote">
-                    <strong>Your appeal:</strong> {a.appeal.reason}
-                    {a.appeal.status === "approved" && (
-                      <>
-                        {"\n"}<strong>Approved.</strong> New deadline: {formatDateTime(a.appeal.newDeadline)}
-                      </>
-                    )}
-                    {a.appeal.status === "rejected" && (
-                      <>
-                        {"\n"}<strong>Rejected.</strong>
-                      </>
-                    )}
-                    {a.appeal.teacherNote && (
-                      <>
-                        {"\n"}<strong>Teacher:</strong> {a.appeal.teacherNote}
-                      </>
-                    )}
-                  </div>
-                  {a.appeal.teacherHasRead && (
-                    <div className="asg-alert success" style={{ marginTop: 10, marginBottom: 0 }}>
-                      Your teacher has acknowledged that your appeal has been read.
+            return (
+              <div className="asg-card" key={a.id}>
+                <div className="asg-card-top">
+                  <div>
+                    <div className="asg-card-title">{a.title}</div>
+                    <div className="asg-meta">
+                      {a.subject || "General"} • From {a.teacherName || "your teacher"}
+                      <br />
+                      Deadline {formatDateTime(a.effectiveDeadline)}
+                      {a.appeal?.status === "approved" && <> (extended from {formatDateTime(a.deadline)})</>}
                     </div>
-                  )}
-                </>
-              )}
+                  </div>
+                  <div className="asg-badges">
+                    <StudentStatusBadge status={statusKey} />
+                    {a.appeal && <AppealBadge status={a.appeal.status} />}
+                  </div>
+                </div>
 
-              {(a.canSubmit || a.canAppeal) && (
-                <div className="asg-actions">
-                  {a.canSubmit && <Button size="sm" onClick={() => openSubmit(a)}>Submit work</Button>}
-                  {a.canAppeal && (
+                {a.description && <div className="asg-desc">{a.description}</div>}
+
+                {a.hasAttachment && (
+                  <div style={{ marginTop: 10, display: "flex", gap: "10px", alignItems: "center" }}>
+                    <a
+                      href={`/view/${a.id}?type=assignment&name=${encodeURIComponent(a.attachmentName)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: "none" }}
+                    >
+                      <Button size="sm" variant="primary">
+                        <EyeIcon size={14} /> View
+                      </Button>
+                    </a>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => downloadFrom(`/assignments/${a.id}/attachment`, a.attachmentName).catch(() => setError("Could not download the file."))}
+                    >
+                      Download {a.attachmentName}
+                    </Button>
+                  </div>
+                )}
+
+                {a.appeal && (
+                  <>
+                    <div className="asg-quote">
+                      <strong>Your appeal:</strong> {a.appeal.reason}
+                      {a.appeal.status === "approved" && (
+                        <>
+                          {"\n"}<strong>Approved.</strong> New deadline: {formatDateTime(a.appeal.newDeadline)}
+                        </>
+                      )}
+                      {a.appeal.status === "rejected" && (
+                        <>
+                          {"\n"}<strong>Rejected.</strong>
+                        </>
+                      )}
+                      {a.appeal.teacherNote && (
+                        <>
+                          {"\n"}<strong>Teacher:</strong> {a.appeal.teacherNote}
+                        </>
+                      )}
+                    </div>
+                    {a.appeal.teacherHasRead && (
+                      <div className="asg-alert success" style={{ marginTop: 10, marginBottom: 0 }}>
+                        Your teacher has acknowledged that your appeal has been read.
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {overdue && !a.appeal && (
+                  <div className="asg-actions">
                     <Button size="sm" variant="outline" onClick={() => openAppeal(a)}>
                       Appeal to teacher
                     </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-
-      <Modal isOpen={Boolean(submitFor)} onClose={() => setSubmitFor(null)} title={`Submit: ${submitFor?.title || ""}`} maxWidth="580px">
-        {submitFor && (
-          <form className="asg-form" onSubmit={sendSubmission}>
-            {modalError && <div className="asg-alert error">{modalError}</div>}
-            <div className="asg-field">
-              <label htmlFor="sub-text">Your answer</label>
-              <textarea id="sub-text" className="asg-textarea" value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Type your answer, a link to your work, or notes for the teacher…" />
-            </div>
-            <div className="asg-field">
-              <label htmlFor="sub-file">Attach a file (optional, max 20 MB)</label>
-              <input id="sub-file" type="file" className="asg-input" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            </div>
-            <div className="asg-form-actions">
-              <Button variant="secondary" onClick={() => setSubmitFor(null)}>Cancel</Button>
-              <Button type="submit" loading={saving}>Submit</Button>
-            </div>
-          </form>
-        )}
-      </Modal>
 
       <Modal isOpen={Boolean(appealFor)} onClose={() => setAppealFor(null)} title={`Appeal: ${appealFor?.title || ""}`} maxWidth="540px">
         {appealFor && (
@@ -250,11 +212,34 @@ export default function StudentAssignments() {
             </div>
             <div className="asg-field">
               <label htmlFor="appeal-reason">Why did you miss the deadline?</label>
-              <textarea id="appeal-reason" className="asg-textarea" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={2000} placeholder="Explain honestly so your teacher can decide…" />
+              <textarea
+                id="appeal-reason"
+                className="asg-textarea"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={2000}
+                placeholder="Explain clearly why you missed the deadline (between 50 and 100 words)..."
+              />
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginTop: "6px",
+                  fontSize: "0.8rem",
+                  color: appealWordCount >= 50 && appealWordCount <= 100
+                    ? "var(--color-primary)"
+                    : "var(--color-muted)",
+                }}
+              >
+                <span>Required: 50 to 100 words</span>
+                <span style={{ fontWeight: 600 }}>{appealWordCount} / 100 words</span>
+              </div>
             </div>
             <div className="asg-form-actions">
               <Button variant="secondary" onClick={() => setAppealFor(null)}>Cancel</Button>
-              <Button type="submit" loading={saving}>Send appeal</Button>
+              <Button type="submit" loading={saving} disabled={appealWordCount < 50 || appealWordCount > 100}>
+                Send appeal
+              </Button>
             </div>
           </form>
         )}

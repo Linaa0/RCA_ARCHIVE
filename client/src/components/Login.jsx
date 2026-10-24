@@ -23,7 +23,14 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    const notice = typeof window !== "undefined" ? sessionStorage.getItem("login_notice") : null;
+    if (notice) {
+      sessionStorage.removeItem("login_notice");
+      return notice;
+    }
+    return "";
+  });
   const [successMsg, setSuccessMsg] = useState(
     () => location.state?.message || ""
   );

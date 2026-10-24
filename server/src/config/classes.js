@@ -23,4 +23,13 @@ function classLabel(id) {
   return CLASSES.find((c) => c.id === id)?.label || (id ? id : "No class");
 }
 
-module.exports = { CLASSES, CLASS_IDS, normalizeClass, classLabel };
+function getAcademicYear(value) {
+  if (!value) return null;
+  const s = String(value).trim().toLowerCase().replace(/\s+/g, "");
+  if (s === "1" || s === "y1" || s.startsWith("y1") || s.startsWith("year1")) return 1;
+  if (s === "2" || s === "y2" || s.startsWith("y2") || s.startsWith("year2")) return 2;
+  if (s === "3" || s === "y3" || s.startsWith("y3") || s.startsWith("year3")) return 3;
+  return null;
+}
+
+module.exports = { CLASSES, CLASS_IDS, normalizeClass, classLabel, getAcademicYear };

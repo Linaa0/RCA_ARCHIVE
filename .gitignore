@@ -39,5 +39,6 @@ yarn-error.log*
 Thumbs.db
 submissions/
 server/tmp/
+client/tmp/
 tmp/
 

@@ -77,6 +77,11 @@
   --shadow-modal:      0 24px 60px -12px rgba(35, 44, 107, 0.25);
 
   /* Backward-Compatible Token Aliases - Light */
+  --color-primary:        var(--color-indigo-500);
+  --color-primary-hover:  var(--color-indigo-600);
+  --color-text-primary:   var(--color-ink);
+  --color-text-secondary: var(--color-muted);
+  --color-text-tertiary:  var(--color-tertiary);
   --text-primary:         var(--color-ink);
   --text-secondary:       var(--color-muted);
   --text-tertiary:        var(--color-tertiary);
@@ -180,6 +185,11 @@
   --focus-ring:        0 0 0 3px rgba(143, 162, 255, 0.45);
 
   /* Backward-Compatible Token Aliases - Dark */
+  --color-primary:        var(--color-indigo-500);
+  --color-primary-hover:  var(--color-indigo-400);
+  --color-text-primary:   var(--color-ink);
+  --color-text-secondary: var(--color-muted);
+  --color-text-tertiary:  var(--color-tertiary);
   --text-primary:         var(--color-ink);
   --text-secondary:       var(--color-muted);
   --text-tertiary:        var(--color-tertiary);

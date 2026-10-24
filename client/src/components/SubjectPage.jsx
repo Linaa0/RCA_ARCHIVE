@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import "./SubjectPage.css";
-import api from '../services/api';
+import api from "../services/api";
 
 function SubjectPage() {
   const { year, subject } = useParams();
@@ -16,7 +16,6 @@ function SubjectPage() {
   const [type, setType] = useState("Past Paper");
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [selectedRatings, setSelectedRatings] = useState({});
 
   const [popup, setPopup] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
@@ -34,21 +33,21 @@ function SubjectPage() {
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
   const role = localStorage.getItem("role");
-  const canUpload = !!token; // Anyone logged in can upload
+  const canUpload = !!token;
 
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      const openMenus = document.querySelectorAll('.more-menu.open');
-      openMenus.forEach(menu => {
-        if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) {
-          menu.classList.remove('open');
+      const openMenus = document.querySelectorAll(".more-menu.open");
+      openMenus.forEach((menu) => {
+        if (!menu.contains(e.target) && !menu.previousElementSibling?.contains(e.target)) {
+          menu.classList.remove("open");
         }
       });
     };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
   const fetchPapers = async () => {
@@ -68,16 +67,24 @@ function SubjectPage() {
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchPapers(); }, [subject, year, typeFilter]);
+  useEffect(() => {
+    fetchPapers();
+  }, [subject, year, typeFilter]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) { setPopup({ type: "error", message: "Please select a file." }); return; }
+    if (!file) {
+      setPopup({ type: "error", title: "Missing File", message: "Please select a file to upload." });
+      return;
+    }
 
-    // Client-side file type check
     const ext = file.name.split(".").pop().toLowerCase();
     if (!["pdf", "doc", "docx"].includes(ext)) {
-      setPopup({ type: "error", message: "Only PDF and Word documents (.pdf, .doc, .docx) are allowed." });
+      setPopup({
+        type: "error",
+        title: "Unsupported Format",
+        message: "Only PDF and Word documents (.pdf, .doc, .docx) are allowed.",
+      });
       return;
     }
 
@@ -92,16 +99,28 @@ function SubjectPage() {
 
     try {
       await api.post("/upload", formData);
-      setPopup({ type: "success", message: "Paper uploaded successfully." });
+      setPopup({
+        type: "success",
+        title: "Upload Successful",
+        message: `"${title}" has been uploaded to ${subject}.`,
+      });
       setTitle("");
       setFile(null);
       setShowUpload(false);
       fetchPapers();
     } catch (err) {
       if (err.response?.status === 409) {
-        setPopup({ type: "duplicate", message: err.response.data.message });
+        setPopup({
+          type: "duplicate",
+          title: "Paper Already Exists",
+          message: err.response.data.message,
+        });
       } else {
-        setPopup({ type: "error", message: err.response?.data?.error || "Upload failed. Please try again." });
+        setPopup({
+          type: "error",
+          title: "Upload Restriction",
+          message: err.response?.data?.error || "Upload failed. Please check your assigned cohort and try again.",
+        });
       }
     }
 
@@ -129,7 +148,7 @@ function SubjectPage() {
     if (!editTarget) return;
 
     if (!editForm.title.trim() || !editForm.subject.trim() || !editForm.year.trim() || !editForm.type.trim()) {
-      setPopup({ type: "error", message: "Please fill in all edit fields." });
+      setPopup({ type: "error", title: "Incomplete Form", message: "Please fill in all edit fields." });
       return;
     }
 
@@ -141,16 +160,42 @@ function SubjectPage() {
         year: editForm.year.trim(),
         type: editForm.type.trim(),
       });
-      setPopup({ type: "success", message: data.message || "Paper updated successfully." });
+      setPopup({
+        type: "success",
+        title: "Paper Updated",
+        message: data.message || "Paper updated successfully.",
+      });
       setEditTarget(null);
       fetchPapers();
     } catch (err) {
       setPopup({
         type: "error",
+        title: "Update Failed",
         message: err.response?.data?.error || "Unable to update paper.",
       });
     } finally {
       setEditSubmitting(false);
+    }
+  };
+
+  const handleDirectDelete = async (paper) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${paper.title}"?`)) {
+      return;
+    }
+    try {
+      await api.delete(`/papers/${paper.id}`);
+      setPopup({
+        type: "success",
+        title: "Paper Deleted",
+        message: `"${paper.title}" has been permanently removed from the archive.`,
+      });
+      fetchPapers();
+    } catch (err) {
+      setPopup({
+        type: "error",
+        title: "Deletion Failed",
+        message: err.response?.data?.error || "Unable to delete paper.",
+      });
     }
   };
 
@@ -159,7 +204,11 @@ function SubjectPage() {
 
     if (!deleteTarget) return;
     if (!deleteReason.trim()) {
-      setPopup({ type: "error", message: "Please provide a reason for the deletion request." });
+      setPopup({
+        type: "error",
+        title: "Missing Reason",
+        message: "Please provide a reason for the deletion request.",
+      });
       return;
     }
 
@@ -168,51 +217,58 @@ function SubjectPage() {
       const { data } = await api.post(`/papers/${deleteTarget.id}/request-delete`, {
         reason: deleteReason,
       });
-      setPopup({ type: "success", message: data.message || "Deletion request submitted." });
+      setPopup({
+        type: "success",
+        title: "Request Submitted",
+        message: data.message || "Deletion request submitted for admin review.",
+      });
       setDeleteTarget(null);
       setDeleteReason("");
       fetchPapers();
     } catch (err) {
       setPopup({
         type: "error",
+        title: "Request Error",
         message: err.response?.data?.error || "Unable to submit deletion request.",
       });
     } finally {
       setDeleteSubmitting(false);
     }
   };
-  const handleRate = async (paperId) => {
-    const ratingValue = Number(selectedRatings[paperId]);
-    if (!ratingValue || ratingValue < 1 || ratingValue > 5) {
-      setPopup({ type: "error", message: "Please choose a rating between 1 and 5." });
-      return;
-    }
 
-     try {
-      await api.post(`/papers/${paperId}/rate`, { rating: ratingValue });
-      setPopup({ type: "success", message: "Thank you for your rating." });
-      setSelectedRatings((prev) => ({ ...prev, [paperId]: "" }));
-      fetchPapers();
-    } catch (err) {
-      setPopup({ type: "error", message: err.response?.data?.error || "Unable to save rating." });
-    }
-  };
   return (
     <div className="subject-page">
-
       {popup && (
-        <div className="popup-overlay">
-          <div className={`popup-box popup-${popup.type}`}>
-            <div className="popup-icon">
-              {popup.type === "duplicate" ? "Notice" : popup.type === "success" ? "Success" : "Error"}
+        <div className="popup-overlay" onClick={() => setPopup(null)}>
+          <div className="popup-modal" onClick={(e) => e.stopPropagation()}>
+            <div className={`popup-icon-badge popup-icon-${popup.type}`}>
+              {popup.type === "success" ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : popup.type === "duplicate" ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              )}
             </div>
-            <h3>
-              {popup.type === "duplicate" ? "Paper Already Exists"
-                : popup.type === "success" ? "Upload Successful"
-                : "Error"}
+            <h3 className="popup-title">
+              {popup.title || (popup.type === "duplicate" ? "Paper Already Exists" : popup.type === "success" ? "Upload Successful" : "Notice")}
             </h3>
-            <p>{popup.message}</p>
-            <button className="popup-close-btn" onClick={() => setPopup(null)}>OK</button>
+            <p className="popup-message">{popup.message}</p>
+            <div className="popup-actions">
+              <button type="button" className="popup-confirm-btn" onClick={() => setPopup(null)}>
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -352,7 +408,9 @@ function SubjectPage() {
       </nav>
 
       <div className="subject-header">
-        <h2>{subject}: {year === "Y1GenAI" ? "Year 1 GenAI" : (String(year).toLowerCase().startsWith("y") ? `Year ${year.slice(1)}` : (["1", "2", "3"].includes(String(year)) ? `Year ${year}` : year))}</h2>
+        <h2>
+          {subject}: {year === "Y1GenAI" ? "Year 1 GenAI" : (String(year).toLowerCase().startsWith("y") ? `Year ${year.slice(1)}` : (["1", "2", "3"].includes(String(year)) ? `Year ${year}` : year))}
+        </h2>
         {canUpload ? (
           <button className="upload-toggle-btn" onClick={() => setShowUpload(!showUpload)}>
             {showUpload ? "Cancel" : "Upload Paper or Note"}
@@ -375,10 +433,10 @@ function SubjectPage() {
 
             <label>Type</label>
             <select value={type} onChange={(e) => setType(e.target.value)}>
-              <option>Past Paper</option>
-              <option>Notes</option>
-              <option>Assignment</option>
-              <option>Quiz</option>
+              <option value="Past Paper">Past Paper</option>
+              <option value="Notes">Notes</option>
+              {role !== "student" && <option value="Assignment">Assignment</option>}
+              <option value="Quiz">Quiz</option>
             </select>
 
             <label>File (PDF or Word document only)</label>
@@ -424,90 +482,84 @@ function SubjectPage() {
         ) : (
           <>
             <p>{papers.length} result(s) found</p>
-            {papers.map((paper) => (
-              <div key={paper.id} className="paper-card">
-                <div className="paper-info">
-                  <strong>{paper.title}</strong>
-                  <span className="paper-meta">
-                    {paper.type} • Uploaded by {paper.uploadedBy} • {new Date(paper.uploadedAt).toLocaleDateString()}
-                  </span>
-                  <div className="rating-row">
-                    <span className="rating-summary">
-                      {paper.averageRating.toFixed(1)} / 5 • {paper.ratingCount} rating{paper.ratingCount === 1 ? "" : "s"}
+            {papers.map((paper) => {
+              const isOwnerOrAdmin = Boolean(
+                token && (paper.uploadedBy === username || role === "admin")
+              );
+
+              return (
+                <div key={paper.id} className="paper-card">
+                  <div className="paper-info">
+                    <strong>{paper.title}</strong>
+                    <span className="paper-meta">
+                      {paper.type} • Uploaded by {paper.uploadedBy} • {new Date(paper.uploadedAt).toLocaleDateString()}
                     </span>
-                    <div className="rating-input">
-                      <label>Rate:</label>
-                      <select
-                        value={selectedRatings[paper.id] || ""}
-                        onChange={(e) =>
-                          setSelectedRatings((prev) => ({ ...prev, [paper.id]: e.target.value }))
-                        }
-                      >
-                        <option value="">Choose</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                      </select>
-                      <button className="rate-btn" onClick={() => handleRate(paper.id)}>
-                        Rate
-                      </button>
-                    </div>
                   </div>
-                </div>
-                <div className="paper-actions">
-                  <a
-                    href={`/view/${paper.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="view-btn"
-                  >
-                    View
-                  </a>
-                  <div className="more-menu-container">
-                    <button 
-                      className="more-menu-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const menu = e.target.nextElementSibling;
-                        menu.classList.toggle('open');
-                      }}
+                  <div className="paper-actions">
+                    <a
+                      href={`/view/${paper.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="view-btn"
                     >
-                      ⋮
-                    </button>
-                    <div className="more-menu">
-                      <a
-                        href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
-                        className="more-menu-item"
+                      View
+                    </a>
+                    <div className="more-menu-container">
+                      <button
+                        type="button"
+                        className="more-menu-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const menu = e.currentTarget.nextElementSibling;
+                          document.querySelectorAll(".more-menu.open").forEach((m) => {
+                            if (m !== menu) m.classList.remove("open");
+                          });
+                          menu.classList.toggle("open");
+                        }}
                       >
-                        Download
-                      </a>
-                      {token && (paper.uploadedBy === username || role === "admin") && (
-                        <button 
-                          className="more-menu-item" 
-                          onClick={() => {
-                            handleOpenEdit(paper);
-                          }}
+                        ⋮
+                      </button>
+                      <div className="more-menu">
+                        <a
+                          href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
+                          className="more-menu-item"
                         >
-                          Edit
-                        </button>
-                      )}
-                      {token && role !== "admin" && (
-                        <button 
-                          className="more-menu-item" 
-                          onClick={() => {
-                            handleOpenDeleteRequest(paper);
-                          }}
-                        >
-                          Request Deletion
-                        </button>
-                      )}
+                          Download
+                        </a>
+                        {isOwnerOrAdmin && (
+                          <button
+                            type="button"
+                            className="more-menu-item"
+                            onClick={() => handleOpenEdit(paper)}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {isOwnerOrAdmin ? (
+                          <button
+                            type="button"
+                            className="more-menu-item text-danger"
+                            onClick={() => handleDirectDelete(paper)}
+                          >
+                            Delete
+                          </button>
+                        ) : (
+                          token && (
+                            <button
+                              type="button"
+                              className="more-menu-item"
+                              onClick={() => handleOpenDeleteRequest(paper)}
+                            >
+                              Request Deletion
+                            </button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </>
         )}
       </div>

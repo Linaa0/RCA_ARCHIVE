@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const {
+  NODE_ENV,
   SMTP_HOST,
   SMTP_PORT,
   SMTP_SECURE,
@@ -34,14 +35,26 @@ function generateMessageId() {
   return `<${Date.now()}.${rand}@${domain}>`;
 }
 
+function getSmtpConfig() {
+  return {
+    host: process.env.SMTP_HOST || SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : Boolean(SMTP_SECURE),
+    user: process.env.SMTP_USER || SMTP_USER,
+    pass: process.env.SMTP_PASS || SMTP_PASS,
+    from: process.env.EMAIL_FROM || EMAIL_FROM,
+  };
+}
+
 function isRealSmtpConfigured() {
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+  const conf = getSmtpConfig();
+  if (!conf.host || !conf.user || !conf.pass) {
     return false;
   }
 
-  const lowerHost = SMTP_HOST.toLowerCase();
-  const lowerUser = SMTP_USER.toLowerCase();
-  const lowerPass = SMTP_PASS.toLowerCase();
+  const lowerHost = conf.host.toLowerCase();
+  const lowerUser = conf.user.toLowerCase();
+  const lowerPass = conf.pass.toLowerCase();
 
   const placeholderChecks = [
     { key: "SMTP_HOST", value: lowerHost, checks: ["example.com"] },
@@ -72,35 +85,71 @@ let cachedTransporter = null;
 let cachedIsReal = null;
 
 async function createMailTransporter() {
-  if (cachedTransporter) {
-    return { transporter: cachedTransporter, isReal: cachedIsReal };
-  }
+  const currentEnv = process.env.NODE_ENV || NODE_ENV || "production";
+  const conf = getSmtpConfig();
 
-  if (isRealSmtpConfigured()) {
+  if (currentEnv === "production") {
+    if (!isRealSmtpConfigured()) {
+      console.error("[ERROR] Real SMTP is not configured in production environment.");
+      const err = new Error("Real SMTP is not configured in production environment.");
+      err.userMessage = "We could not send the email right now. Please try again in a minute.";
+      throw err;
+    }
+
     try {
       const transporter = nodemailer.createTransport({
-        host: SMTP_HOST,
-        port: Number(SMTP_PORT) || 587,
-        secure: Boolean(SMTP_SECURE),
+        pool: true,
+        maxConnections: 3,
+        maxMessages: 50,
+        host: conf.host,
+        port: conf.port,
+        secure: conf.secure,
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 8000,
         auth: {
-          user: SMTP_USER,
-          pass: SMTP_PASS,
-        },
-        tls: {
-          rejectUnauthorized: false,
+          user: conf.user,
+          pass: conf.pass,
         },
       });
 
       await transporter.verify();
-      console.log("[OK] SMTP connection verified successfully.");
-      cachedTransporter = transporter;
-      cachedIsReal = true;
       return { transporter, isReal: true };
     } catch (err) {
-      console.warn("[WARN] Real SMTP connection failed, using local test transporter:", err.message);
+      console.error("[ERROR] Production SMTP connection failed:", err.message);
+      const error = new Error("Production SMTP connection failed: " + err.message);
+      error.userMessage = "We could not send the email right now. Please try again in a minute.";
+      throw error;
     }
   }
 
+  // Non-production environment
+  if (isRealSmtpConfigured()) {
+    try {
+      const transporter = nodemailer.createTransport({
+        pool: true,
+        maxConnections: 3,
+        maxMessages: 50,
+        host: conf.host,
+        port: conf.port,
+        secure: conf.secure,
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 8000,
+        auth: {
+          user: conf.user,
+          pass: conf.pass,
+        },
+      });
+
+      await transporter.verify();
+      return { transporter, isReal: true };
+    } catch (err) {
+      console.warn("[WARN] Real SMTP connection failed in dev, falling back to local test transporter:", err.message);
+    }
+  }
+
+  // Use Ethereal test transporter strictly in development / testing
   const testAccount = await nodemailer.createTestAccount();
   const transporter = nodemailer.createTransport({
     host: testAccount.smtp.host,
@@ -111,62 +160,320 @@ async function createMailTransporter() {
       pass: testAccount.pass,
     },
   });
-  cachedTransporter = transporter;
-  cachedIsReal = false;
+
   return { transporter, isReal: false };
 }
 
 function getSender() {
-  const fromAddress = EMAIL_FROM || SMTP_USER || "noreply@rca.ac.rw";
+  const fromAddress = process.env.EMAIL_FROM || EMAIL_FROM || SMTP_USER || "noreply@rca.ac.rw";
   if (fromAddress.includes("<")) return fromAddress;
   return `"RCA Archive" <${fromAddress}>`;
 }
 
 function getAttachments() {
-  if (fs.existsSync(LOGO_PATH)) {
-    return [
-      {
-        filename: "rca-logo.png",
-        path: LOGO_PATH,
-        cid: "rcalogo",
-      },
-    ];
-  }
+  // Inbox placement optimization: no file attachments on transactional emails
   return [];
 }
 
-async function sendMailWithOptions({ to, subject, text, html }) {
-  const { transporter, isReal } = await createMailTransporter();
-  const messageId = generateMessageId();
-  const replyTo = SMTP_USER || EMAIL_FROM || "support@rca.ac.rw";
+async function recordOutboxEntry(entry) {
+  try {
+    const { getEmailOutboxCollection } = require("../models");
+    const col = getEmailOutboxCollection();
+    if (col) {
+      await col.insertOne({
+        ...entry,
+        createdAt: new Date(),
+      });
+    }
+  } catch (err) {
+    // Silent ignore if database is not initialized during unit tests
+  }
+}
 
-  const mailOptions = {
-    from: getSender(),
-    to,
-    replyTo,
-    subject,
-    text,
-    html,
-    messageId,
+async function sendViaResend({ to, subject, html, text }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured in environment");
+  const sender = getSender();
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
     headers: {
-      "Auto-Submitted": "auto-generated",
-      "X-Auto-Response-Suppress": "All",
-      "Message-ID": messageId,
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
-    attachments: getAttachments(),
-  };
+    body: JSON.stringify({
+      from: sender,
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html,
+      text,
+    }),
+  });
 
-  const info = await transporter.sendMail(mailOptions);
-  let previewUrl = null;
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || `Resend API error: ${response.status}`);
+  }
 
-  if (!isReal) {
-    previewUrl = nodemailer.getTestMessageUrl(info);
-    if (previewUrl) {
-      console.log(`[INFO] Email preview (${subject}): ${previewUrl}`);
+  return { id: data.id, isReal: true };
+}
+
+async function sendViaBrevo({ to, subject, html, text }) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error("BREVO_API_KEY is not configured in environment");
+
+  const senderStr = getSender();
+  let senderName = "RCA Archive";
+  let senderEmail = "noreply@rca.ac.rw";
+  const match = senderStr.match(/"?([^"<]+)"?\s*<([^>]+)>/);
+  if (match) {
+    senderName = match[1].trim();
+    senderEmail = match[2].trim();
+  } else if (senderStr.includes("@")) {
+    senderEmail = senderStr.trim();
+  }
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || `Brevo API error: ${response.status}`);
+  }
+
+  return { id: data.messageId, isReal: true };
+}
+
+async function sendMailWithOptions({ to, subject, text, html }) {
+  const messageId = generateMessageId();
+  const provider = (process.env.MAIL_PROVIDER || "smtp").toLowerCase().trim();
+
+  // 1. HTTP Provider: Resend
+  if (provider === "resend") {
+    try {
+      const result = await sendViaResend({ to, subject, html, text });
+      await recordOutboxEntry({
+        to,
+        subject,
+        provider: "resend",
+        status: "sent",
+        attempts: 1,
+        messageId: result.id,
+        isReal: true,
+        sentAt: new Date(),
+      });
+      return { info: result, previewUrl: null, isReal: true };
+    } catch (err) {
+      await recordOutboxEntry({
+        to,
+        subject,
+        provider: "resend",
+        status: "failed",
+        attempts: 1,
+        lastError: err.message,
+        failedAt: new Date(),
+      });
+      throw err;
     }
   }
 
-  return { info, previewUrl, isReal };
+  // 2. HTTP Provider: Brevo
+  if (provider === "brevo") {
+    try {
+      const result = await sendViaBrevo({ to, subject, html, text });
+      await recordOutboxEntry({
+        to,
+        subject,
+        provider: "brevo",
+        status: "sent",
+        attempts: 1,
+        messageId: result.id,
+        isReal: true,
+        sentAt: new Date(),
+      });
+      return { info: result, previewUrl: null, isReal: true };
+    } catch (err) {
+      await recordOutboxEntry({
+        to,
+        subject,
+        provider: "brevo",
+        status: "failed",
+        attempts: 1,
+        lastError: err.message,
+        failedAt: new Date(),
+      });
+      throw err;
+    }
+  }
+
+  // 3. SMTP Provider (default)
+  const replyTo = SMTP_USER || EMAIL_FROM || "support@rca.ac.rw";
+  try {
+    const { transporter, isReal } = await createMailTransporter();
+
+    const mailOptions = {
+      from: getSender(),
+      to,
+      replyTo,
+      subject,
+      text,
+      html,
+      messageId,
+      headers: {
+        "Auto-Submitted": "auto-generated",
+        "X-Auto-Response-Suppress": "All",
+        "Message-ID": messageId,
+      },
+      attachments: getAttachments(),
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    let previewUrl = null;
+
+    if (!isReal) {
+      previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log(`[INFO] Email preview (${subject}): ${previewUrl}`);
+      }
+    }
+
+    await recordOutboxEntry({
+      to,
+      subject,
+      provider: "smtp",
+      status: "sent",
+      attempts: 1,
+      messageId,
+      isReal,
+      sentAt: new Date(),
+    });
+
+    return { info, previewUrl, isReal };
+  } catch (err) {
+    await recordOutboxEntry({
+      to,
+      subject,
+      provider: "smtp",
+      status: "failed",
+      attempts: 1,
+      lastError: err.message,
+      failedAt: new Date(),
+    });
+    throw err;
+  }
+}
+
+async function getEmailHealth() {
+  const provider = (process.env.MAIL_PROVIDER || "smtp").toLowerCase();
+  const configured = provider === "resend"
+    ? Boolean(process.env.RESEND_API_KEY)
+    : provider === "brevo"
+    ? Boolean(process.env.BREVO_API_KEY)
+    : isRealSmtpConfigured();
+
+  let outboxStats = { total: 0, sent: 0, failed: 0 };
+  let recentOutbox = [];
+
+  try {
+    const { getEmailOutboxCollection } = require("../models");
+    const col = getEmailOutboxCollection();
+    if (col) {
+      const [total, sent, failed] = await Promise.all([
+        col.countDocuments(),
+        col.countDocuments({ status: "sent" }),
+        col.countDocuments({ status: "failed" }),
+      ]);
+      outboxStats = { total, sent, failed };
+
+      const docs = await col
+        .find({})
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .toArray();
+
+      recentOutbox = docs.map((d) => {
+        // Obfuscate recipient email local part for privacy in dashboard
+        const emailParts = (d.to || "").split("@");
+        const maskedTo = emailParts.length === 2
+          ? `${emailParts[0].slice(0, 2)}***@${emailParts[1]}`
+          : d.to;
+
+        return {
+          id: d._id?.toString(),
+          to: maskedTo,
+          subject: d.subject,
+          status: d.status,
+          provider: d.provider || "smtp",
+          isReal: d.isReal,
+          lastError: d.lastError || null,
+          createdAt: d.createdAt,
+          sentAt: d.sentAt || null,
+          failedAt: d.failedAt || null,
+        };
+      });
+    }
+  } catch (err) {
+    // Database check optional
+  }
+
+  return {
+    status: configured ? "healthy" : "unconfigured",
+    provider,
+    isRealConfigured: configured,
+    from: getSender(),
+    outboxStats,
+    recentOutbox,
+  };
+}
+
+async function sendTestEmail(recipientEmail) {
+  const t = {
+    subject: "RCA Archive: Email Deliverability Test",
+    text: `Hello,
+
+This is an automated test message from your RCA Archive instance.
+If you are seeing this message, your email transport settings and deliverability pipeline are operational.
+
+Timestamp: ${new Date().toISOString()}
+Provider: ${process.env.MAIL_PROVIDER || "smtp"}
+
+Rwanda Coding Academy, Nyabihu Campus, Western Province, Rwanda.`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1B2142;">
+        <h2 style="color: #3F4FA8; margin-top: 0;">RCA Archive: Email Test</h2>
+        <p>This is a verification message to confirm that your email provider and deliverability pipeline are functioning properly.</p>
+        <div style="background: #F4F6FD; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <strong>Configuration Details:</strong>
+          <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+            <li>Status: Connected and operational</li>
+            <li>Provider: ${process.env.MAIL_PROVIDER || "smtp"}</li>
+            <li>Timestamp: ${new Date().toISOString()}</li>
+          </ul>
+        </div>
+        <p style="font-size: 13px; color: #6A7399;">Rwanda Coding Academy, Nyabihu Campus, Western Province, Rwanda.</p>
+      </div>
+    `,
+  };
+
+  return sendMailWithOptions({
+    to: recipientEmail,
+    subject: t.subject,
+    text: t.text,
+    html: t.html,
+  });
 }
 
 async function sendVerificationEmail(email, otp) {
@@ -190,12 +497,13 @@ async function sendSignupVerificationEmail({ email, code, expiryMinutes = 15 }) 
 }
 
 async function sendAccountInviteEmail(email, username, token, frontendBaseUrl, role = "teacher", temporaryPassword = null) {
-  const setupUrl = buildPasswordSetupUrl(frontendBaseUrl || FRONTEND_BASE_URL, token);
+  const signInUrl = `${frontendBaseUrl || FRONTEND_BASE_URL}/login`;
   const t = templates.getInvitationTemplate({
     name: username,
     role,
-    setupUrl,
+    email,
     temporaryPassword,
+    signInUrl,
   });
   return sendMailWithOptions({
     to: email,
@@ -239,17 +547,20 @@ async function sendDeletionRequestDecisionEmail(email, paperTitle, status, notes
   });
 }
 
-async function sendSuspiciousLoginEmail(email, ip, userAgent) {
+async function sendSuspiciousLoginEmail(userOrEmail, ip) {
+  const email = typeof userOrEmail === "string" ? userOrEmail : userOrEmail?.email;
+  if (!email || typeof email !== "string") return;
+  const name = typeof userOrEmail === "object" ? (userOrEmail.name || userOrEmail.username) : email.split("@")[0];
   const t = templates.getGenericNotificationTemplate({
-    name: email.split("@")[0],
+    name,
     title: "Suspicious login attempt detected",
-    message: `We observed multiple failed login attempts on your RCA Archive account from IP address ${ip || "unknown"}. If this was you, please reset your password. If not, your account remains secured.`,
+    message: `We observed multiple failed login attempts on your RCA Archive account${ip ? ` from IP address ${ip}` : ""}. If this was you, please reset your password. If not, your account remains secured.`,
     actionUrl: `${FRONTEND_BASE_URL}/reset-password`,
     actionText: "Secure Account",
   });
   return sendMailWithOptions({
     to: email,
-    subject: t.subject,
+    subject: t.subject || "Security Alert: Suspicious Login Attempts",
     text: t.text,
     html: t.html,
   });
@@ -384,5 +695,7 @@ module.exports = {
   cleanExpiredPasswordResets,
   upsertTeacherInvite,
   renderAllEmailPreviews,
+  getEmailHealth,
+  sendTestEmail,
   templates,
 };

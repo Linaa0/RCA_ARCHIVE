@@ -66,5 +66,16 @@ jobs:
           done
 
           echo "Health check failed after 180s"
-          pm2 logs rca-archive-backend --lines 30 --nostream || true
+          echo "--- Safe Process Status Summary ---"
+          pm2 jlist 2>/dev/null | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
+              try {
+                const list = JSON.parse(s);
+                if (!list.length) { console.log("No PM2 processes found for this user."); return; }
+                for (const p of list) {
+                  const up = p.pm2_env.pm_uptime ? Math.round((Date.now()-p.pm2_env.pm_uptime)/60000) : 0;
+                  console.log(`${p.name}: status=${p.pm2_env.status} restarts=${p.pm2_env.restart_time} uptime_min=${up} memory_mb=${Math.round((p.monit.memory||0)/1048576)}`);
+                }
+              } catch (e) { console.log("Could not read PM2 status."); }
+            });' || true
           exit 1

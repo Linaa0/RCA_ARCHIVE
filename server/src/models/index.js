@@ -7,7 +7,11 @@ let db;
 async function connectToMongo() {
   if (db) return db;
 
-  client = new MongoClient(MONGO_URI);
+  client = new MongoClient(MONGO_URI, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
+    maxPoolSize: 20,
+  });
   await client.connect();
   db = client.db(MONGO_DB_NAME);
 
@@ -32,6 +36,17 @@ async function connectToMongo() {
     db.collection("teacherResources").createIndex({ teacherId: 1, type: 1, uploadedAt: -1 }),
     db.collection("pending_signups").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     db.collection("pending_signups").createIndex({ email: 1 }, { unique: true }),
+    db.collection("email_outbox").createIndex({ status: 1, createdAt: 1 }),
+    db.collection("failedLoginAttempts").createIndex({ createdAt: 1 }, { expireAfterSeconds: 900 }),
+    db.collection("failedLoginAttempts").createIndex({ email: 1, createdAt: -1 }),
+    db.collection("failedLoginAttempts").createIndex({ ip: 1, createdAt: -1 }),
+    db.collection("admin_audit_logs").createIndex({ action: 1, createdAt: -1 }),
+    db.collection("admin_audit_logs").createIndex({ targetId: 1, createdAt: -1 }),
+    db.collection("security_logs").createIndex({ type: 1, createdAt: -1 }),
+    db.collection("security_logs").createIndex({ ip: 1, createdAt: -1 }),
+    db.collection("security_logs").createIndex({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 }),
+    db.collection("notifications").createIndex({ userId: 1, read: 1, createdAt: -1 }),
+    db.collection("notifications").createIndex({ id: 1 }, { unique: true }),
   ]);
 
   return db;
@@ -86,6 +101,38 @@ function getPendingSignupsCollection() {
   return getDb().collection("pending_signups");
 }
 
+function getEmailOutboxCollection() {
+  return getDb().collection("email_outbox");
+}
+
+function getAdminAuditLogsCollection() {
+  return getDb().collection("admin_audit_logs");
+}
+
+function getSecurityLogsCollection() {
+  return getDb().collection("security_logs");
+}
+
+function getNotificationsCollection() {
+  return getDb().collection("notifications");
+}
+
+async function checkDbHealth() {
+  if (!db || !client) {
+    try {
+      await connectToMongo();
+    } catch (_) {
+      return false;
+    }
+  }
+  try {
+    await db.command({ ping: 1 });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 async function closeDb() {
   if (client) {
     await client.close();
@@ -96,6 +143,7 @@ async function closeDb() {
 
 module.exports = {
   connectToMongo,
+  checkDbHealth,
   getDb,
   getUsersCollection,
   getPapersCollection,
@@ -108,5 +156,10 @@ module.exports = {
   getAppealsCollection,
   getTeacherResourcesCollection,
   getPendingSignupsCollection,
+  getEmailOutboxCollection,
+  getAdminAuditLogsCollection,
+  getSecurityLogsCollection,
+  getNotificationsCollection,
   closeDb,
 };
+

@@ -7,17 +7,18 @@ const { requireAdmin } = require("../middleware/roleGuard");
 router.use(requireAuth, requireAdmin);
 
 router.get("/stats", adminController.getStats);
+router.get("/email-health", adminController.getEmailHealth);
+router.post("/email-test", adminController.sendEmailTest);
 
 router.get("/teachers", adminController.listTeachers);
 router.post("/teachers", adminController.createTeacher);
 router.post("/teachers/direct", adminController.createTeacherDirect);
 router.post("/teachers/resend-invite", adminController.resendTeacherInvite);
+router.post("/teachers/resend-credentials", adminController.resendTeacherInvite);
 router.put("/teachers/:id", adminController.updateTeacher);
 router.delete("/teachers/:id", adminController.deleteTeacher);
 
 router.get("/students", adminController.listStudents);
-router.post("/students", adminController.createStudent);
-router.post("/students/resend-invite", adminController.resendStudentInvite);
 router.put("/students/:id", adminController.updateStudent);
 router.delete("/students/:id", adminController.deleteStudent);
 

@@ -43,7 +43,18 @@ wait_for_health() {
   done
 
   echo "ERROR: ${label} did not become healthy after $((max_attempts * sleep_seconds))s"
-  pm2 logs "$PM2_NAME" --lines 30 --nostream || true
+  echo "--- Safe Process Status Summary ---"
+  pm2 jlist 2>/dev/null | node -e '
+    let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
+      try {
+        const list = JSON.parse(s);
+        if (!list.length) { console.log("No PM2 processes found for this user."); return; }
+        for (const p of list) {
+          const up = p.pm2_env.pm_uptime ? Math.round((Date.now()-p.pm2_env.pm_uptime)/60000) : 0;
+          console.log(`${p.name}: status=${p.pm2_env.status} restarts=${p.pm2_env.restart_time} uptime_min=${up} memory_mb=${Math.round((p.monit.memory||0)/1048576)}`);
+        }
+      } catch (e) { console.log("Could not read PM2 status."); }
+    });' || true
   return 1
 }
 
@@ -52,14 +63,27 @@ if [[ ! -f "$CONFIG_ENV" ]]; then
   exit 1
 fi
 
+echo "Running pre-flight environment settings check..."
+node "$REPO_ROOT/server/scripts/check-env.js" "$CONFIG_ENV"
+
 echo "Deploying RCA Archive backend from $REPO_ROOT to $APP_DIR"
 
-mkdir -p "$BACKEND_DIR" "$BACKEND_DIR/uploads"
+SYNC_HELPER="$REPO_ROOT/scripts/backend-sync.sh"
+# Backups live outside the deployed code tree so a deploy can never remove them.
+BACKUP_ROOT="${RCA_ARCHIVE_BACKUP_DIR:-/opt/backups/rca_archive}"
+if ! mkdir -p "$BACKUP_ROOT" 2>/dev/null; then
+  BACKUP_ROOT="${HOME}/rca_archive_backups"
+fi
 
-rsync -a --delete \
-  --exclude node_modules \
-  --exclude uploads \
-  "$REPO_ROOT/server/" "$BACKEND_DIR/"
+mkdir -p "$BACKEND_DIR" "$BACKEND_DIR/uploads" "$BACKEND_DIR/submissions"
+
+echo "Creating safety backup of uploads and submissions in $BACKUP_ROOT..."
+bash "$SYNC_HELPER" backup "$BACKEND_DIR" "$CONFIG_ENV" "$BACKUP_ROOT" || echo "Backup step reported a problem, continuing deploy."
+
+# rsync --delete removes files that are not in the repository. Every runtime
+# data folder (uploads, submissions, backups, tmp, logs and any UPLOADS_DIR or
+# SUBMISSIONS_DIR inside the app directory) is excluded so it is never touched.
+bash "$SYNC_HELPER" sync "$REPO_ROOT/server" "$BACKEND_DIR" "$CONFIG_ENV"
 
 cp "$REPO_ROOT/server/ecosystem.config.cjs" "$APP_DIR/ecosystem.config.cjs"
 

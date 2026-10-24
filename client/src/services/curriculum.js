@@ -23,8 +23,6 @@ export const FALLBACK_PROMOTIONS = [
       "Embedded Systems",
       "Web User Interface",
       "Graphical User Interface",
-      "Computer Basics",
-      "Short Courses",
     ],
   },
   {
@@ -44,6 +42,8 @@ export const FALLBACK_PROMOTIONS = [
       "AI Prompt Engineering Solutions",
       "Frontend",
       "Database",
+      "Computer Basics",
+      "Short Courses",
     ],
   },
   {

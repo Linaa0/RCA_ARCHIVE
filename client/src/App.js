@@ -53,6 +53,8 @@ function PaperResultCard({ paper }) {
       <div style={{ display: "flex", gap: "10px" }}>
         <a
           href={`/view/${paper.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
             padding: "8px 22px",
             borderRadius: "999px",
@@ -458,14 +460,7 @@ function App() {
         />
 
         {/* Dedicated File Viewer (full-screen focus) */}
-        <Route
-          path="/view/:id"
-          element={
-            <PrivateRoute>
-              <FileViewer />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/view/:id" element={<FileViewer />} />
 
         {/* Fallback 404 */}
         <Route path="*" element={<NotFound />} />

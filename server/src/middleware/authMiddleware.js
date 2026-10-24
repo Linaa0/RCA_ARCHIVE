@@ -22,7 +22,7 @@ async function findUserByEmail(email) {
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   const tokenMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
-  const token = tokenMatch?.[1];
+  const token = tokenMatch?.[1] || req.query.token;
 
   if (!token) {
     return res.status(401).json({ error: "Not logged in" });
@@ -53,11 +53,12 @@ function requireAuth(req, res, next) {
         req.user = {
           id: user.id || payload.id,
           email: user.email,
-          username: user.name || user.username || payload.username,
+          username: user.username || user.name || payload.username,
           name: user.name || user.username || payload.username,
           role: user.role,
           status: user.status || "active",
           class: user.class || "",
+          gender: user.gender || "",
         };
         next();
         return null;
@@ -72,7 +73,21 @@ function requireAuth(req, res, next) {
   }
 }
 
+function requireRole(...roles) {
+  const allowed = roles.flat();
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (!allowed.includes(req.user.role)) {
+      return res.status(403).json({ error: "Access denied: insufficient permissions" });
+    }
+    next();
+  };
+}
+
 module.exports = {
   requireAuth,
+  requireRole,
   findUserByEmail,
 };

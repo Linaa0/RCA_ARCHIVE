@@ -29,8 +29,8 @@ export default function Signup() {
     username: "",
     password: "",
     confirmPassword: "",
-    class: "Y1A",
-    gender: "female",
+    class: "",
+    gender: "",
   });
 
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -148,6 +148,10 @@ export default function Signup() {
     }
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (!formData.class) {
+      setError("Please select your assigned class.");
       return;
     }
     if (!formData.gender) {
@@ -514,10 +518,13 @@ export default function Signup() {
                 name="class"
                 value={formData.class}
                 onChange={handleChange}
-                options={RCA_CLASSES.map((c) => ({
-                  value: c.id,
-                  label: `${c.label} (Year ${c.year})`,
-                }))}
+                options={[
+                  { value: "", label: "Select assigned class (Required)" },
+                  ...RCA_CLASSES.map((c) => ({
+                    value: c.id,
+                    label: `${c.label} (Year ${c.year})`,
+                  })),
+                ]}
               />
 
               {/* Gender Choice: 2 Selectable Cards with Illustrated Avatars */}
@@ -634,8 +641,13 @@ export default function Signup() {
                 ))}
               </div>
 
+              <div style={{ background: "var(--color-surface-raised, rgba(91, 115, 224, 0.06))", padding: "10px 12px", borderRadius: "8px", fontSize: "0.82rem", color: "var(--color-text-secondary)", margin: "8px 0" }}>
+                <div>Code sent to: <strong style={{ color: "var(--color-text-primary)" }}>{formData.email}</strong></div>
+                <div style={{ marginTop: "4px" }}>Did not get the code? Check your spam folder, then request a new one.</div>
+              </div>
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--color-text-secondary)", margin: "6px 0" }}>
-                <span>Did not receive code?</span>
+                <span>Need a fresh code?</span>
                 {resendTimer > 0 ? (
                   <span>Resend in {resendTimer}s</span>
                 ) : (

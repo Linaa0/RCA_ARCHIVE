@@ -29,6 +29,11 @@ export default defineConfig({
         target: BACKEND_URL,
         changeOrigin: true,
       },
+      "/socket.io": {
+        target: BACKEND_URL,
+        ws: true,
+        changeOrigin: true,
+      },
     },
   },
 });

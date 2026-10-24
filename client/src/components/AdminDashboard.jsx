@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import DeletionRequests from "./DeletionRequests";
 import TeacherManagement from "./TeacherManagement";
 import StudentManagement from "./StudentManagement";
 import { authDelete, authGet } from "../utils/apiClient";
+import useRealtime from "../hooks/useRealtime";
 import Avatar from "./ui/Avatar";
 import StatCard from "./ui/StatCard";
 import Table from "./ui/Table";
@@ -21,8 +22,10 @@ import {
 import adminFig from "../assets/figures/admin.png";
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "overview";
+  const requestedTab = searchParams.get("tab") || "overview";
+  const activeTab = requestedTab === "stats" ? "overview" : requestedTab;
 
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
@@ -33,42 +36,51 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadDashboard = async () => {
-    setLoading(true);
+  const { subscribe, onReconnect } = useRealtime();
+
+  useEffect(() => {
+    if (requestedTab === "stats") {
+      navigate("/admin", { replace: true });
+    }
+  }, [requestedTab, navigate]);
+
+  const loadDashboard = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
     try {
-      const [statsData, teachersData, deletionsData] = await Promise.all([
-        authGet("/api/admin/stats").catch(() => ({})),
-        authGet("/api/admin/teachers").catch(() => []),
-        authGet("/api/admin/deletion-requests").catch(() => []),
+      const [statsData, teachersData, deletionsData, usersData] = await Promise.all([
+        authGet("/api/admin/stats"),
+        authGet("/api/admin/teachers"),
+        authGet("/api/admin/deletion-requests"),
+        authGet("/api/admin/users").catch(async () => {
+          const fallback = await authGet("/api/users");
+          return Array.isArray(fallback) ? fallback : fallback?.users || [];
+        }),
       ]);
 
-      let usersData = [];
-      try {
-        const response = await authGet("/api/admin/users");
-        usersData = Array.isArray(response) ? response : response?.users || [];
-      } catch {
-        try {
-          const fallback = await authGet("/api/users");
-          usersData = Array.isArray(fallback) ? fallback : fallback?.users || [];
-        } catch {
-          usersData = [];
-        }
+      if (statsData) setStats(statsData);
+      if (teachersData) {
+        setTeachers(
+          Array.isArray(teachersData) ? teachersData : teachersData?.teachers || []
+        );
       }
-
-      setStats(statsData || {});
-      setTeachers(
-        Array.isArray(teachersData) ? teachersData : teachersData?.teachers || []
-      );
-      setDeletionRequests(
-        Array.isArray(deletionsData)
-          ? deletionsData
-          : deletionsData?.deletionRequests || deletionsData?.requests || []
-      );
-      setUsers(usersData);
+      if (deletionsData) {
+        setDeletionRequests(
+          Array.isArray(deletionsData)
+            ? deletionsData
+            : deletionsData?.deletionRequests || deletionsData?.requests || []
+        );
+      }
+      if (usersData) {
+        setUsers(Array.isArray(usersData) ? usersData : usersData?.users || []);
+      }
     } catch (err) {
       console.error("Error loading admin data:", err);
-      setError(err.message || "Unable to load administration dashboard.");
+      setError(
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to load dashboard data. Click Retry to reload."
+      );
     } finally {
       setLoading(false);
     }
@@ -78,8 +90,29 @@ export default function AdminDashboard() {
     loadDashboard();
   }, []);
 
+  useEffect(() => {
+    const unsubs = [
+      subscribe("stats:changed", () => loadDashboard(true)),
+      subscribe("user:created", () => loadDashboard(true)),
+      subscribe("user:updated", () => loadDashboard(true)),
+      subscribe("user:deleted", () => loadDashboard(true)),
+      subscribe("paper:created", () => loadDashboard(true)),
+      subscribe("paper:updated", () => loadDashboard(true)),
+      subscribe("paper:deleted", () => loadDashboard(true)),
+      subscribe("deletion:created", () => loadDashboard(true)),
+      subscribe("deletion:decided", () => loadDashboard(true)),
+    ];
+
+    const unsubReconnect = onReconnect ? onReconnect(() => loadDashboard(true)) : () => {};
+
+    return () => {
+      unsubs.forEach((u) => u && u());
+      if (unsubReconnect) unsubReconnect();
+    };
+  }, [subscribe, onReconnect]);
+
   const totalStudents = useMemo(() => {
-    return users.filter((u) => u.role === "student").length || stats?.totalStudents || 0;
+    return stats?.totalStudents ?? (users.filter((u) => u.role === "student").length || 0);
   }, [users, stats]);
 
   const totalTeachersCount = useMemo(() => {
@@ -97,6 +130,10 @@ export default function AdminDashboard() {
     );
   }, [stats, deletionRequests]);
 
+  const y1Count = stats?.papersByYear?.Y1 || 0;
+  const y2Count = stats?.papersByYear?.Y2 || 0;
+  const y3Count = stats?.papersByYear?.Y3 || 0;
+
   const handleDeleteUser = async () => {
     if (!userDeleteTarget) return;
     setDeletingUser(true);
@@ -110,7 +147,7 @@ export default function AdminDashboard() {
         )
       );
       setUserDeleteTarget(null);
-      loadDashboard();
+      loadDashboard(true);
     } catch (err) {
       setError(err.message || "Unable to delete user.");
     } finally {
@@ -238,11 +275,6 @@ export default function AdminDashboard() {
       title: "Paper Deletion Requests",
       description: "Review removal appeals submitted by students and faculty.",
     },
-    stats: {
-      kicker: "PORTAL ANALYTICS",
-      title: "Archive Statistics",
-      description: "Detailed breakdown of uploaded papers, categories, and cohort activity.",
-    },
   };
 
   const currentMeta = TAB_METADATA[activeTab] || TAB_METADATA.overview;
@@ -282,35 +314,32 @@ export default function AdminDashboard() {
             <h1
               style={{
                 fontSize: "1.75rem",
-                fontWeight: 700,
+                fontWeight: 800,
                 color: "var(--color-text-primary)",
-                marginTop: "4px",
-                marginBottom: "8px",
+                margin: "0 0 6px 0",
                 letterSpacing: "-0.02em",
               }}
             >
-              System Administration
+              Welcome back, Administrator
             </h1>
             <p
               style={{
                 fontSize: "0.92rem",
                 color: "var(--color-text-secondary)",
-                lineHeight: 1.5,
-                maxWidth: "520px",
                 margin: 0,
+                maxWidth: "600px",
+                lineHeight: 1.5,
               }}
             >
-              Monitor portal activity, manage user roles, and govern academic curriculum records across Rwanda Coding Academy.
+              Platform management overview. Monitor academic archives, student cohorts, faculty accounts, and pending deletion appeals.
             </p>
-            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-              <Button variant="outline" size="sm" onClick={loadDashboard} disabled={loading}>
-                {loading ? "Refreshing..." : "Refresh Data"}
-              </Button>
-            </div>
           </div>
 
           <div
+            className="admin-figure-wrap"
             style={{
+              position: "relative",
+              zIndex: 1,
               width: "136px",
               height: "136px",
               borderRadius: "50%",
@@ -326,7 +355,7 @@ export default function AdminDashboard() {
           >
             <img
               src={adminFig}
-              alt="Administrator Figure"
+              alt="Admin Character"
               loading="lazy"
               style={{
                 width: "100%",
@@ -339,80 +368,82 @@ export default function AdminDashboard() {
           </div>
         </div>
       ) : (
-        <header
+        <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            gap: "16px",
+            background: "var(--color-surface)",
+            borderRadius: "var(--radius-card)",
+            padding: "28px 32px",
+            border: "1px solid var(--color-border)",
+            boxShadow: "var(--shadow-card)",
           }}
         >
-          <div>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: "var(--color-primary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              {currentMeta.kicker}
-            </span>
-            <h1
-              style={{
-                fontSize: "1.75rem",
-                fontWeight: 700,
-                color: "var(--color-text-primary)",
-                marginTop: "4px",
-                marginBottom: "4px",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {currentMeta.title}
-            </h1>
-            <p
-              style={{
-                fontSize: "0.92rem",
-                color: "var(--color-text-secondary)",
-                lineHeight: 1.45,
-                margin: 0,
-              }}
-            >
-              {currentMeta.description}
-            </p>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <Button variant="outline" size="sm" onClick={loadDashboard} disabled={loading}>
-              {loading ? "Refreshing..." : "Refresh Data"}
-            </Button>
-          </div>
-        </header>
+          <span
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "var(--color-primary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: "4px",
+              display: "block",
+            }}
+          >
+            {currentMeta.kicker}
+          </span>
+          <h1
+            style={{
+              fontSize: "1.75rem",
+              fontWeight: 800,
+              color: "var(--color-text-primary)",
+              margin: "0 0 6px 0",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {currentMeta.title}
+          </h1>
+          <p
+            style={{
+              fontSize: "0.92rem",
+              color: "var(--color-text-secondary)",
+              margin: 0,
+              lineHeight: 1.5,
+            }}
+          >
+            {currentMeta.description}
+          </p>
+        </div>
       )}
 
+      {/* ── Error Alert with Retry ── */}
       {error && (
         <div
           role="alert"
           style={{
-            padding: "12px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 20px",
+            borderRadius: "var(--radius-card, 16px)",
             background: "rgba(239, 68, 68, 0.10)",
             border: "1px solid rgba(239, 68, 68, 0.25)",
             color: "#EF4444",
-            borderRadius: "var(--radius-sm)",
             fontSize: "0.88rem",
             fontWeight: 600,
+            gap: "12px",
+            flexWrap: "wrap",
           }}
         >
-          {error}
+          <span>{error}</span>
+          <Button variant="danger" size="sm" onClick={() => loadDashboard(false)}>
+            Retry
+          </Button>
         </div>
       )}
 
-      {/* ── TAB CONTENT ── */}
+      {/* ── Tab Content ── */}
       {activeTab === "overview" && (
-        <>
-          {/* KPI Stat Cards Grid */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+          {/* Main Key Metrics Grid */}
           <div
             style={{
               display: "grid",
@@ -421,7 +452,7 @@ export default function AdminDashboard() {
             }}
           >
             <StatCard
-              label="Total Enrolled Students"
+              label="Total Students"
               value={totalStudents}
               icon={<UsersIcon size={22} />}
               accentColor="#3F4FA8"
@@ -446,7 +477,7 @@ export default function AdminDashboard() {
             />
           </div>
 
-          {/* Quick Stats & System Capacity */}
+          {/* Upload Activity by Year & Student Ratio */}
           <div
             style={{
               display: "grid",
@@ -478,11 +509,11 @@ export default function AdminDashboard() {
               </p>
               <BarChart
                 data={[
-                  { label: "Year 1", value: Math.max(1, Math.round(totalPapersCount * 0.35)) },
-                  { label: "Year 2", value: Math.max(1, Math.round(totalPapersCount * 0.45)) },
-                  { label: "Year 3", value: Math.max(1, Math.round(totalPapersCount * 0.20)) },
+                  { label: `Y1: ${y1Count} ${y1Count === 1 ? "paper" : "papers"}`, value: y1Count },
+                  { label: `Y2: ${y2Count} ${y2Count === 1 ? "paper" : "papers"}`, value: y2Count },
+                  { label: `Y3: ${y3Count} ${y3Count === 1 ? "paper" : "papers"}`, value: y3Count },
                 ]}
-                height={160}
+                maxHeight={160}
               />
             </div>
 
@@ -527,7 +558,7 @@ export default function AdminDashboard() {
             style={{
               background: "var(--color-surface)",
               borderRadius: "var(--radius-card)",
-              padding: "32px",
+              padding: "28px 32px",
               border: "1px solid var(--color-border)",
               boxShadow: "var(--shadow-card)",
             }}
@@ -551,79 +582,35 @@ export default function AdminDashboard() {
                     margin: 0,
                   }}
                 >
-                  Recent System Users
+                  All Platform Users
                 </h3>
                 <span style={{ fontSize: "0.84rem", color: "var(--color-text-secondary)" }}>
-                  Registered students and faculty accounts
+                  Registered administrators, educators, and students.
                 </span>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => loadDashboard(false)}
+                disabled={loading}
+              >
+                {loading ? "Refreshing..." : "Refresh Users"}
+              </Button>
             </div>
 
             <Table
               columns={userColumns}
-              data={users.slice(0, 8)}
-              rowKey={(u) => u._id || u.id || u.email}
-              loading={loading && users.length === 0}
-              emptyMessage="No user records indexed."
+              data={users}
+              rowKey={(u) => u._id || u.id}
+              emptyText="No registered users found in the repository."
             />
           </section>
-        </>
+        </div>
       )}
 
       {activeTab === "teachers" && <TeacherManagement onUpdated={loadDashboard} />}
       {activeTab === "students" && <StudentManagement onUpdated={loadDashboard} />}
       {activeTab === "deletions" && <DeletionRequests onUpdated={loadDashboard} />}
-      {activeTab === "stats" && (
-        <section
-          style={{
-            background: "var(--color-surface)",
-            borderRadius: "var(--radius-card)",
-            padding: "32px",
-            border: "1px solid var(--color-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <h3 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "8px" }}>
-            Platform Statistics Summary
-          </h3>
-          <p style={{ fontSize: "0.88rem", color: "var(--color-text-secondary)", marginBottom: "24px" }}>
-            Key performance metrics and repository numbers derived directly from the database.
-          </p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "20px",
-            }}
-          >
-            <StatCard
-              label="Students"
-              value={totalStudents}
-              icon={<UsersIcon size={20} />}
-              accentColor="#3F4FA8"
-            />
-            <StatCard
-              label="Teachers"
-              value={totalTeachersCount}
-              icon={<UsersIcon size={20} />}
-              accentColor="#5B73E0"
-            />
-            <StatCard
-              label="Past Papers"
-              value={totalPapersCount}
-              icon={<MaterialsIcon size={20} />}
-              accentColor="#10B981"
-            />
-            <StatCard
-              label="Pending Deletions"
-              value={pendingDeletionsCount}
-              icon={<TrashIcon size={20} />}
-              accentColor="#EF4444"
-            />
-          </div>
-        </section>
-      )}
 
       {/* Delete User Modal */}
       <Modal

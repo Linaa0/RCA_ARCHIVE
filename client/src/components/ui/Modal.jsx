@@ -1,7 +1,15 @@
 import React, { useEffect } from "react";
 import { CloseIcon } from "./Icons";
 
-export default function Modal({ isOpen, onClose, title, children, maxWidth = "540px" }) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  description,
+  children,
+  maxWidth = "540px",
+  size,
+}) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && isOpen) onClose();
@@ -18,8 +26,11 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = "54
 
   if (!isOpen) return null;
 
+  const resolvedMaxWidth = size === "sm" ? "440px" : size === "lg" ? "720px" : maxWidth;
+
   return (
     <div
+      className="rca-modal-overlay"
       style={{
         position: "fixed",
         inset: 0,
@@ -28,22 +39,26 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = "54
         alignItems: "center",
         justifyContent: "center",
         padding: "20px",
-        background: "rgba(27, 34, 69, 0.45)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
+        background: "rgba(10, 14, 28, 0.65)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        boxSizing: "border-box",
       }}
       onClick={onClose}
     >
       <div
+        className="rca-modal-card"
         style={{
           width: "100%",
-          maxWidth,
-          background: "#FFFFFF",
+          maxWidth: resolvedMaxWidth,
+          background: "var(--color-surface, #FFFFFF)",
+          color: "var(--color-ink, #1B2142)",
           borderRadius: "var(--radius-card, 24px)",
-          boxShadow: "0 20px 60px rgba(30, 37, 71, 0.2)",
-          border: "1px solid rgba(226, 232, 240, 0.8)",
+          boxShadow: "var(--shadow-modal, 0 24px 60px rgba(0, 0, 0, 0.35))",
+          border: "1px solid var(--color-border, rgba(63, 79, 168, 0.12))",
           overflow: "hidden",
-          animation: "modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+          animation: "modalFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
+          boxSizing: "border-box",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -51,23 +66,66 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = "54
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "space-between",
             padding: "20px 24px",
-            borderBottom: "1px solid var(--border-subtle, #E4E8F2)",
+            borderBottom: "1px solid var(--color-border, #E4E8F2)",
+            gap: "16px",
           }}
         >
-          <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#1E2547" }}>{title}</h3>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {title && (
+              <h3
+                style={{
+                  fontSize: "1.2rem",
+                  fontWeight: 700,
+                  color: "var(--color-ink, #1B2142)",
+                  margin: 0,
+                  lineHeight: 1.3,
+                  fontFamily: "var(--font-family, 'Quicksand', sans-serif)",
+                }}
+              >
+                {title}
+              </h3>
+            )}
+            {description && (
+              <p
+                style={{
+                  fontSize: "0.85rem",
+                  color: "var(--color-muted, #6A7399)",
+                  margin: "6px 0 0 0",
+                  lineHeight: 1.45,
+                  fontWeight: 500,
+                }}
+              >
+                {description}
+              </p>
+            )}
+          </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
-              padding: "6px",
+              padding: "8px",
               borderRadius: "50%",
-              color: "#8C97B0",
+              color: "var(--color-muted, #6A7399)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transition: "all 0.15s ease",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              transition: "background var(--transition-fast), color var(--transition-fast)",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--color-ink, #1B2142)";
+              e.currentTarget.style.background = "var(--color-surface-hover, rgba(0,0,0,0.06))";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--color-muted, #6A7399)";
+              e.currentTarget.style.background = "transparent";
             }}
           >
             <CloseIcon size={18} />
@@ -75,7 +133,9 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = "54
         </div>
 
         {/* Content */}
-        <div style={{ padding: "24px" }}>{children}</div>
+        <div style={{ padding: "24px", color: "var(--color-ink, #1B2142)" }}>
+          {children}
+        </div>
       </div>
     </div>
   );
