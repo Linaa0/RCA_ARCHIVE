@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import Logo from "./Logo";
-import { MaterialsIcon, EyeIcon, ShieldIcon } from "./Icons";
 import "./AuthBrandPanel.css";
 
 const RESOURCE_CARDS = [
@@ -64,7 +63,7 @@ export default function AuthBrandPanel() {
 
     timerRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % RESOURCE_CARDS.length);
-    }, 4000);
+    }, 2000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -79,7 +78,7 @@ export default function AuthBrandPanel() {
     <section className="auth-brand-pane">
       {/* ── RCA Shield Logo: 96px, knockout white, NO container box ── */}
       <header className="auth-brand-header">
-        <Logo variant="knockout" size="auth" wordmarkColor="#FFFFFF" />
+        <Logo variant="knockout" size="auth" wordmarkColor="#FFFFFF" showSubtitle={false} />
       </header>
 
       {/* ── Center Content ── */}
@@ -87,7 +86,7 @@ export default function AuthBrandPanel() {
         <div className="auth-headline-box">
           <span className="auth-kicker">Academic Archive Portal</span>
           <h1 className="auth-headline-title">
-            Rwanda Coding Academy Past Papers and Materials
+            Join RCA Archive
           </h1>
           <p className="auth-headline-sub">
             Centralized academic repository providing direct access to lecture notes, past exams, and assignments across all cohorts.
@@ -156,21 +155,6 @@ export default function AuthBrandPanel() {
         </div>
       </div>
 
-      {/* ── Trust Points ── */}
-      <footer className="auth-trust-strip">
-        <div className="auth-trust-chip">
-          <EyeIcon size={14} />
-          <span>In-browser PDF, document, and code previews</span>
-        </div>
-        <div className="auth-trust-chip">
-          <MaterialsIcon size={14} />
-          <span>Organized by cohorts Y1A to Y3C</span>
-        </div>
-        <div className="auth-trust-chip">
-          <ShieldIcon size={14} />
-          <span>Official Rwanda Coding Academy credentials</span>
-        </div>
-      </footer>
     </section>
   );
 }

@@ -3,14 +3,14 @@ import React from "react";
 export default function Badge({ children, variant = "neutral", size = "md", className = "", style = {} }) {
   const stylesByVariant = {
     primary: {
-      background: "var(--primary-light, rgba(91, 115, 224, 0.12))",
-      color: "var(--primary-accent, #5B73E0)",
-      border: "1px solid rgba(91, 115, 224, 0.2)",
+      background: "var(--primary-light, rgba(23, 79, 131, 0.12))",
+      color: "var(--primary-accent, #174F83)",
+      border: "1px solid rgba(23, 79, 131, 0.2)",
     },
     indigo: {
-      background: "rgba(63, 79, 168, 0.12)",
-      color: "#3F4FA8",
-      border: "1px solid rgba(63, 79, 168, 0.22)",
+      background: "rgba(23, 79, 131, 0.12)",
+      color: "#174F83",
+      border: "1px solid rgba(23, 79, 131, 0.22)",
     },
     success: {
       background: "rgba(16, 185, 129, 0.12)",
@@ -33,9 +33,9 @@ export default function Badge({ children, variant = "neutral", size = "md", clas
       border: "1px solid #E2E6F0",
     },
     pillActive: {
-      background: "#3F4FA8",
+      background: "#174F83",
       color: "#FFFFFF",
-      border: "1px solid #3F4FA8",
+      border: "1px solid #174F83",
     },
   };
 

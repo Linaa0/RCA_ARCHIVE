@@ -1,12 +1,12 @@
 /* ==========================================================================
    RCA ARCHIVE - AUTH BRAND PANEL
-   Indigo gradient showcase, rotating card stack with preview & progress dots
+   Deep blue gradient showcase, rotating card stack with preview & progress dots
    ========================================================================== */
 
 .auth-brand-pane {
-  background: radial-gradient(circle at 15% 15%, rgba(91, 115, 224, 0.45) 0%, transparent 50%),
-              radial-gradient(circle at 85% 85%, rgba(35, 44, 107, 0.6) 0%, transparent 55%),
-              linear-gradient(145deg, #232C6B 0%, #303E8A 50%, #3F4FA8 100%);
+  background: radial-gradient(circle at 15% 15%, rgba(44, 103, 152, 0.4) 0%, transparent 50%),
+              radial-gradient(circle at 85% 85%, rgba(7, 27, 51, 0.72) 0%, transparent 55%),
+              linear-gradient(145deg, #071B33 0%, #0B2D52 52%, #174F83 100%);
   padding: 44px 52px;
   display: flex;
   flex-direction: column;
@@ -33,22 +33,34 @@
 }
 
 .auth-brand-header {
-  position: relative;
+  position: absolute;
+  top: 24px;
+  left: 24px;
   z-index: 2;
   display: flex;
   align-items: center;
 }
 
+.auth-brand-header .rca-logo {
+  transform: scale(0.85);
+  transform-origin: top left;
+}
+
 .auth-brand-center {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 44px;
+  width: calc(100% - 104px);
   max-width: 500px;
+  transform: translate(-50%, -50%);
 }
 
 .auth-headline-box {
+  text-align: left;
   animation: authTextFade 0.4s ease-out;
 }
 
@@ -105,9 +117,9 @@
   right: 0;
   border-radius: 22px;
   box-sizing: border-box;
-  transition: transform 650ms cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 1s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform, opacity;
 }
 
@@ -132,7 +144,7 @@
   z-index: 1;
   pointer-events: none;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
-  animation: deckLayer3Enter 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: deckLayer3Enter 1s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes deckLayer3Enter {
@@ -159,7 +171,7 @@
   z-index: 2;
   pointer-events: none;
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.24);
-  animation: deckLayer2Enter 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: deckLayer2Enter 1s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes deckLayer2Enter {
@@ -186,7 +198,7 @@
   opacity: 1;
   z-index: 3;
   color: #0F172A;
-  animation: deckFrontEnter 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: deckFrontEnter 1s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes deckFrontEnter {
@@ -229,16 +241,16 @@
   font-weight: 700;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #EEF2FF;
-  color: #312E81;
+  background: #E7F1F8;
+  color: #0B2D52;
   letter-spacing: 0.04em;
-  border: 1px solid #C7D2FE;
+  border: 1px solid #B8D1E5;
 }
 
 .auth-card-pill.active-pill {
-  background: #4338CA;
+  background: #174F83;
   color: #FFFFFF;
-  border-color: #3730A3;
+  border-color: #0B2D52;
 }
 
 /* Resource type tag */
@@ -269,7 +281,7 @@
 .auth-card-subject {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #3730A3;
+  color: #174F83;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }

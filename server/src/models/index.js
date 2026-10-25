@@ -27,11 +27,13 @@ async function connectToMongo() {
     db.collection("deletionRequests").createIndex({ paperId: 1 }),
     db.collection("assignments").createIndex({ id: 1 }, { unique: true }),
     db.collection("assignments").createIndex({ teacherId: 1 }),
+    db.collection("assignments").createIndex({ reminderDueAt: 1, reminderProcessedAt: 1 }),
     db.collection("submissions").createIndex({ id: 1 }, { unique: true }),
     db.collection("submissions").createIndex({ assignmentId: 1, studentId: 1 }),
     db.collection("appeals").createIndex({ id: 1 }, { unique: true }),
     db.collection("appeals").createIndex({ teacherId: 1, status: 1 }),
     db.collection("appeals").createIndex({ assignmentId: 1, studentId: 1 }),
+    db.collection("appealDismissals").createIndex({ assignmentId: 1, studentId: 1 }, { unique: true }),
     db.collection("teacherResources").createIndex({ id: 1 }, { unique: true }),
     db.collection("teacherResources").createIndex({ teacherId: 1, type: 1, uploadedAt: -1 }),
     db.collection("pending_signups").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
@@ -91,6 +93,10 @@ function getSubmissionsCollection() {
 
 function getAppealsCollection() {
   return getDb().collection("appeals");
+}
+
+function getAppealDismissalsCollection() {
+  return getDb().collection("appealDismissals");
 }
 
 function getTeacherResourcesCollection() {
@@ -155,6 +161,7 @@ module.exports = {
   getSubmissionsCollection,
   getAppealsCollection,
   getTeacherResourcesCollection,
+  getAppealDismissalsCollection,
   getPendingSignupsCollection,
   getEmailOutboxCollection,
   getAdminAuditLogsCollection,
@@ -162,4 +169,3 @@ module.exports = {
   getNotificationsCollection,
   closeDb,
 };
-

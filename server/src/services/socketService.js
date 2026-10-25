@@ -1,6 +1,14 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET, CORS_ORIGIN_LIST } = require("../config/env");
+const { JWT_SECRET, CORS_ORIGINS } = require("../config/env");
+const { DEFAULT_CORS_ORIGINS } = require("../config/constants");
+
+// Same allowed sites as the REST API, plus local development ports
+const CORS_ORIGIN_LIST = [
+  ...new Set([...DEFAULT_CORS_ORIGINS, ...CORS_ORIGINS]),
+  /^http:\/\/(localhost|127\.0\.0\.1):[0-9]+$/,
+  /^https:\/\/rca-archive(-[a-z0-9_-]+)?\.vercel\.app$/,
+];
 const { getNotificationsCollection } = require("../models");
 
 let io = null;
@@ -86,55 +94,28 @@ function emitPaperEvent(eventType, paperData) {
  * Emit assignment events to students of targeted classes, plus teacher and admins.
  */
 async function emitAssignmentEvent(eventType, assignmentData) {
-  if (!io) return;
   const classes = Array.isArray(assignmentData.classes)
     ? assignmentData.classes
     : [assignmentData.targetClass || assignmentData.class].filter(Boolean);
 
-  classes.forEach((cls) => {
-    io.to(`class:${cls}`).emit(`assignment:${eventType}`, assignmentData);
-  });
-
-  if (Array.isArray(assignmentData.studentIds)) {
-    assignmentData.studentIds.forEach((sid) => {
-      io.to(`user:${sid}`).emit(`assignment:${eventType}`, assignmentData);
+  if (io) {
+    classes.forEach((cls) => {
+      io.to(`class:${cls}`).emit(`assignment:${eventType}`, assignmentData);
     });
-  }
 
-  const teacherId = assignmentData.teacherId || assignmentData.createdBy;
-  if (teacherId) {
-    io.to(`user:${teacherId}`).emit(`assignment:${eventType}`, assignmentData);
-  }
-  io.to("role:admin").emit(`assignment:${eventType}`, assignmentData);
-
-  // If a new assignment is created, create unread notifications for targeted students
-  if (eventType === "created") {
-    try {
-      const { getUsersCollection } = require("../models");
-      const usersCol = getUsersCollection();
-      const query = { role: "student" };
-      const orClauses = [];
-      if (classes.length) orClauses.push({ class: { $in: classes } });
-      if (Array.isArray(assignmentData.studentIds) && assignmentData.studentIds.length) {
-        orClauses.push({ id: { $in: assignmentData.studentIds } });
-      }
-
-      if (orClauses.length) {
-        query.$or = orClauses;
-        const students = await usersCol.find(query, { projection: { id: 1 } }).toArray();
-        for (const s of students) {
-          await notifyUser(s.id, {
-            title: `New Assignment: ${assignmentData.title}`,
-            message: `${assignmentData.teacherName || "A teacher"} posted an assignment for ${assignmentData.subject || "your class"}.`,
-            type: "assignment",
-            link: "/student/assignments",
-          });
-        }
-      }
-    } catch (err) {
-      console.warn("Could not dispatch student assignment notifications:", err.message);
+    if (Array.isArray(assignmentData.studentIds)) {
+      assignmentData.studentIds.forEach((sid) => {
+        io.to(`user:${sid}`).emit(`assignment:${eventType}`, assignmentData);
+      });
     }
+
+    const teacherId = assignmentData.teacherId || assignmentData.createdBy;
+    if (teacherId) {
+      io.to(`user:${teacherId}`).emit(`assignment:${eventType}`, assignmentData);
+    }
+    io.to("role:admin").emit(`assignment:${eventType}`, assignmentData);
   }
+
 }
 
 /**
@@ -217,6 +198,31 @@ async function notifyUser(userId, { title, message, type = "info", link = null }
   }
 }
 
+async function notifyUserOnce(userId, { id, title, message, type = "info", link = null }) {
+  const doc = {
+    id: String(id),
+    userId: String(userId),
+    title,
+    message,
+    type,
+    link,
+    read: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  const result = await getNotificationsCollection().updateOne(
+    { id: doc.id },
+    { $setOnInsert: doc },
+    { upsert: true }
+  );
+  if (result.upsertedCount === 0) return false;
+
+  if (io) {
+    io.to(`user:${userId}`).emit("notification:new", doc);
+  }
+  return true;
+}
+
 module.exports = {
   initSocketServer,
   getIo,
@@ -228,4 +234,5 @@ module.exports = {
   emitUserEvent,
   emitStatsEvent,
   notifyUser,
+  notifyUserOnce,
 };

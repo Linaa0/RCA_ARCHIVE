@@ -48,16 +48,10 @@ export default function Profile() {
   const [themePref, setThemePref] = useState(() => getThemePreference());
 
   // Notification settings
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem("rca_notifications_prefs");
-      if (saved) return JSON.parse(saved);
-    } catch (_) {}
-    return {
-      inAppAlerts: true,
-      dueReminders: true,
-      emailNotifications: true,
-    };
+  const [notifications, setNotifications] = useState({
+    inAppAlerts: true,
+    dueReminders: true,
+    emailNotifications: true,
   });
   const [notifMsg, setNotifMsg] = useState({ type: "", text: "" });
   const [savingNotif, setSavingNotif] = useState(false);
@@ -74,9 +68,11 @@ export default function Profile() {
           setGender(data.user.gender);
           localStorage.setItem("rca_user_gender", data.user.gender);
         }
-        if (data.user.notifications) {
-          setNotifications(data.user.notifications);
-        }
+        setNotifications(data.user.notifications || {
+          inAppAlerts: true,
+          dueReminders: true,
+          emailNotifications: true,
+        });
       })
       .catch((err) => setNameMsg({ type: "error", text: errorMessage(err, "Could not load your profile.") }));
   }, []);
@@ -128,8 +124,12 @@ export default function Profile() {
     setNotifMsg({ type: "", text: "" });
     setSavingNotif(true);
     try {
-      localStorage.setItem("rca_notifications_prefs", JSON.stringify(notifications));
-      await api.put("/me", { notifications });
+      const { data } = await api.put("/me", { notifications });
+      const savedPreferences = data.notifications || notifications;
+      setNotifications(savedPreferences);
+      window.dispatchEvent(new CustomEvent("rca-notification-preferences-changed", {
+        detail: savedPreferences,
+      }));
       setNotifMsg({ type: "success", text: "Notification preferences saved." });
     } catch (err) {
       setNotifMsg({ type: "error", text: errorMessage(err) });
@@ -460,7 +460,7 @@ export default function Profile() {
               color: "var(--color-ink)",
               cursor: "pointer",
               textAlign: "left",
-              boxShadow: themePref === "dark" ? "0 4px 14px rgba(91, 115, 224, 0.25)" : "none",
+              boxShadow: themePref === "dark" ? "0 4px 14px rgba(63, 79, 168, 0.25)" : "none",
               transition: "all var(--transition-fast)",
             }}
           >
@@ -485,7 +485,7 @@ export default function Profile() {
               color: "var(--color-ink)",
               cursor: "pointer",
               textAlign: "left",
-              boxShadow: themePref === "system" ? "0 4px 14px rgba(91, 115, 224, 0.25)" : "none",
+              boxShadow: themePref === "system" ? "0 4px 14px rgba(63, 79, 168, 0.25)" : "none",
               transition: "all var(--transition-fast)",
             }}
           >
@@ -546,7 +546,7 @@ export default function Profile() {
               style={{ width: "18px", height: "18px", accentColor: "var(--color-primary)" }}
             />
             <span>
-              <strong>Real-time In-App Toasts:</strong> Show floating toast popups for new papers and assignment activity.
+              <strong>Real-time In-App Toasts:</strong> Show floating toast popups for new papers and one-hour assignment reminders.
             </span>
           </label>
 
@@ -558,7 +558,7 @@ export default function Profile() {
               style={{ width: "18px", height: "18px", accentColor: "var(--color-primary)" }}
             />
             <span>
-              <strong>Deadline Reminders:</strong> Receive unread alert notifications before assignment due dates.
+              <strong>Deadline Reminders:</strong> Receive an alert 20 minutes after assignments due within an hour, or one hour after other assignments are given to you.
             </span>
           </label>
 
@@ -570,7 +570,7 @@ export default function Profile() {
               style={{ width: "18px", height: "18px", accentColor: "var(--color-primary)" }}
             />
             <span>
-              <strong>Email Notifications:</strong> Receive email dispatches for password changes, credentials, and appeal updates.
+              <strong>Email Notifications:</strong> Receive emails about password changes, credentials, and assignment appeal decisions.
             </span>
           </label>
         </div>

@@ -44,7 +44,7 @@ export default function NotFound() {
             width: "80px",
             height: "80px",
             borderRadius: "50%",
-            background: "var(--color-surface-raised, rgba(91, 115, 224, 0.1))",
+            background: "var(--color-surface-raised, rgba(63, 79, 168, 0.1))",
             color: "var(--color-primary)",
             marginBottom: "20px",
             display: "flex",
@@ -59,7 +59,7 @@ export default function NotFound() {
           style={{
             fontSize: "0.8rem",
             fontWeight: 800,
-            color: "var(--color-indigo-500, #5B73E0)",
+            color: "var(--color-indigo-500, #3F4FA8)",
             textTransform: "uppercase",
             letterSpacing: "0.08em",
             marginBottom: "6px",

@@ -79,7 +79,7 @@ export default function BarChart({
                 border: "1px solid var(--color-border-med, rgba(63, 79, 168, 0.16))",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "var(--color-indigo-600, #4B62CE)",
+                color: "var(--color-indigo-600, #3F4FA8)",
                 backgroundColor: "var(--color-surface-subtle, #F8F9FD)",
                 transition: "all var(--transition-fast)",
               }}
@@ -156,8 +156,8 @@ export default function BarChart({
                   background: isZero
                     ? "var(--color-border, rgba(63, 79, 168, 0.12))"
                     : isHovered
-                    ? "var(--color-indigo-500, #5B73E0)"
-                    : bar.color || "var(--gradient-accent, linear-gradient(135deg, #5B73E0 0%, #3F4FA8 100%))",
+                    ? "var(--color-indigo-500, #3F4FA8)"
+                    : bar.color || "var(--gradient-accent, linear-gradient(135deg, #3F4FA8 0%, #3F4FA8 100%))",
                   border: isZero ? "1px dashed var(--color-border-med, rgba(63, 79, 168, 0.25))" : "none",
                   transition: "all var(--transition-fast)",
                   transform: isHovered && !isZero ? "scaleY(1.04)" : "scaleY(1)",
@@ -179,7 +179,7 @@ export default function BarChart({
               textAlign: "center",
               fontSize: "0.75rem",
               fontWeight: 600,
-              color: hoveredIndex === idx ? "var(--color-indigo-500, #5B73E0)" : "var(--color-muted, #6A7399)",
+              color: hoveredIndex === idx ? "var(--color-indigo-500, #3F4FA8)" : "var(--color-muted, #6A7399)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",

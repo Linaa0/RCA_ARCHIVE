@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useLayoutEffect } from "react";
 import { Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
-import DashboardShell from "./layouts/DashboardShell";
-import DashboardHome from "./components/DashboardHome";
-import SubjectsList from "./components/SubjectsList";
-import Login from "./components/Login";
-import Signup from "./components/Signup";
-import ResetPassword from "./components/ResetPassword";
-import AdminDashboard from "./components/AdminDashboard";
-import SubjectPage from "./components/SubjectPage";
 import PrivateRoute from "./components/PrivateRoute";
-import FileViewer from "./components/FileViewer";
-import ReportIssue from "./components/ReportIssue";
-import Landing from "./components/Landing";
-import NotFound from "./components/NotFound";
 import "./styles/App.css";
 import api from "./services/api";
 import { isAuthenticated, getStoredRole, getHomePathForRole } from "./utils/auth";
-import TeacherDashboard from "./components/teacher/TeacherDashboard";
-import TeacherAssignments from "./components/teacher/TeacherAssignments";
-import TeacherAppeals from "./components/teacher/TeacherAppeals";
-import TeacherResources from "./components/teacher/TeacherResources";
-import StudentAssignments from "./components/student/StudentAssignments";
-import StudentAssignmentsWidget from "./components/student/StudentAssignmentsWidget";
-import Profile from "./components/Profile";
+import { applyTheme, getThemePreference } from "./utils/theme";
 import curriculumService from "./services/curriculum";
+
+const DashboardShell = lazy(() => import("./layouts/DashboardShell"));
+const DashboardHome = lazy(() => import("./components/DashboardHome"));
+const SubjectsList = lazy(() => import("./components/SubjectsList"));
+const Login = lazy(() => import("./components/Login"));
+const Signup = lazy(() => import("./components/Signup"));
+const ResetPassword = lazy(() => import("./components/ResetPassword"));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const SubjectPage = lazy(() => import("./components/SubjectPage"));
+const FileViewer = lazy(() => import("./components/FileViewer"));
+const Landing = lazy(() => import("./components/Landing"));
+const NotFound = lazy(() => import("./components/NotFound"));
+const TeacherDashboard = lazy(() => import("./components/teacher/TeacherDashboard"));
+const TeacherAssignments = lazy(() => import("./components/teacher/TeacherAssignments"));
+const TeacherAppeals = lazy(() => import("./components/teacher/TeacherAppeals"));
+const TeacherResources = lazy(() => import("./components/teacher/TeacherResources"));
+const StudentAssignments = lazy(() => import("./components/student/StudentAssignments"));
+const StudentAssignmentsWidget = lazy(() => import("./components/student/StudentAssignmentsWidget"));
+const Profile = lazy(() => import("./components/Profile"));
 
 function PaperResultCard({ paper }) {
   const date = new Date(paper.uploadedAt).toLocaleDateString();
@@ -63,7 +64,7 @@ function PaperResultCard({ paper }) {
             fontWeight: 600,
             fontSize: "0.85rem",
             textDecoration: "none",
-            boxShadow: "0 4px 12px rgba(91, 115, 224, 0.25)",
+            boxShadow: "0 4px 12px rgba(11, 45, 82, 0.25)",
           }}
         >
           View
@@ -172,7 +173,7 @@ function AuthenticatedHome({
         </div>
       ) : (
         <>
-          {getStoredRole() === "student" && <StudentAssignmentsWidget />}
+          {["student", "admin"].includes(getStoredRole()) && <StudentAssignmentsWidget />}
           <DashboardHome papers={papers} />
 
           {/* Subjects explorer section */}
@@ -229,7 +230,7 @@ function AuthenticatedHome({
                         background: isSelected ? "var(--color-indigo-600)" : "var(--color-surface-subtle)",
                         color: isSelected ? "#ffffff" : "var(--text-secondary)",
                         cursor: "pointer",
-                        boxShadow: isSelected ? "0 4px 12px rgba(59, 76, 163, 0.25)" : "none",
+                        boxShadow: isSelected ? "0 4px 12px rgba(11, 45, 82, 0.25)" : "none",
                         transition: "all 0.2s ease",
                       }}
                     >
@@ -258,14 +259,33 @@ function App() {
   const [activePromotionId, setActivePromotionId] = useState("Y1");
   const [papers, setPapers] = useState([]);
   const location = useLocation();
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/signup";
+
+  useLayoutEffect(() => {
+    if (!isAuthPage) return undefined;
+
+    document.documentElement.setAttribute("data-theme", "light");
+    return () => applyTheme(getThemePreference());
+  }, [isAuthPage]);
 
   useEffect(() => {
+    if (location.pathname !== "/home") return undefined;
+    let isMounted = true;
+
     // Fetch papers for dashboard widgets
     api
       .get("/papers?sort=recent&limit=12")
-      .then(({ data }) => setPapers(Array.isArray(data) ? data : []))
-      .catch(() => setPapers([]));
-  }, []);
+      .then(({ data }) => {
+        if (isMounted) setPapers(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (isMounted) setPapers([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     if (location.pathname !== "/" && location.pathname !== "/home") return;
@@ -308,6 +328,13 @@ function App() {
 
   return (
     <div className="app-container">
+      <Suspense
+        fallback={
+          <div role="status" aria-live="polite" style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+            Loading page…
+          </div>
+        }
+      >
       <Routes>
         {/* Landing page (public) */}
         <Route
@@ -320,6 +347,7 @@ function App() {
             )
           }
         />
+        <Route path="/landing" element={<Landing />} />
 
         {/* Auth routes */}
         <Route path="/login" element={<Login />} />
@@ -385,7 +413,7 @@ function App() {
         <Route
           path="/student/assignments"
           element={
-            <PrivateRoute requiredRole="student">
+            <PrivateRoute requiredRole={["student", "admin"]}>
               <DashboardShell>
                 <StudentAssignments />
               </DashboardShell>
@@ -448,23 +476,13 @@ function App() {
           }
         />
 
-        <Route
-          path="/report-issue"
-          element={
-            <PrivateRoute>
-              <DashboardShell>
-                <ReportIssue />
-              </DashboardShell>
-            </PrivateRoute>
-          }
-        />
-
         {/* Dedicated File Viewer (full-screen focus) */}
         <Route path="/view/:id" element={<FileViewer />} />
 
         {/* Fallback 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </div>
   );
 }

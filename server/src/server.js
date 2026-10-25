@@ -43,8 +43,10 @@ async function startServer() {
 
     const http = require("http");
     const { initSocketServer } = require("./services/socketService");
+    const { startDeadlineReminderScheduler } = require("./services/deadlineReminderService");
     const server = http.createServer(app);
     initSocketServer(server);
+    startDeadlineReminderScheduler();
 
     server.listen(PORT, () => {
       console.log(`\n[OK] RCA Backend running on http://localhost:${PORT}`);

@@ -4,8 +4,8 @@ const fs = require("fs");
 const {
   getUsersCollection,
   getAssignmentsCollection,
-  getSubmissionsCollection,
   getAppealsCollection,
+  getAppealDismissalsCollection,
   getTeacherResourcesCollection,
 } = require("../models");
 const { SUBMISSIONS_DIR, removeSubmissionFile } = require("../services/submissionStorage");
@@ -13,9 +13,12 @@ const { createZip } = require("../services/zipService");
 const { CLASSES, CLASS_IDS, classLabel } = require("../config/classes");
 const { MIME_TYPES } = require("../config/constants");
 const { formatContentDisposition } = require("./paperController");
+const { hasStudentAccess } = require("../middleware/roleGuard");
+const { getNotificationPreferences } = require("../utils/userUtils");
+const { sendAppealUpdateEmail } = require("../services/emailService");
+const { getAssignmentReminderDueAt } = require("../services/deadlineReminderService");
 const {
   emitAssignmentEvent,
-  emitSubmissionEvent,
   emitAppealEvent,
 } = require("../services/socketService");
 
@@ -66,11 +69,10 @@ function isVisibleToStudent(a, student) {
 async function describeAssignments(list) {
   if (list.length === 0) return [];
   const ids = list.map((a) => a.id);
-  const [students, subs, appeals] = await Promise.all([
+  const [students, appeals] = await Promise.all([
     getUsersCollection()
       .find({ role: "student", status: { $ne: "disabled" } }, { projection: { _id: 0, id: 1, name: 1, username: 1, class: 1 } })
       .toArray(),
-    getSubmissionsCollection().find({ assignmentId: { $in: ids } }, NO_ID).toArray(),
     getAppealsCollection().find({ assignmentId: { $in: ids } }, NO_ID).toArray(),
   ]);
   const nameOf = (id) => {
@@ -83,13 +85,14 @@ async function describeAssignments(list) {
       (s) => a.audience === "all" || (a.classes || []).includes(s.class) || (a.studentIds || []).includes(s.id)
     );
     const { attachment, ...rest } = a;
+    delete rest.reminderDueAt;
+    delete rest.reminderProcessedAt;
     return {
       ...rest,
       givenAt: a.givenAt || a.createdAt,
       classLabels: (a.classes || []).map(classLabel),
       students: (a.studentIds || []).map((id) => ({ id, name: nameOf(id) })),
       recipientCount: recipients.length,
-      submissionCount: subs.filter((s) => s.assignmentId === a.id).length,
       pendingAppeals: appeals.filter((p) => p.assignmentId === a.id && !p.read).length,
       isPastDeadline: new Date(a.deadline) < new Date(),
       hasAttachment: Boolean(attachment),
@@ -101,7 +104,7 @@ async function describeAssignments(list) {
 // ---------------------------------------------------------------------------
 // Student view helper
 // ---------------------------------------------------------------------------
-function buildStudentView(a, submission, appeal) {
+function buildStudentView(a, appeal, studentClass = "", appealDismissed = false) {
   const originalDeadline = new Date(a.deadline);
   const now = new Date();
   const approvedExtension = appeal && appeal.status === "approved" ? new Date(appeal.newDeadline) : null;
@@ -110,8 +113,7 @@ function buildStudentView(a, submission, appeal) {
   const pastEffective = now > effectiveDeadline;
 
   let status;
-  if (submission) status = "submitted";
-  else if (!pastEffective) status = approvedExtension ? "extended" : "pending";
+  if (!pastEffective) status = approvedExtension ? "extended" : "pending";
   else status = "overdue";
 
   return {
@@ -120,6 +122,12 @@ function buildStudentView(a, submission, appeal) {
     description: a.description,
     subject: a.subject,
     teacherName: a.teacherName,
+    classes: a.classes?.length ? a.classes : studentClass ? [studentClass] : [],
+    classLabels: a.classes?.length
+      ? a.classes.map(classLabel)
+      : studentClass
+        ? [classLabel(studentClass)]
+        : [],
     givenAt: a.givenAt || a.createdAt,
     deadline: a.deadline,
     effectiveDeadline: effectiveDeadline.toISOString(),
@@ -127,17 +135,8 @@ function buildStudentView(a, submission, appeal) {
     hasAttachment: Boolean(a.attachment),
     attachmentName: a.attachment?.originalName || null,
     status,
-    canSubmit: !submission && !pastEffective,
-    canAppeal: !submission && pastOriginal && !appeal,
-    submission: submission
-      ? {
-          id: submission.id,
-          text: submission.text,
-          fileName: submission.file?.originalName || null,
-          submittedAt: submission.submittedAt,
-          late: submission.late,
-        }
-      : null,
+    canAppeal: pastOriginal && !appeal && !appealDismissed,
+    appealDismissed: Boolean(appealDismissed),
     appeal: appeal
       ? {
           id: appeal.id,
@@ -169,14 +168,19 @@ async function listAssignments(req, res) {
   if (req.user.class) or.push({ classes: req.user.class });
   const all = await assignments.find({ $or: or }, NO_ID).sort({ deadline: 1 }).toArray();
   const ids = all.map((a) => a.id);
-  const [mySubs, myAppeals] = await Promise.all([
-    getSubmissionsCollection().find({ assignmentId: { $in: ids }, studentId: req.user.id }, NO_ID).toArray(),
+  const [myAppeals, myDismissals] = await Promise.all([
     getAppealsCollection().find({ assignmentId: { $in: ids }, studentId: req.user.id }, NO_ID).toArray(),
+    getAppealDismissalsCollection().find({ assignmentId: { $in: ids }, studentId: req.user.id }, NO_ID).toArray(),
   ]);
 
   res.json({
     assignments: all.map((a) =>
-      buildStudentView(a, mySubs.find((s) => s.assignmentId === a.id), myAppeals.find((p) => p.assignmentId === a.id))
+      buildStudentView(
+        a,
+        myAppeals.find((p) => p.assignmentId === a.id),
+        req.user.class,
+        myDismissals.some((d) => d.assignmentId === a.id)
+      )
     ),
   });
 }
@@ -194,11 +198,11 @@ async function getAssignment(req, res) {
   }
 
   if (!isVisibleToStudent(assignment, req.user)) return res.status(404).json({ error: "Assignment not found" });
-  const [sub, appeal] = await Promise.all([
-    getSubmissionsCollection().findOne({ assignmentId: assignment.id, studentId: req.user.id }, NO_ID),
+  const [appeal, dismissal] = await Promise.all([
     getAppealsCollection().findOne({ assignmentId: assignment.id, studentId: req.user.id }, NO_ID),
+    getAppealDismissalsCollection().findOne({ assignmentId: assignment.id, studentId: req.user.id }, NO_ID),
   ]);
-  res.json({ assignment: buildStudentView(assignment, sub, appeal) });
+  res.json({ assignment: buildStudentView(assignment, appeal, req.user.class, Boolean(dismissal)) });
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +252,7 @@ async function createAssignment(req, res) {
     subject: cleanText(req.body.subject, 100),
     givenAt: givenAt.toISOString(),
     deadline: deadline.toISOString(),
+    reminderDueAt: getAssignmentReminderDueAt(givenAt, deadline),
     classes: rec.classes,
     studentIds: rec.studentIds,
     attachment: req.file ? { filename: req.file.filename, originalName: req.file.originalname } : null,
@@ -260,7 +265,7 @@ async function createAssignment(req, res) {
 
   await getAssignmentsCollection().insertOne({ ...assignment });
   const [described] = await describeAssignments([assignment]);
-  emitAssignmentEvent("created", described);
+  await emitAssignmentEvent("created", described);
   res.status(201).json({ assignment: described });
 }
 
@@ -319,7 +324,19 @@ async function updateAssignment(req, res) {
     update.attachment = { filename: req.file.filename, originalName: req.file.originalname };
   }
 
-  await getAssignmentsCollection().updateOne({ id: assignment.id }, { $set: update });
+  // New times mean a new reminder time; a changed deadline lets students be reminded again
+  const timesChanged = update.givenAt || update.deadline;
+  const unset = {};
+  if (timesChanged) {
+    const finalDeadline = new Date(update.deadline || assignment.deadline);
+    update.reminderDueAt = getAssignmentReminderDueAt(givenFinal, finalDeadline);
+    if (assignment.reminderProcessedAt) unset.reminderProcessedAt = "";
+  }
+
+  await getAssignmentsCollection().updateOne(
+    { id: assignment.id },
+    Object.keys(unset).length ? { $set: update, $unset: unset } : { $set: update }
+  );
   const [described] = await describeAssignments([{ ...assignment, ...update }]);
   emitAssignmentEvent("updated", described);
   res.json({ assignment: described });
@@ -329,12 +346,9 @@ async function deleteAssignment(req, res) {
   const assignment = await loadOwnedAssignment(req, res);
   if (!assignment) return;
 
-  const subs = await getSubmissionsCollection().find({ assignmentId: assignment.id }, NO_ID).toArray();
-  subs.forEach((s) => removeSubmissionFile(s.file?.filename));
   removeSubmissionFile(assignment.attachment?.filename);
 
   await Promise.all([
-    getSubmissionsCollection().deleteMany({ assignmentId: assignment.id }),
     getAppealsCollection().deleteMany({ assignmentId: assignment.id }),
     getAssignmentsCollection().deleteOne({ id: assignment.id }),
   ]);
@@ -349,7 +363,7 @@ async function downloadAttachment(req, res) {
 
   const allowed =
     (req.user.role === "teacher" && a.teacherId === req.user.id) ||
-    (req.user.role === "student" && isVisibleToStudent(a, req.user));
+    (hasStudentAccess(req.user) && isVisibleToStudent(a, req.user));
   if (!allowed) return res.status(404).json({ error: "No file attached" });
 
   const full = path.join(SUBMISSIONS_DIR, path.basename(a.attachment.filename));
@@ -376,219 +390,29 @@ async function viewAttachment(req, res) {
 }
 
 // ---------------------------------------------------------------------------
-// Student: submit
-// ---------------------------------------------------------------------------
-async function submitAssignment(req, res) {
-  const cleanup = () => req.file && removeSubmissionFile(req.file.filename);
-
-  const assignment = await getAssignmentsCollection().findOne({ id: req.params.id }, NO_ID);
-  if (!assignment || !isVisibleToStudent(assignment, req.user)) {
-    cleanup();
-    return res.status(404).json({ error: "Assignment not found" });
-  }
-
-  const submissions = getSubmissionsCollection();
-  if (await submissions.findOne({ assignmentId: assignment.id, studentId: req.user.id })) {
-    cleanup();
-    return res.status(409).json({ error: "You have already submitted this assignment" });
-  }
-
-  const appeal = await getAppealsCollection().findOne({
-    assignmentId: assignment.id,
-    studentId: req.user.id,
-    status: "approved",
-  });
-  const originalDeadline = new Date(assignment.deadline);
-  const effectiveDeadline = appeal ? new Date(appeal.newDeadline) : originalDeadline;
-
-  if (new Date() > effectiveDeadline) {
-    cleanup();
-    // 400 (not 403): the client logs users out on 403 responses
-    return res.status(400).json({
-      error: "The deadline has passed. You can send an appeal to your teacher to request more time.",
-    });
-  }
-
-  const text = cleanText(req.body.text, 10000);
-  if (!text && !req.file) return res.status(400).json({ error: "Write an answer or attach a file" });
-
-  const submission = {
-    id: newId(),
-    assignmentId: assignment.id,
-    studentId: req.user.id,
-    studentEmail: req.user.email,
-    studentName: req.user.name || req.user.username,
-    studentClass: req.user.class || "",
-    text,
-    file: req.file ? { filename: req.file.filename, originalName: req.file.originalname } : null,
-    submittedAt: nowIso(),
-    late: new Date() > originalDeadline,
-  };
-  await submissions.insertOne({ ...submission });
-  emitSubmissionEvent("created", submission, assignment.teacherId);
-  res.status(201).json({ message: "Assignment submitted", submittedAt: submission.submittedAt });
-}
-
-// Teacher (owner) or the student who wrote it. ?inline=1 shows it in the browser.
-async function downloadSubmissionFile(req, res) {
-  const submissionId = req.params.submissionId || req.params.id;
-  const submission = await getSubmissionsCollection().findOne({ id: submissionId });
-  if (!submission || !submission.file) return res.status(404).json({ error: "File not found" });
-
-  const assignment = await getAssignmentsCollection().findOne({ id: submission.assignmentId }, NO_ID);
-  if (!assignment) return res.status(404).json({ error: "Assignment not found" });
-
-  const isOwnerTeacher = req.user.role === "teacher" && assignment.teacherId === req.user.id;
-  const isAuthor = req.user.role === "student" && submission.studentId === req.user.id;
-  if (!isOwnerTeacher && !isAuthor) return res.status(403).json({ error: "Not allowed" });
-
-  const full = path.join(SUBMISSIONS_DIR, path.basename(submission.file.filename));
-  if (!fs.existsSync(full)) {
-    return res.status(404).json({ error: "This file is no longer available. Ask the student to submit again." });
-  }
-
-  const originalName = submission.file.originalName || path.basename(submission.file.filename);
-  const ext = path.extname(originalName).toLowerCase();
-  const contentType = MIME_TYPES[ext] || "application/octet-stream";
-
-  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
-  res.setHeader("Content-Type", contentType);
-
-  const isInline = req.query.inline === "1" || req.path.endsWith("/view");
-  res.setHeader(
-    "Content-Disposition",
-    formatContentDisposition(isInline ? "inline" : "attachment", originalName)
-  );
-  return res.sendFile(full);
-}
-
-async function viewSubmissionFile(req, res) {
-  req.query.inline = "1";
-  return downloadSubmissionFile(req, res);
-}
-
-async function getSubmission(req, res) {
-  const submissionId = req.params.submissionId || req.params.id;
-  const submission = await getSubmissionsCollection().findOne({ id: submissionId }, NO_ID);
-  if (!submission) return res.status(404).json({ error: "Submission not found" });
-
-  const assignment = await getAssignmentsCollection().findOne({ id: submission.assignmentId }, NO_ID);
-  if (!assignment) return res.status(404).json({ error: "Assignment not found" });
-
-  const isOwnerTeacher = req.user.role === "teacher" && assignment.teacherId === req.user.id;
-  const isAuthor = req.user.role === "student" && submission.studentId === req.user.id;
-  if (!isOwnerTeacher && !isAuthor) return res.status(403).json({ error: "Not allowed" });
-
-  res.json({
-    id: submission.id,
-    assignmentId: submission.assignmentId,
-    assignmentTitle: assignment.title,
-    studentName: submission.studentName,
-    submittedAt: submission.submittedAt,
-    text: submission.text,
-    file: submission.file,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Teacher: submissions grouped by class
-// ---------------------------------------------------------------------------
-async function loadTeacherSubmissions(teacherId) {
-  const assignments = await getAssignmentsCollection().find({ teacherId }, NO_ID).toArray();
-  const ids = assignments.map((a) => a.id);
-  const subs = await getSubmissionsCollection().find({ assignmentId: { $in: ids } }, NO_ID).sort({ submittedAt: -1 }).toArray();
-  return { assignments, subs };
-}
-
-async function submissionClasses(req, res) {
-  const { assignments, subs } = await loadTeacherSubmissions(req.user.id);
-
-  const keys = new Set();
-  assignments.forEach((a) => (a.classes || []).forEach((c) => keys.add(c)));
-  subs.forEach((s) => keys.add(s.studentClass || "none"));
-
-  const ordered = [...CLASS_IDS.filter((c) => keys.has(c)), ...(keys.has("none") ? ["none"] : [])];
-  res.json({
-    classes: ordered.map((key) => ({
-      key,
-      label: key === "none" ? "No class" : classLabel(key),
-      submissionCount: subs.filter((s) => (s.studentClass || "none") === key).length,
-      assignmentCount: assignments.filter((a) => (a.classes || []).includes(key)).length,
-    })),
-  });
-}
-
-function rowFor(s, titleOf) {
-  return {
-    id: s.id,
-    assignmentId: s.assignmentId,
-    assignmentTitle: titleOf(s.assignmentId),
-    studentName: s.studentName,
-    studentEmail: s.studentEmail,
-    studentClass: s.studentClass || "",
-    classLabel: s.studentClass ? classLabel(s.studentClass) : "No class",
-    text: s.text,
-    hasFile: Boolean(s.file),
-    fileName: s.file?.originalName || null,
-    submittedAt: s.submittedAt,
-    late: s.late,
-  };
-}
-
-async function listSubmissions(req, res) {
-  const key = String(req.query.class || "");
-  const { assignments, subs } = await loadTeacherSubmissions(req.user.id);
-  const titleOf = (id) => assignments.find((a) => a.id === id)?.title || "Deleted assignment";
-
-  const filtered = subs.filter((s) => (s.studentClass || "none") === key);
-  res.json({ label: key === "none" ? "No class" : classLabel(key), submissions: filtered.map((s) => rowFor(s, titleOf)) });
-}
-
-async function downloadAllSubmissions(req, res) {
-  const key = String(req.query.class || "");
-  const { assignments, subs } = await loadTeacherSubmissions(req.user.id);
-  const titleOf = (id) => assignments.find((a) => a.id === id)?.title || "Assignment";
-  const filtered = subs.filter((s) => (s.studentClass || "none") === key);
-  if (filtered.length === 0) return res.status(404).json({ error: "No submissions to download" });
-
-  const entries = [];
-  const used = new Set();
-  let total = 0;
-  const uniqueName = (base, ext) => {
-    let name = `${base}${ext}`;
-    let n = 2;
-    while (used.has(name.toLowerCase())) name = `${base} (${n++})${ext}`;
-    used.add(name.toLowerCase());
-    return name;
-  };
-
-  for (const s of filtered) {
-    const base = `${safeName(s.studentName)} - ${safeName(titleOf(s.assignmentId))}`;
-    if (s.file) {
-      const full = path.join(SUBMISSIONS_DIR, path.basename(s.file.filename));
-      if (fs.existsSync(full)) {
-        const data = await fs.promises.readFile(full);
-        total += data.length;
-        if (total > MAX_ZIP_BYTES) return res.status(413).json({ error: "Too many files for one download. Download them one by one." });
-        entries.push({ name: uniqueName(base, path.extname(s.file.filename)), data });
-      }
-    }
-    if (s.text) entries.push({ name: uniqueName(`${base} (written answer)`, ".txt"), data: Buffer.from(s.text, "utf8") });
-  }
-
-  if (entries.length === 0) {
-    return res.status(404).json({ error: "No submission files are available for download. Older files may no longer exist on storage." });
-  }
-
-  const label = key === "none" ? "No class" : classLabel(key);
-  res.setHeader("Content-Type", "application/zip");
-  res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(`${label} submissions.zip`)}`);
-  res.send(createZip(entries));
-}
-
-// ---------------------------------------------------------------------------
 // Appeals
 // ---------------------------------------------------------------------------
+// Student says "I did the work, I do not need to appeal": hides the overdue notice for this assignment only
+async function dismissAppeal(req, res) {
+  const assignment = await getAssignmentsCollection().findOne({ id: req.params.id }, NO_ID);
+  if (!assignment || !isVisibleToStudent(assignment, req.user)) {
+    return res.status(404).json({ error: "Assignment not found" });
+  }
+  if (new Date() <= new Date(assignment.deadline)) {
+    return res.status(400).json({ error: "The deadline has not passed yet" });
+  }
+  if (await getAppealsCollection().findOne({ assignmentId: assignment.id, studentId: req.user.id })) {
+    return res.status(409).json({ error: "You already sent an appeal for this assignment" });
+  }
+
+  await getAppealDismissalsCollection().updateOne(
+    { assignmentId: assignment.id, studentId: req.user.id },
+    { $setOnInsert: { id: newId(), assignmentId: assignment.id, studentId: req.user.id, createdAt: nowIso() } },
+    { upsert: true }
+  );
+  res.json({ success: true, assignmentId: assignment.id });
+}
+
 async function createAppeal(req, res) {
   const assignment = await getAssignmentsCollection().findOne({ id: req.params.id }, NO_ID);
   if (!assignment || !isVisibleToStudent(assignment, req.user)) {
@@ -596,9 +420,6 @@ async function createAppeal(req, res) {
   }
   if (new Date() <= new Date(assignment.deadline)) {
     return res.status(400).json({ error: "You can only appeal after the deadline has passed" });
-  }
-  if (await getSubmissionsCollection().findOne({ assignmentId: assignment.id, studentId: req.user.id })) {
-    return res.status(400).json({ error: "You already submitted this assignment" });
   }
 
   const appeals = getAppealsCollection();
@@ -695,6 +516,24 @@ async function resolveAppeal(req, res, decision) {
   await getAppealsCollection().updateOne({ id: appeal.id }, { $set: update });
   const resolved = withClassLabel({ ...appeal, ...update });
   emitAppealEvent("resolved", resolved, appeal.teacherId, appeal.studentId);
+  try {
+    const student = await getUsersCollection().findOne(
+      { id: appeal.studentId },
+      { projection: { _id: 0, email: 1, name: 1, username: 1, notifications: 1 } }
+    );
+    if (student?.email && getNotificationPreferences(student).emailNotifications) {
+      await sendAppealUpdateEmail(
+        student.email,
+        student.name || student.username,
+        appeal.assignmentTitle,
+        decision,
+        update.teacherNote,
+        update.newDeadline
+      );
+    }
+  } catch (err) {
+    console.error("Appeal was resolved, but notification email failed:", err.message);
+  }
   res.json({ appeal: resolved });
 }
 
@@ -709,8 +548,7 @@ async function teacherStats(req, res) {
   const ids = assignments.map((a) => a.id);
   const now = new Date();
 
-  const [totalSubmissions, totalResources, appeals] = await Promise.all([
-    getSubmissionsCollection().countDocuments({ assignmentId: { $in: ids } }),
+  const [totalResources, appeals] = await Promise.all([
     getTeacherResourcesCollection().countDocuments({ teacherId: req.user.id }),
     getAppealsCollection().find({ teacherId: req.user.id }, NO_ID).toArray(),
   ]);
@@ -722,7 +560,6 @@ async function teacherStats(req, res) {
 
   res.json({
     totalAssignments: assignments.length,
-    totalSubmissions,
     totalResources,
     appealsReceived: appeals.length,
     readAppeals: appeals.filter((p) => p.read).length,
@@ -756,14 +593,8 @@ module.exports = {
   deleteAssignment,
   downloadAttachment,
   viewAttachment,
-  submitAssignment,
-  downloadSubmissionFile,
-  viewSubmissionFile,
-  getSubmission,
-  submissionClasses,
-  listSubmissions,
-  downloadAllSubmissions,
   createAppeal,
+  dismissAppeal,
   listAppeals,
   markAppealRead,
   approveAppeal,

@@ -46,6 +46,18 @@ export default function DashboardHome({
 
   const [assignments, setAssignments] = useState([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardError, setDashboardError] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/papers/dashboard")
+      .then(({ data }) => setDashboardData(data))
+      .catch((error) => {
+        console.error("Could not load dashboard paper summary:", error);
+        setDashboardError("Paper statistics could not be loaded. Please refresh to try again.");
+      });
+  }, []);
 
   useEffect(() => {
     setLoadingAssignments(true);
@@ -56,66 +68,54 @@ export default function DashboardHome({
       .finally(() => setLoadingAssignments(false));
   }, []);
 
-  const totalPapers = papers.length;
-
-  // Real data: Leaderboard of top classes by uploads
-  const topClassesLeaderboard = useMemo(() => {
-    if (!papers.length) return [];
-    const counts = {};
-    papers.forEach((p) => {
-      const cls = p.class || (p.year ? `Year ${p.year}` : "General");
-      counts[cls] = (counts[cls] || 0) + 1;
-    });
-
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    return entries.slice(0, 5).map(([className, count], index) => ({
-      rank: index + 1,
-      className,
-      count,
-    }));
-  }, [papers]);
+  const totalPapers = dashboardData?.totalPapers ?? papers.length;
+  const topClassesLeaderboard = dashboardData?.topClasses || [];
 
   // Real data: Classes with assignments
   const classesWithAssignments = useMemo(() => {
     if (!assignments.length) return [];
-    const classMap = {};
+    const classMap = new Map();
     assignments.forEach((a) => {
-      const cls = a.targetClass || a.class || "General";
-      if (!classMap[cls]) {
-        classMap[cls] = { count: 0, pending: 0 };
+      const classes = Array.isArray(a.classes) ? a.classes : [];
+      const labels = Array.isArray(a.classLabels) ? a.classLabels : [];
+      const targets = classes.length
+        ? classes.map((classId, index) => ({ id: classId, label: labels[index] || classId }))
+        : labels.map((label) => ({ id: label, label }));
+      if (!targets.length && (a.targetClass || a.class)) {
+        const legacyClass = a.targetClass || a.class;
+        targets.push({ id: legacyClass, label: legacyClass });
       }
-      classMap[cls].count += 1;
-      if (a.status === "pending" || a.status === "extended" || a.status === "overdue") {
-        classMap[cls].pending += 1;
-      }
+
+      targets.forEach(({ id, label }) => {
+        const current = classMap.get(id) || { className: label, count: 0, pending: 0 };
+        current.count += 1;
+        const status = a.status || (
+          a.deadline && new Date(a.deadline) > new Date() ? "pending" : "overdue"
+        );
+        if (status === "pending" || status === "extended" || status === "overdue") {
+          current.pending += 1;
+        }
+        classMap.set(id, current);
+      });
     });
 
-    return Object.entries(classMap).map(([cls, data]) => ({
-      className: cls,
+    return [...classMap.values()].map((data) => ({
+      className: data.className,
       total: data.count,
       pending: data.pending,
     }));
   }, [assignments]);
 
-  // Real recent papers
-  const recentPapers = useMemo(() => {
-    return [...papers]
-      .sort((a, b) => new Date(b.uploadedAt || b.createdAt || 0) - new Date(a.uploadedAt || a.createdAt || 0))
-      .slice(0, 6);
-  }, [papers]);
-
-  // Real user's uploads
-  const myUploads = useMemo(() => {
-    const uEmail = user?.email?.toLowerCase();
-    const uName = user?.name?.toLowerCase();
-    return papers.filter((p) => {
-      const pBy = (p.uploadedBy || "").toLowerCase();
-      return pBy === uEmail || pBy === uName;
-    });
-  }, [papers, user]);
+  const recentPapers = dashboardData?.recentPapers || [];
+  const myUploads = dashboardData?.myUploads || [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+      {dashboardError && (
+        <p role="alert" style={{ color: "var(--color-danger, #b42318)", margin: 0 }}>
+          {dashboardError}
+        </p>
+      )}
       {/* ── Greeting Card with Student Vector Avatar ── */}
       <div
         style={{
@@ -203,7 +203,7 @@ export default function DashboardHome({
             width: "136px",
             height: "136px",
             borderRadius: "50%",
-            background: "linear-gradient(135deg, rgba(91, 115, 224, 0.22) 0%, rgba(63, 79, 168, 0.08) 100%)",
+            background: "linear-gradient(135deg, rgba(23, 79, 131, 0.22) 0%, rgba(23, 79, 131, 0.08) 100%)",
             border: "3px solid var(--color-surface)",
             boxShadow: "0 8px 24px rgba(15, 20, 36, 0.15)",
             overflow: "hidden",
@@ -284,8 +284,8 @@ export default function DashboardHome({
                     justifyContent: "space-between",
                     padding: "10px 14px",
                     borderRadius: "var(--radius-sm)",
-                    background: item.rank === 1 ? "rgba(91, 115, 224, 0.08)" : "var(--color-bg)",
-                    border: item.rank === 1 ? "1px solid rgba(91, 115, 224, 0.2)" : "1px solid transparent",
+                    background: item.rank === 1 ? "rgba(23, 79, 131, 0.08)" : "var(--color-bg)",
+                    border: item.rank === 1 ? "1px solid rgba(23, 79, 131, 0.2)" : "1px solid transparent",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -423,7 +423,7 @@ export default function DashboardHome({
                 REPOSITORY ARCHIVE
               </span>
               <h3 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
-                Recent Past Papers and Notes
+                Recent Papers, Notes and Assignments
               </h3>
             </div>
           </div>
@@ -492,7 +492,7 @@ export default function DashboardHome({
                           {paper.title}
                         </strong>
                         <span style={{ fontSize: "0.78rem", color: "var(--color-text-secondary)" }}>
-                          {paper.subject} : Year {paper.year} : {paper.type || "Past Paper"}
+                          {paper.subject} : {paper.classLabel} : {paper.type || "Past Paper"}
                           {dateStr ? ` : ${dateStr}` : ""}
                         </span>
                       </div>
@@ -561,7 +561,7 @@ export default function DashboardHome({
               My Uploads
             </h3>
             <Badge variant="neutral" size="sm">
-              {myUploads.length}
+              {dashboardData?.myUploadsCount ?? myUploads.length}
             </Badge>
           </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { API_ROOT } from "../services/api";
 import { getStoredToken } from "../utils/auth";
@@ -59,23 +59,23 @@ export function useRealtime() {
     };
   }, []);
 
-  const subscribe = (event, handler) => {
+  const subscribe = useCallback((event, handler) => {
     const s = socketRef.current || getSocket();
     if (!s) return () => {};
     s.on(event, handler);
     return () => {
       s.off(event, handler);
     };
-  };
+  }, []);
 
-  const onReconnect = (handler) => {
+  const onReconnect = useCallback((handler) => {
     const s = socketRef.current || getSocket();
     if (!s) return () => {};
     s.io.on("reconnect", handler);
     return () => {
       s.io.off("reconnect", handler);
     };
-  };
+  }, []);
 
   return {
     socket: socketRef.current || sharedSocket,

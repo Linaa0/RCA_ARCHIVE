@@ -12,8 +12,16 @@ function requireTeacher(req, res, next) {
   next();
 }
 
+function hasStudentAccess(user) {
+  return Boolean(
+    user &&
+      (user.role === "student" ||
+        (user.role === "admin" && typeof user.class === "string" && user.class.trim()))
+  );
+}
+
 function requireStudent(req, res, next) {
-  if (!req.user || req.user.role !== "student") {
+  if (!hasStudentAccess(req.user)) {
     return res.status(403).json({ error: "Student access required" });
   }
   next();
@@ -23,4 +31,5 @@ module.exports = {
   requireAdmin,
   requireTeacher,
   requireStudent,
+  hasStudentAccess,
 };

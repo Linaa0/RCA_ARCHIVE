@@ -10,6 +10,14 @@ function getDisplayName(user) {
   return user?.name || user?.username || user?.email || "Unknown user";
 }
 
+function getNotificationPreferences(user) {
+  return {
+    inAppAlerts: user?.notifications?.inAppAlerts !== false,
+    dueReminders: user?.notifications?.dueReminders !== false,
+    emailNotifications: user?.notifications?.emailNotifications !== false,
+  };
+}
+
 function safeUserFields(user) {
   if (!user) return null;
 
@@ -22,6 +30,7 @@ function safeUserFields(user) {
     status: user.status || "active",
     class: user.class || "",
     gender: user.gender || undefined,
+    notifications: getNotificationPreferences(user),
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     createdBy: user.createdBy,
@@ -33,5 +42,6 @@ module.exports = {
   escapeRegExp,
   normalizeEmail,
   getDisplayName,
+  getNotificationPreferences,
   safeUserFields,
 };

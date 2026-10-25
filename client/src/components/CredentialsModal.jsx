@@ -29,7 +29,7 @@ export default function CredentialsModal({ isOpen, onClose, credentials }) {
 
         <div
           style={{
-            background: "var(--color-surface-raised, rgba(91, 115, 224, 0.08))",
+            background: "var(--color-surface-raised, rgba(63, 79, 168, 0.08))",
             border: "1px solid var(--color-border)",
             borderRadius: "var(--radius-sm, 8px)",
             padding: "16px",

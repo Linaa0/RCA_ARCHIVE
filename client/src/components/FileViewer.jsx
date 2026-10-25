@@ -1,9 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { renderAsync } from "docx-preview";
 import api, { API_ROOT } from "../services/api";
 import { getStoredToken } from "../utils/auth";
 import { ArrowLeftIcon, DownloadIcon, EyeIcon } from "./ui/Icons";
+
+const BLOB_MIME = {
+  pdf: "application/pdf",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  svg: "image/svg+xml",
+  txt: "text/plain",
+};
+
+// Make sure the browser knows what the blob is, otherwise PDFs may download instead of showing
+function retypeBlob(blob, name) {
+  const ext = String(name || "").split(".").pop().toLowerCase();
+  const mime = BLOB_MIME[ext];
+  return mime && blob.type !== mime ? new Blob([blob], { type: mime }) : blob;
+}
 
 export default function FileViewer() {
   const navigate = useNavigate();
@@ -15,6 +32,9 @@ export default function FileViewer() {
   const [accessData, setAccessData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paperPreviewUrl, setPaperPreviewUrl] = useState(null);
+  const [paperPreviewLoading, setPaperPreviewLoading] = useState(false);
+  const [paperPreviewError, setPaperPreviewError] = useState(null);
 
   const [textContent, setTextContent] = useState("");
   const [textLoading, setTextLoading] = useState(false);
@@ -22,12 +42,16 @@ export default function FileViewer() {
 
   const [docxLoading, setDocxLoading] = useState(false);
   const [docxError, setDocxError] = useState(null);
-  const docxContainerRef = useRef(null);
+  // State (not a plain ref) so the render effect runs again once the container really exists
+  const [docxContainer, setDocxContainer] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
+    let assignmentObjectUrl = null;
     setLoading(true);
     setError(null);
+    setAccessData(null);
+    setPaperPreviewUrl(null);
 
     const token = getStoredToken();
     const tokenQuery = token ? `token=${encodeURIComponent(token)}` : "";
@@ -35,48 +59,46 @@ export default function FileViewer() {
     if (type === "assignment") {
       api
         .get(`/assignments/${id}`)
-        .then(({ data }) => {
-          if (isMounted) {
-            const inlineQuery = tokenQuery ? `?inline=1&${tokenQuery}` : "?inline=1";
-            const dlQuery = tokenQuery ? `?${tokenQuery}` : "";
-            setAccessData({
-              title: data.title || "Assignment Attachment",
-              originalName: data.attachmentName || nameParam || "attachment",
-              viewUrl: `/api/assignments/${id}/view${inlineQuery}`,
-              downloadUrl: `/api/assignments/${id}/attachment${dlQuery}`,
+        .then(({ data: body }) => {
+          const data = body.assignment || body;
+          const originalName = data.attachmentName || nameParam || "attachment";
+          return api
+            .get(`/assignments/${id}/view`, { responseType: "blob" })
+            .then(({ data: fileBlob }) => {
+              if (!isMounted) return;
+              assignmentObjectUrl = URL.createObjectURL(retypeBlob(fileBlob, originalName));
+              setAccessData({
+                title: data.title || "Assignment Attachment",
+                originalName,
+                viewUrl: assignmentObjectUrl,
+                downloadUrl: assignmentObjectUrl,
+              });
+              setLoading(false);
             });
-            setLoading(false);
-          }
         })
-        .catch((err) => {
+        .catch(() => {
           if (isMounted) {
-            setError(err.response?.data?.error || "Unable to load assignment file.");
+            setError("Unable to load assignment file. Please try again or download it instead.");
             setLoading(false);
           }
         });
-    } else if (type === "submission") {
+    } else if (type === "resource") {
+      // Notes / past papers uploaded by teachers (listed on the subject pages)
+      const originalName = nameParam || "resource";
       api
-        .get(`/submissions/${id}`)
-        .then(({ data }) => {
-          if (isMounted) {
-            const inlineQuery = tokenQuery ? `?inline=1&${tokenQuery}` : "?inline=1";
-            const dlQuery = tokenQuery ? `?${tokenQuery}` : "";
-            if (!data.file && data.text) {
-              setTextContent(data.text);
-            }
-            setAccessData({
-              title: `${data.assignmentTitle || "Assignment"} (${data.studentName || "Student Submission"})`,
-              originalName: data.file?.originalName || nameParam || (data.text ? "submission.txt" : "submission"),
-              viewUrl: `/api/submissions/${id}/view${inlineQuery}`,
-              downloadUrl: `/api/submissions/${id}/file${dlQuery}`,
-              hasNoFile: !data.file,
-            });
-            setLoading(false);
-          }
+        .get(`/subject-materials/resources/${id}/file`, { responseType: "blob" })
+        .then(({ data: fileBlob, headers }) => {
+          if (!isMounted) return;
+          const disposition = headers?.["content-disposition"] || "";
+          const match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+          const realName = match ? decodeURIComponent(match[1]) : originalName;
+          assignmentObjectUrl = URL.createObjectURL(retypeBlob(fileBlob, realName));
+          setAccessData({ title: nameParam || realName, originalName: realName, viewUrl: assignmentObjectUrl, downloadUrl: assignmentObjectUrl });
+          setLoading(false);
         })
-        .catch((err) => {
+        .catch(() => {
           if (isMounted) {
-            setError(err.response?.data?.error || "Unable to load submission file.");
+            setError("Unable to open this file. It may have been removed.");
             setLoading(false);
           }
         });
@@ -105,12 +127,44 @@ export default function FileViewer() {
 
     return () => {
       isMounted = false;
+      if (assignmentObjectUrl) URL.revokeObjectURL(assignmentObjectUrl);
     };
   }, [id, type, nameParam]);
 
-  const viewUrl = accessData?.viewUrl
+  useEffect(() => {
+    if (type !== "paper" || !accessData?.viewUrl) return undefined;
+
+    let isMounted = true;
+    let objectUrl = null;
+    setPaperPreviewUrl(null);
+    setPaperPreviewLoading(true);
+    setPaperPreviewError(null);
+
+    api
+      .get(accessData.viewUrl, { responseType: "blob" })
+      .then(({ data }) => {
+        if (!isMounted) return;
+        objectUrl = URL.createObjectURL(retypeBlob(data, accessData.originalName || accessData.title));
+        setPaperPreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (isMounted) setPaperPreviewError("Unable to load the paper preview. Please download the file instead.");
+      })
+      .finally(() => {
+        if (isMounted) setPaperPreviewLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [accessData, type]);
+
+  const remoteViewUrl = accessData?.viewUrl
     ? (accessData.viewUrl.startsWith("http") ? accessData.viewUrl : `${API_ROOT}${accessData.viewUrl}`)
     : null;
+  // Papers wait for the authenticated blob; everything else is already a blob URL
+  const viewUrl = type === "paper" ? paperPreviewUrl : remoteViewUrl;
   const downloadUrl = accessData?.downloadUrl
     ? (accessData.downloadUrl.startsWith("http") ? accessData.downloadUrl : `${API_ROOT}${accessData.downloadUrl}`)
     : null;
@@ -131,19 +185,12 @@ export default function FileViewer() {
   const audioExtensions = ["mp3", "wav", "ogg"];
   const videoExtensions = ["mp4", "mov", "avi", "webm"];
   const textExtensions = ["txt", "md", "csv", "json"];
-  const msOfficeEmbedExtensions = ["doc", "ppt", "pptx", "xls", "xlsx", "odt", "ods", "odp"];
 
   const isDocx = ext === "docx";
   const canEmbedIframe = iframeExtensions.includes(ext);
   const canRenderText = textExtensions.includes(ext);
   const canRenderAudio = audioExtensions.includes(ext);
   const canRenderVideo = videoExtensions.includes(ext);
-  const isMsOfficeEmbed = msOfficeEmbedExtensions.includes(ext);
-
-  // Office viewer URL (requires publicly accessible URL, provides graceful fallback)
-  const officeViewerUrl = isMsOfficeEmbed && viewUrl
-    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewUrl)}`
-    : null;
 
   // Text loading effect
   useEffect(() => {
@@ -163,7 +210,7 @@ export default function FileViewer() {
 
   // DOCX rendering with docx-preview
   useEffect(() => {
-    if (!viewUrl || !isDocx || !docxContainerRef.current) return;
+    if (!viewUrl || !isDocx || !docxContainer) return;
     let isCancelled = false;
     setDocxLoading(true);
     setDocxError(null);
@@ -174,9 +221,9 @@ export default function FileViewer() {
         return res.blob();
       })
       .then((blob) => {
-        if (isCancelled || !docxContainerRef.current) return;
-        docxContainerRef.current.innerHTML = "";
-        return renderAsync(blob, docxContainerRef.current, null, {
+        if (isCancelled || !docxContainer) return;
+        docxContainer.innerHTML = "";
+        return renderAsync(blob, docxContainer, null, {
           className: "docx-document",
           inWrapper: true,
           ignoreWidth: false,
@@ -197,7 +244,7 @@ export default function FileViewer() {
     return () => {
       isCancelled = true;
     };
-  }, [viewUrl, isDocx]);
+  }, [viewUrl, isDocx, docxContainer]);
 
   const handleClose = () => {
     // If opened in a new tab/window, attempt window.close() first
@@ -274,7 +321,7 @@ export default function FileViewer() {
           style={{
             width: "40px",
             height: "40px",
-            border: "3px solid rgba(91, 115, 224, 0.2)",
+            border: "3px solid rgba(63, 79, 168, 0.2)",
             borderTopColor: "var(--color-primary)",
             borderRadius: "50%",
             animation: "spin 0.8s linear infinite",
@@ -385,6 +432,7 @@ export default function FileViewer() {
           </p>
         </div>
 
+        {downloadUrl ? (
         <a
           href={downloadUrl}
           download={originalName}
@@ -407,11 +455,21 @@ export default function FileViewer() {
           <DownloadIcon size={16} />
           <span>Download</span>
         </a>
+        ) : <span style={{ width: 1 }} />}
       </header>
 
       {/* Main viewer area */}
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        {isDocx ? (
+        {type === "paper" && paperPreviewLoading ? (
+          <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center" }}>
+            Loading paper preview...
+          </div>
+        ) : type === "paper" && paperPreviewError ? (
+          <div style={{ display: "flex", height: "100%", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
+            <p role="alert">{paperPreviewError}</p>
+            <a href={downloadUrl} download={originalName}>Download paper</a>
+          </div>
+        ) : isDocx ? (
           <div
             style={{
               height: "100%",
@@ -436,7 +494,7 @@ export default function FileViewer() {
                   style={{
                     width: "36px",
                     height: "36px",
-                    border: "3px solid rgba(91, 115, 224, 0.2)",
+                    border: "3px solid rgba(63, 79, 168, 0.2)",
                     borderTopColor: "var(--color-primary)",
                     borderRadius: "50%",
                     animation: "spin 0.8s linear infinite",
@@ -473,7 +531,7 @@ export default function FileViewer() {
               </div>
             )}
             <div
-              ref={docxContainerRef}
+              ref={setDocxContainer}
               style={{
                 display: docxLoading || docxError ? "none" : "block",
                 maxWidth: "850px",
@@ -487,42 +545,37 @@ export default function FileViewer() {
               }}
             />
           </div>
-        ) : isMsOfficeEmbed ? (
-          <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            <div
+        ) : ext === "pdf" && typeof navigator !== "undefined" && navigator.pdfViewerEnabled === false ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              padding: "40px",
+              textAlign: "center",
+              gap: "16px",
+            }}
+          >
+            <p style={{ color: "var(--color-muted)", maxWidth: "420px", lineHeight: 1.5 }}>
+              This browser cannot show PDFs inside the page. Open it in a new tab to read it.
+            </p>
+            <a
+              href={viewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
-                padding: "8px 16px",
-                background: "var(--color-surface-subtle)",
-                borderBottom: "1px solid var(--color-border)",
-                fontSize: "0.82rem",
-                color: "var(--color-muted)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "12px",
+                background: "var(--color-primary)",
+                color: "#ffffff",
+                padding: "10px 24px",
+                borderRadius: "999px",
+                textDecoration: "none",
+                fontWeight: 600,
               }}
             >
-              <span>
-                Microsoft Office Online preview. If the preview fails to load on your network, use the direct download button.
-              </span>
-              <a
-                href={downloadUrl}
-                download={originalName}
-                style={{
-                  color: "var(--color-primary)",
-                  fontWeight: 600,
-                  textDecoration: "underline",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Download directly
-              </a>
-            </div>
-            <iframe
-              src={officeViewerUrl}
-              title={accessData.title}
-              style={{ width: "100%", flex: 1, border: "none" }}
-            />
+              Open PDF
+            </a>
           </div>
         ) : canEmbedIframe ? (
           <iframe

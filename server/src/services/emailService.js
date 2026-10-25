@@ -20,7 +20,7 @@ const LOGO_PATH = path.resolve(__dirname, "../assets/rca-logo.png");
 const PREVIEWS_DIR = path.resolve(__dirname, "../../tmp/email-previews");
 
 function generateOtp() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return require("crypto").randomInt(100000, 1000000).toString();
 }
 
 function getSenderDomain() {
@@ -554,6 +554,44 @@ async function sendDeletionRequestDecisionEmail(email, paperTitle, status, notes
   });
 }
 
+async function sendPasswordChangedEmail(email, name) {
+  const t = templates.getGenericNotificationTemplate({
+    name,
+    title: "Password changed",
+    message: "Your RCA Archive account password was changed. If you did not make this change, reset your password and contact an administrator.",
+    actionUrl: `${FRONTEND_BASE_URL}/reset-password`,
+    actionText: "Secure your account",
+  });
+  return sendMailWithOptions({
+    to: email,
+    subject: t.subject,
+    text: t.text,
+    html: t.html,
+  });
+}
+
+async function sendAppealUpdateEmail(email, name, appealTitle, status, note, newDeadline) {
+  const decision = status === "approved" ? "approved" : "rejected";
+  const details = [
+    `Your appeal for "${appealTitle}" was ${decision}.`,
+    note ? `Teacher's note: ${note}` : "",
+    status === "approved" && newDeadline ? `Your new deadline is ${new Date(newDeadline).toISOString()}.` : "",
+  ].filter(Boolean).join(" ");
+  const t = templates.getGenericNotificationTemplate({
+    name,
+    title: "Assignment appeal update",
+    message: details,
+    actionUrl: `${FRONTEND_BASE_URL}/student/assignments`,
+    actionText: "View assignments",
+  });
+  return sendMailWithOptions({
+    to: email,
+    subject: t.subject,
+    text: t.text,
+    html: t.html,
+  });
+}
+
 async function sendSuspiciousLoginEmail(userOrEmail, ip) {
   const email = typeof userOrEmail === "string" ? userOrEmail : userOrEmail?.email;
   if (!email || typeof email !== "string") return;
@@ -696,6 +734,8 @@ module.exports = {
   sendAccountInviteEmail,
   sendTeacherInviteEmail,
   sendPasswordResetEmail,
+  sendPasswordChangedEmail,
+  sendAppealUpdateEmail,
   sendDeletionRequestDecisionEmail,
   sendSuspiciousLoginEmail,
   cleanExpiredOtps,

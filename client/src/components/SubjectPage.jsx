@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import "./SubjectPage.css";
 import api from "../services/api";
+import { RCA_CLASSES } from "./ui/ClassChips";
+import SubjectMaterials from "./SubjectMaterials";
 
 function SubjectPage() {
   const { year, subject } = useParams();
@@ -16,6 +18,9 @@ function SubjectPage() {
   const [type, setType] = useState("Past Paper");
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadClassId, setUploadClassId] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [userClassId, setUserClassId] = useState("");
 
   const [popup, setPopup] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
@@ -34,6 +39,30 @@ function SubjectPage() {
   const username = localStorage.getItem("username");
   const role = localStorage.getItem("role");
   const canUpload = !!token;
+  const yearNumber = String(year).match(/[123]/)?.[0];
+  const availableClasses = year === "Y1GenAI"
+    ? RCA_CLASSES.filter((item) => item.id === "Y1GenAI")
+    : RCA_CLASSES.filter((item) => String(item.year) === yearNumber && item.id !== "Y1GenAI");
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get("/me")
+      .then(({ data }) => {
+        const classId = data?.user?.class || "";
+        if (!isMounted) return;
+        setUserClassId(classId);
+        setUploadClassId(availableClasses.some((item) => item.id === classId)
+          ? classId
+          : availableClasses[0]?.id || "");
+      })
+      .catch((error) => {
+        console.error("Could not load the user's enrolled class:", error);
+        setUploadClassId((current) => current || availableClasses[0]?.id || "");
+      });
+    return () => { isMounted = false; };
+  // Route year changes determine the available cohort choices.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -54,6 +83,7 @@ function SubjectPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ subject, year });
+      if (classFilter) params.append("classId", classFilter);
       if (typeFilter !== "All Types") params.append("type", typeFilter);
       if (search) params.append("search", search);
 
@@ -69,7 +99,7 @@ function SubjectPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchPapers();
-  }, [subject, year, typeFilter]);
+  }, [subject, year, typeFilter, classFilter]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -95,6 +125,7 @@ function SubjectPage() {
     formData.append("title", title);
     formData.append("subject", subject);
     formData.append("year", year);
+    if (uploadClassId) formData.append("classId", uploadClassId);
     formData.append("type", type);
 
     try {
@@ -439,6 +470,20 @@ function SubjectPage() {
               <option value="Quiz">Quiz</option>
             </select>
 
+            <label htmlFor="upload-class">Cohort</label>
+            <select
+              id="upload-class"
+              value={uploadClassId}
+              onChange={(e) => setUploadClassId(e.target.value)}
+              required
+            >
+              {availableClasses.map((classOption) => (
+                <option key={classOption.id} value={classOption.id}>
+                  {classOption.label}{classOption.id === userClassId ? " (your class)" : ""}
+                </option>
+              ))}
+            </select>
+
             <label>File (PDF or Word document only)</label>
             <input
               type="file"
@@ -468,6 +513,16 @@ function SubjectPage() {
           <option>Assignment</option>
           <option>Quiz</option>
         </select>
+        <select
+          aria-label="Filter papers by cohort"
+          value={classFilter}
+          onChange={(e) => setClassFilter(e.target.value)}
+        >
+          <option value="">All classes</option>
+          {availableClasses.map((classOption) => (
+            <option key={classOption.id} value={classOption.id}>{classOption.label}</option>
+          ))}
+        </select>
         <button className="search-btn" onClick={fetchPapers}>Search</button>
       </div>
 
@@ -492,7 +547,7 @@ function SubjectPage() {
                   <div className="paper-info">
                     <strong>{paper.title}</strong>
                     <span className="paper-meta">
-                      {paper.type} • Uploaded by {paper.uploadedBy} • {new Date(paper.uploadedAt).toLocaleDateString()}
+                      {paper.type} • {paper.classLabel || paper.uploaderClassId || paper.classId || paper.class || paper.year || "Class not specified"} • Uploaded by {paper.uploadedBy} • {new Date(paper.uploadedAt).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="paper-actions">
@@ -563,6 +618,8 @@ function SubjectPage() {
           </>
         )}
       </div>
+
+      {token && <SubjectMaterials subject={subject} />}
     </div>
   );
 }

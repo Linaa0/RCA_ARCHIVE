@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import AuthBrandPanel from "./ui/AuthBrandPanel";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
-import ThemeToggle from "./ui/ThemeToggle";
 import { EyeIcon } from "./ui/Icons";
 import { persistAuth, getHomePathForRole } from "../utils/auth";
 import api from "../services/api";
@@ -77,16 +76,14 @@ export default function Login() {
       {/* ── Right Auth Form Panel (Compact, 100dvh) ── */}
       <section className="auth-form-pane">
         <div className="auth-form-card">
-          {/* Back to Home Link and Theme Toggle */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+          {/* Back to Home Link */}
+          <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: "14px" }}>
             <Link to="/" className="auth-back-link" style={{ margin: 0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6" />
               </svg>
               <span>Back to Portal</span>
             </Link>
-
-            <ThemeToggle />
           </div>
 
           <h2 className="auth-form-title">Sign in to Archive</h2>

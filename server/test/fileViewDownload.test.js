@@ -183,6 +183,7 @@ test("File view and download suite", async (t) => {
     assert.equal(resHeader.status, 200);
     assert.equal(resHeader.headers["content-type"], "application/pdf");
     assert.ok(resHeader.headers["content-disposition"].startsWith("inline;"));
+    assert.ok(Buffer.from(resHeader.body || resHeader.text || "").toString("utf8").startsWith("%PDF-1.4"));
 
     const resQuery = await request(app)
       .get(`/api/assignments/${testAssignmentId}/view?token=${encodeURIComponent(studentToken)}`);

@@ -82,7 +82,7 @@ export default function Select({
           }}
           onFocus={(e) => {
             if (!error) {
-              e.currentTarget.style.borderColor = "var(--color-indigo-500, #5B73E0)";
+              e.currentTarget.style.borderColor = "var(--color-indigo-500, #3F4FA8)";
               e.currentTarget.style.boxShadow = "var(--focus-ring)";
             }
           }}

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function StatRing({ percentage = 75, label = "", size = 72, strokeWidth = 8, color = "#3F4FA8" }) {
+export default function StatRing({ percentage = 75, label = "", size = 72, strokeWidth = 8, color = "#174F83" }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;

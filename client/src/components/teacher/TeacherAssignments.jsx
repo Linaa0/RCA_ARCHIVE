@@ -313,9 +313,6 @@ export default function TeacherAssignments() {
             <div className="asg-meta">
               {viewing.subject || "General"} • Given {formatDateTime(viewing.givenAt)} • Deadline {formatDateTime(viewing.deadline)}
             </div>
-            <div className="asg-meta">
-              {viewing.submissionCount}/{viewing.recipientCount} students submitted
-            </div>
             <div className="asg-section-title">Instructions</div>
             <div className="asg-desc" style={{ marginTop: 0 }}>{viewing.description || "No instructions written."}</div>
             {viewing.hasAttachment && (
@@ -341,7 +338,7 @@ export default function TeacherAssignments() {
 
       <Modal isOpen={Boolean(confirmDelete)} onClose={() => setConfirmDelete(null)} title="Delete assignment?" maxWidth="440px">
         <p style={{ fontSize: "0.92rem", lineHeight: 1.5 }}>
-          "{confirmDelete?.title}" will be removed together with all its submissions and appeals. This cannot be undone.
+          "{confirmDelete?.title}" will be removed together with all its appeals. This cannot be undone.
         </p>
         <div className="asg-form-actions" style={{ marginTop: 18 }}>
           <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>

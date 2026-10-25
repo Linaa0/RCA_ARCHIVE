@@ -15,35 +15,131 @@ const {
   permanentlyDeletePaperRecord,
 } = require("../services/storageService");
 const { escapeRegExp, getDisplayName } = require("../utils/userUtils");
+const { CLASS_IDS, classLabel, getAcademicYear } = require("../config/classes");
+
+function addFilterAnd(filter, condition) {
+  filter.$and = filter.$and || [];
+  filter.$and.push(condition);
+}
+
+function findClassId(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  return CLASS_IDS.find((id) => id.toUpperCase() === normalized) || "";
+}
+
+async function addUploaderClasses(papers) {
+  const ids = [...new Set(papers.map((paper) => paper.uploadedById).filter(Boolean))];
+  const emails = [...new Set(papers.map((paper) => paper.uploadedByEmail).filter(Boolean))];
+  const usernames = [...new Set(papers.map((paper) => paper.uploadedBy).filter(Boolean))];
+  const or = [];
+  if (ids.length) or.push({ id: { $in: ids } });
+  if (emails.length) or.push({ email: { $in: emails } });
+  if (usernames.length) or.push({ username: { $in: usernames } });
+  if (!or.length) return papers;
+
+  const uploaders = await getUsersCollection()
+    .find({ $or: or }, { projection: { _id: 0, id: 1, email: 1, username: 1, class: 1 } })
+    .toArray();
+  const byId = new Map(uploaders.map((user) => [String(user.id), user]));
+  const byEmail = new Map(uploaders.map((user) => [String(user.email || "").toLowerCase(), user]));
+  const byUsername = new Map(uploaders.map((user) => [String(user.username || "").toLowerCase(), user]));
+
+  return papers.map((paper) => {
+    const uploader =
+      (paper.uploadedById && byId.get(String(paper.uploadedById))) ||
+      (paper.uploadedByEmail && byEmail.get(String(paper.uploadedByEmail).toLowerCase())) ||
+      (paper.uploadedBy && byUsername.get(String(paper.uploadedBy).toLowerCase()));
+    const uploaderClassId = uploader?.class || "";
+    const directClassId = [paper.classId, paper.class].map(findClassId).find(Boolean);
+    const effectiveClassId = directClassId
+      ? directClassId
+      : findClassId(uploaderClassId);
+    return {
+      ...paper,
+      uploaderClassId,
+      classLabel: effectiveClassId
+        ? classLabel(effectiveClassId)
+        : getPaperClass(paper).label,
+    };
+  });
+}
 
 async function listPapers(req, res) {
   const papers = getPapersCollection();
-  const { subject, year, type, search, sort, limit } = req.query;
+  const { subject, year, classId, type, search, sort, limit } = req.query;
   const filter = {};
 
   if (subject) filter.subject = subject;
   if (year) {
     const yr = String(year).trim();
-    if (yr === "Y1" || yr === "1") {
-      filter.$or = [{ year: "1" }, { year: 1 }, { year: "Y1" }, { promotion: "Y1" }];
-    } else if (yr === "Y1GenAI" || yr === "Y1 GenAI") {
-      filter.$or = [{ year: "Y1GenAI" }, { promotion: "Y1GenAI" }, { class: "Y1GenAI" }];
-    } else if (yr === "Y2" || yr === "2") {
-      filter.$or = [{ year: "2" }, { year: 2 }, { year: "Y2" }, { promotion: "Y2" }];
-    } else if (yr === "Y3" || yr === "3") {
-      filter.$or = [{ year: "3" }, { year: 3 }, { year: "Y3" }, { promotion: "Y3" }];
+    const normalized = yr.toUpperCase().replace(/\s+/g, "");
+    const academicYearAlias = normalized.match(/^(?:Y|YEAR)?([123])$/);
+    if (academicYearAlias) {
+      const academicYear = Number(academicYearAlias[1]);
+      const yearId = `Y${academicYear}`;
+      const matchingClasses = CLASS_IDS.filter((id) => getAcademicYear(id) === academicYear);
+      const matchingClassLabels = matchingClasses.map(classLabel);
+      addFilterAnd(filter, {
+        $or: [
+          { year: String(academicYear) },
+          { year: academicYear },
+          { year: yearId },
+          { year: `Year ${academicYear}` },
+          { year: `Year ${yearId}` },
+          { year: { $in: matchingClasses } },
+          { promotion: yearId },
+          ...(academicYear === 1 ? [{ promotion: "Y1GenAI" }] : []),
+          { classId: { $in: matchingClasses } },
+          { class: { $in: [...matchingClasses, ...matchingClassLabels] } },
+        ],
+      });
+    } else if (normalized === "Y1GENAI") {
+      addFilterAnd(filter, {
+        $or: [
+          { year: { $in: ["Y1GenAI", "Y1 GenAI"] } },
+          { promotion: "Y1GenAI" },
+          { classId: "Y1GenAI" },
+          { class: "Y1GenAI" },
+        ],
+      });
     } else {
-      filter.year = year;
+      const exactClass = CLASS_IDS.find((id) => id.toUpperCase() === normalized);
+      if (exactClass) {
+        addFilterAnd(filter, {
+          $or: [
+            { year: exactClass },
+            { year: classLabel(exactClass) },
+            { classId: exactClass },
+            { class: { $in: [exactClass, classLabel(exactClass)] } },
+          ],
+        });
+      } else {
+        filter.year = year;
+      }
     }
+  }
+  if (classId) {
+    const exactClass = CLASS_IDS.find((id) => id.toUpperCase() === String(classId).toUpperCase());
+    const classValues = exactClass ? [exactClass, classLabel(exactClass)] : [String(classId)];
+    addFilterAnd(filter, {
+      $or: [
+        { year: { $in: classValues } },
+        { classId: { $in: classValues } },
+        { class: { $in: classValues } },
+      ],
+    });
   }
   if (type && type !== "All Types") filter.type = type;
   if (search) {
     const regex = new RegExp(escapeRegExp(search), "i");
-    filter.$or = [{ title: regex }, { subject: regex }, { type: regex }];
+    addFilterAnd(filter, {
+      $or: [{ title: regex }, { subject: regex }, { type: regex }],
+    });
   }
 
   const paperDocs = await papers.find(filter).toArray();
-  let result = paperDocs.map(buildRatingSummary);
+  const papersWithUploaderClasses = await addUploaderClasses(paperDocs);
+  let result = papersWithUploaderClasses.map(buildRatingSummary);
 
   if (sort === "top") {
     result.sort((a, b) => {
@@ -62,6 +158,94 @@ async function listPapers(req, res) {
   }
 
   res.json(result);
+}
+
+function getPaperClass(paper) {
+  const exactClass = [paper.classId, paper.class, paper.uploaderClassId]
+    .map(findClassId)
+    .find(Boolean);
+  if (exactClass) return { id: exactClass, label: classLabel(exactClass) };
+
+  const raw = String(paper.classId || paper.class || "").trim().toUpperCase();
+  const academicYear = getAcademicYear(paper.year || raw);
+  return academicYear
+    ? { id: `Y${academicYear}-unspecified`, label: `Year ${academicYear} (class not specified)` }
+    : { id: "General", label: "General" };
+}
+
+function buildDashboardSummary(allPapers, user) {
+  const normalizedPapers = allPapers.map((paper) => ({
+    ...paper,
+    classLabel: paper.classLabel || getPaperClass(paper).label,
+  }));
+  const archivePapers = normalizedPapers.filter((paper) => {
+    const type = String(paper.type || paper.category || "past_paper")
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "");
+    return type === "pastpaper" || type === "notes" || type === "note" || type === "assignment";
+  });
+  const classCounts = new Map();
+
+  const countedUploads = new Map();
+  for (const paper of archivePapers) {
+    const identity = paper.hash || paper.id || paper._id;
+    if (!identity || countedUploads.has(String(identity))) continue;
+    const { id, label } = getPaperClass(paper);
+    const current = classCounts.get(id) || { className: label, count: 0 };
+    current.count += 1;
+    classCounts.set(id, current);
+    countedUploads.set(String(identity), true);
+  }
+
+  const userEmail = String(user.email || "").toLowerCase();
+  const userName = String(user.username || "").toLowerCase();
+  const myUploads = normalizedPapers.filter((paper) =>
+    (paper.uploadedById && String(paper.uploadedById) === String(user.id)) ||
+    (paper.uploadedByEmail && String(paper.uploadedByEmail).toLowerCase() === userEmail) ||
+    (paper.uploadedBy && String(paper.uploadedBy).toLowerCase() === userName)
+  );
+
+  return {
+    totalPapers: allPapers.length,
+    topClasses: [...classCounts.values()]
+      .sort((a, b) => b.count - a.count || a.className.localeCompare(b.className))
+      .slice(0, 2),
+    recentPapers: archivePapers.slice(0, 4),
+    myUploadsCount: myUploads.length,
+    myUploads: myUploads.slice(0, 5),
+  };
+}
+
+async function getDashboardSummary(req, res) {
+  const papers = await getPapersCollection()
+    .find(
+      {},
+      {
+        projection: {
+          _id: 0,
+          id: 1,
+          title: 1,
+          subject: 1,
+          year: 1,
+          classId: 1,
+          class: 1,
+          type: 1,
+          category: 1,
+          hash: 1,
+          filename: 1,
+          originalName: 1,
+          uploadedBy: 1,
+          uploadedById: 1,
+          uploadedByEmail: 1,
+          uploadedAt: 1,
+          createdAt: 1,
+        },
+      }
+    )
+    .sort({ uploadedAt: -1, createdAt: -1 })
+    .toArray();
+  const allPapers = await addUploaderClasses(papers);
+  res.json(buildDashboardSummary(allPapers, req.user));
 }
 
 const crypto = require("crypto");
@@ -402,6 +586,8 @@ async function getStats(req, res) {
 
 module.exports = {
   listPapers,
+  getDashboardSummary,
+  buildDashboardSummary,
   getPaperFile,
   viewPaper,
   downloadPaper,

@@ -16,6 +16,7 @@ const {
   signAccessLink,
   verifyAccessLink,
   formatContentDisposition,
+  buildDashboardSummary,
 } = require("../src/controllers/paperController");
 const { initSocketServer } = require("../src/services/socketService");
 
@@ -99,6 +100,57 @@ test("CONTENT DISPOSITION: correctly formats ASCII fallback and UTF-8 encoded na
   assert.ok(header.startsWith("inline; filename="));
   assert.ok(header.includes("filename*="));
   assert.ok(header.includes("UTF-8''"));
+});
+
+test("DASHBOARD SUMMARY: matches uploader identity and normalizes legacy year labels", () => {
+  const summary = buildDashboardSummary(
+    [
+      { id: "assignment", year: "Y1", classId: "Y1A", type: "Assignment" },
+      { ...testPaper, type: "past_paper" },
+      { id: "legacy-one", year: "Year 1", class: "Year 1", type: "Notes", hash: "same-paper" },
+      { id: "legacy-two", year: "Y1", class: "Year Y1", type: "past_paper", hash: "same-paper" },
+      { id: "old-cohort-paper", year: "Y1", classId: "Y1", uploaderClassId: "Y1A", type: "past_paper" },
+      { id: "second-old-cohort-paper", year: "Y1", classId: "Y1", uploaderClassId: "Y1A", type: "past_paper" },
+      { id: "genai", year: "Y1GenAI", classId: "Y1GenAI", type: "Notes" },
+    ],
+    testUser
+  );
+
+  assert.strictEqual(summary.totalPapers, 7);
+  assert.strictEqual(summary.myUploadsCount, 1);
+  assert.strictEqual(summary.myUploads[0].id, testPaper.id);
+  assert.strictEqual(summary.topClasses[0].className, "Year 1A");
+  assert.ok(summary.topClasses.some((cohort) => cohort.className === "Year 1A" && cohort.count === 3));
+  assert.strictEqual(summary.topClasses.reduce((sum, cohort) => sum + cohort.count, 0), 4);
+  assert.strictEqual(summary.recentPapers.length, 4);
+  assert.strictEqual(summary.recentPapers.some((paper) => paper.type === "Assignment"), true);
+  const genAiSummary = buildDashboardSummary(
+    [{ id: "genai-only", year: "Y1GenAI", classId: "Y1GenAI", type: "Notes" }],
+    testUser
+  );
+  assert.strictEqual(genAiSummary.topClasses[0].className, "Year 1 Gen AI");
+});
+
+test("PAPERS API: year and search filters are applied together", async () => {
+  const matching = await request(app).get("/api/papers?year=Y2&search=Realtime");
+  const notMatching = await request(app).get("/api/papers?year=Y2&search=missing-title");
+
+  assert.strictEqual(matching.status, 200);
+  assert.ok(matching.body.some((paper) => paper.id === testPaper.id));
+  assert.strictEqual(notMatching.status, 200);
+  assert.strictEqual(notMatching.body.some((paper) => paper.id === testPaper.id), false);
+});
+
+test("DASHBOARD API: returns authenticated uploads and top-two cohort summary", async () => {
+  const res = await request(app)
+    .get("/api/papers/dashboard")
+    .set("Authorization", `Bearer ${testToken}`);
+
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.body.myUploadsCount, 1);
+  assert.ok(res.body.myUploads.some((paper) => paper.id === testPaper.id));
+  assert.ok(res.body.topClasses.length <= 2);
+  assert.ok(res.body.recentPapers.length <= 4);
 });
 
 test("ACCESS LINK: HMAC signature and verification functions", () => {

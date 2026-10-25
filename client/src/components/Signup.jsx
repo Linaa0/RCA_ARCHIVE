@@ -4,7 +4,6 @@ import AuthBrandPanel from "./ui/AuthBrandPanel";
 import Input from "./ui/Input";
 import Select from "./ui/Select";
 import Button from "./ui/Button";
-import ThemeToggle from "./ui/ThemeToggle";
 import { RCA_CLASSES } from "./ui/ClassChips";
 import { CheckIcon, EyeIcon } from "./ui/Icons";
 import studentBoy from "../assets/figures/student-boy.png";
@@ -127,16 +126,6 @@ export default function Signup() {
     }
     setError("");
     setStep(2);
-  };
-
-  // "I already have a code" button on Step 1
-  const handleJumpToCode = () => {
-    if (!formData.email.trim()) {
-      setError("Please enter your student email first to verify your code.");
-      return;
-    }
-    setError("");
-    setStep(3);
   };
 
   // Step 2 -> Step 3: Send OTP
@@ -340,16 +329,14 @@ export default function Signup() {
       {/* ── Right Auth Form Panel (Compact, 100dvh, No Scroll) ── */}
       <section className="auth-form-pane">
         <div className="auth-form-card">
-          {/* Top navigation row with Back link and Theme Toggle */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+          {/* Top navigation row with Back link */}
+          <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: "14px" }}>
             <Link to="/" className="auth-back-link" style={{ margin: 0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6" />
               </svg>
               <span>Back to Portal</span>
             </Link>
-
-            <ThemeToggle />
           </div>
 
           {/* Wizard Step Progress Indicator */}
@@ -375,7 +362,7 @@ export default function Signup() {
             })}
           </div>
 
-          <h2 className="auth-form-title">
+          <h2 className="auth-form-title signup-form-title">
             {signupSuccess
               ? "Account Created"
               : step === 1
@@ -384,15 +371,11 @@ export default function Signup() {
               ? "Username and Security"
               : "Verify Email Code"}
           </h2>
-          <p className="auth-form-subtitle">
-            {signupSuccess
-              ? "Redirecting you to sign in..."
-              : step === 1
-              ? "Step 1 of 3: Provide your full name and student email."
-              : step === 2
-              ? "Step 2 of 3: Pick a username, password, class cohort, and avatar."
-              : `Step 3 of 3: Enter the 6 digit code sent to ${formData.email || "your inbox"}.`}
-          </p>
+          {signupSuccess && (
+            <p className="auth-form-subtitle">
+              Redirecting you to sign in...
+            </p>
+          )}
 
           {error && (
             <div className="auth-alert-error" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -440,19 +423,12 @@ export default function Signup() {
                 variant="primary"
                 size="md"
                 type="submit"
-                style={{ width: "100%", marginTop: "6px" }}
+                style={{ width: "100%", marginTop: "14px" }}
               >
                 Continue to Account Setup
               </Button>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", fontSize: "0.82rem" }}>
-                <button
-                  type="button"
-                  onClick={handleJumpToCode}
-                  style={{ background: "none", border: "none", color: "var(--color-primary)", fontWeight: 700, cursor: "pointer", padding: 0 }}
-                >
-                  I already have a code
-                </button>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginTop: "12px", fontSize: "0.82rem" }}>
                 <div className="auth-switch-prompt" style={{ margin: 0 }}>
                   Already registered? <Link to="/login">Sign In</Link>
                 </div>
@@ -540,7 +516,7 @@ export default function Signup() {
                       padding: "12px",
                       borderRadius: "var(--radius-card-sm, 12px)",
                       border: formData.gender === "female" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
-                      background: formData.gender === "female" ? "var(--color-surface-raised, rgba(91, 115, 224, 0.08))" : "var(--color-surface)",
+                      background: formData.gender === "female" ? "var(--color-surface-raised, rgba(63, 79, 168, 0.08))" : "var(--color-surface)",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -565,7 +541,7 @@ export default function Signup() {
                       padding: "12px",
                       borderRadius: "var(--radius-card-sm, 12px)",
                       border: formData.gender === "male" ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
-                      background: formData.gender === "male" ? "var(--color-surface-raised, rgba(91, 115, 224, 0.08))" : "var(--color-surface)",
+                      background: formData.gender === "male" ? "var(--color-surface-raised, rgba(63, 79, 168, 0.08))" : "var(--color-surface)",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -641,7 +617,7 @@ export default function Signup() {
                 ))}
               </div>
 
-              <div style={{ background: "var(--color-surface-raised, rgba(91, 115, 224, 0.06))", padding: "10px 12px", borderRadius: "8px", fontSize: "0.82rem", color: "var(--color-text-secondary)", margin: "8px 0" }}>
+              <div style={{ background: "var(--color-surface-raised, rgba(63, 79, 168, 0.06))", padding: "10px 12px", borderRadius: "8px", fontSize: "0.82rem", color: "var(--color-text-secondary)", margin: "8px 0" }}>
                 <div>Code sent to: <strong style={{ color: "var(--color-text-primary)" }}>{formData.email}</strong></div>
                 <div style={{ marginTop: "4px" }}>Did not get the code? Check your spam folder, then request a new one.</div>
               </div>

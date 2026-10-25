@@ -13,7 +13,9 @@ import rcaLogo from "../../assets/rca.png";
 export default function Logo({
   variant = "full",
   size = "md",
+  logoSrc = rcaLogo,
   showWordmark = true,
+  showSubtitle = true,
   wordmarkColor,
   layout = "row",
   withPlate = false,
@@ -86,7 +88,7 @@ export default function Logo({
         }}
       >
         <img
-          src={rcaLogo}
+          src={logoSrc}
           alt="Rwanda Coding Academy"
           style={{
             width: `${pixelSize}px`,
@@ -113,7 +115,7 @@ export default function Logo({
           >
             RCA Archive
           </span>
-          {pixelSize >= 76 && (
+          {showSubtitle && pixelSize >= 76 && (
             <span
               style={{
                 fontFamily: "var(--font-family, 'Quicksand', sans-serif)",

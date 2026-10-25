@@ -7,7 +7,6 @@ import {
   MoonIcon,
   SettingsIcon,
   LogoutIcon,
-  UserIcon,
 } from "./Icons";
 import {
   getThemePreference,
@@ -242,27 +241,6 @@ export default function UserMenu() {
               <span>Settings and Profile</span>
             </Link>
 
-            <Link
-              to="/report-issue"
-              onClick={() => setOpen(false)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 10px",
-                fontSize: "0.85rem",
-                color: "var(--color-ink)",
-                textDecoration: "none",
-                borderRadius: "8px",
-                fontWeight: 600,
-                transition: "background var(--transition-fast)",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface-hover)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <UserIcon size={16} />
-              <span>Help and Report Issue</span>
-            </Link>
           </div>
 
           <div style={{ height: "1px", background: "var(--color-divider)", margin: "0 -4px" }} />

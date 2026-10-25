@@ -11,6 +11,8 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [inAppAlerts, setInAppAlerts] = useState(true);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const menuRef = useRef(null);
 
   // Fetch notifications initially
@@ -30,9 +32,56 @@ export default function NotificationBell() {
     };
   }, []);
 
+  // Safety net: if the realtime socket is blocked, new reminders still arrive within 30 seconds
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      api.get("/notifications")
+        .then(({ data }) => {
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unreadCount || 0);
+        })
+        .catch(() => {});
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get("/me")
+      .then(({ data }) => {
+        if (isMounted) {
+          setInAppAlerts(data.user.notifications?.inAppAlerts !== false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load notification preferences:", err);
+      })
+      .finally(() => {
+        if (isMounted) setPreferencesLoaded(true);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const updatePreferences = (event) => {
+      setInAppAlerts(event.detail?.inAppAlerts !== false);
+    };
+    window.addEventListener("rca-notification-preferences-changed", updatePreferences);
+    return () => {
+      window.removeEventListener("rca-notification-preferences-changed", updatePreferences);
+    };
+  }, []);
+
   // Real-time event subscriptions
   useEffect(() => {
+    if (!preferencesLoaded) return undefined;
+
     const addToast = (title, message, link) => {
+      if (!inAppAlerts) return;
       const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
       setToasts((prev) => [...prev, { id, title, message, link }]);
       setTimeout(() => {
@@ -41,7 +90,7 @@ export default function NotificationBell() {
     };
 
     const unsubNotification = subscribe("notification:new", (doc) => {
-      setNotifications((prev) => [doc, ...prev]);
+      setNotifications((prev) => (prev.some((n) => n.id === doc.id) ? prev : [doc, ...prev]));
       setUnreadCount((c) => c + 1);
       addToast(doc.title, doc.message, doc.link);
     });
@@ -54,25 +103,11 @@ export default function NotificationBell() {
       );
     });
 
-    const unsubAssignment = subscribe("assignment:created", (assignment) => {
-      const target = Array.isArray(assignment) ? assignment[0] : assignment;
-      if (target) {
-        const userRole = localStorage.getItem("role");
-        const link = userRole === "teacher" ? "/teacher/assignments" : "/student/assignments";
-        addToast(
-          "New Assignment Posted",
-          `${target.title} (${target.subject || "Resource"}).`,
-          link
-        );
-      }
-    });
-
     return () => {
       unsubNotification();
       unsubPaper();
-      unsubAssignment();
     };
-  }, [subscribe]);
+  }, [subscribe, inAppAlerts, preferencesLoaded]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -100,6 +135,11 @@ export default function NotificationBell() {
   };
 
   const handleItemClick = async (notif) => {
+    const opensFile = notif.link?.startsWith("/view/");
+    if (opensFile) {
+      window.open(notif.link, "_blank", "noopener,noreferrer");
+    }
+
     if (!notif.read) {
       try {
         await api.patch(`/notifications/${notif.id}/read`);
@@ -110,12 +150,8 @@ export default function NotificationBell() {
       } catch (_) {}
     }
     setOpen(false);
-    if (notif.link) {
-      if (notif.link.startsWith("/view/")) {
-        window.open(notif.link, "_blank", "noopener,noreferrer");
-      } else {
-        navigate(notif.link);
-      }
+    if (notif.link && !opensFile) {
+      navigate(notif.link);
     }
   };
 
@@ -216,7 +252,7 @@ export default function NotificationBell() {
               {unreadCount > 0 && (
                 <span
                   style={{
-                    background: "rgba(91, 115, 224, 0.15)",
+                    background: "rgba(63, 79, 168, 0.15)",
                     color: "var(--color-primary)",
                     padding: "2px 8px",
                     borderRadius: "999px",
@@ -228,24 +264,6 @@ export default function NotificationBell() {
                 </span>
               )}
             </div>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--color-primary)",
-                  fontSize: "0.78rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                }}
-              >
-                Mark all read
-              </button>
-            )}
           </div>
 
           {/* List items */}
@@ -274,7 +292,7 @@ export default function NotificationBell() {
                     padding: "12px 18px",
                     borderBottom: "1px solid var(--color-border)",
                     cursor: "pointer",
-                    background: n.read ? "transparent" : "rgba(91, 115, 224, 0.04)",
+                    background: n.read ? "transparent" : "rgba(63, 79, 168, 0.04)",
                     transition: "background var(--transition-fast)",
                     display: "flex",
                     gap: "12px",
@@ -286,7 +304,7 @@ export default function NotificationBell() {
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = n.read
                       ? "transparent"
-                      : "rgba(91, 115, 224, 0.04)";
+                      : "rgba(63, 79, 168, 0.04)";
                   }}
                 >
                   <div
@@ -335,6 +353,34 @@ export default function NotificationBell() {
                 </div>
               ))
             )}
+          </div>
+
+          {/* Footer: clears the red badge */}
+          <div
+            style={{
+              padding: "10px 18px",
+              borderTop: "1px solid var(--color-border)",
+              background: "var(--color-surface)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              disabled={unreadCount === 0}
+              style={{
+                width: "100%",
+                padding: "9px 14px",
+                borderRadius: "999px",
+                border: "none",
+                background: unreadCount === 0 ? "var(--color-surface-subtle)" : "var(--color-indigo-700)",
+                color: unreadCount === 0 ? "var(--color-muted)" : "#FFFFFF",
+                fontWeight: 700,
+                fontSize: "0.85rem",
+                cursor: unreadCount === 0 ? "default" : "pointer",
+              }}
+            >
+              {unreadCount === 0 ? "All caught up" : "Mark as read"}
+            </button>
           </div>
         </div>
       )}

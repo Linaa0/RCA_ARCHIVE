@@ -379,11 +379,20 @@ async function resetPassword(req, res) {
       operation: "reset-password",
     });
 
-    if (
-      !otpRecord ||
-      otpRecord.code !== otp ||
-      otpRecord.expiresAt <= Date.now()
-    ) {
+    // The code is stored hashed (hashedCode), so it must be compared with bcrypt
+    if (!otpRecord || otpRecord.expiresAt <= Date.now()) {
+      return res.status(400).json({ error: "Invalid or expired OTP." });
+    }
+    if ((otpRecord.attempts || 0) >= 5) {
+      await otpCollection.deleteMany({ email: normalizedEmail, operation: "reset-password" });
+      return res.status(400).json({ error: "Too many invalid attempts. Please request a new code." });
+    }
+    const otpMatches = await bcrypt.compare(String(otp).trim(), otpRecord.hashedCode || "");
+    if (!otpMatches) {
+      await otpCollection.updateOne(
+        { email: normalizedEmail, operation: "reset-password" },
+        { $inc: { attempts: 1 } }
+      );
       return res.status(400).json({ error: "Invalid or expired OTP." });
     }
 

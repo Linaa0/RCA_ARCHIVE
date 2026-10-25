@@ -22,9 +22,9 @@ export default function ClassChip({
   let shadow = "var(--shadow-xs)";
 
   if (isSelected) {
-    background = "var(--gradient-accent, linear-gradient(135deg, #5B73E0 0%, #3F4FA8 100%))";
+    background = "var(--gradient-accent, linear-gradient(135deg, #3F4FA8 0%, #3F4FA8 100%))";
     color = "#FFFFFF";
-    border = "1px solid var(--color-indigo-500, #5B73E0)";
+    border = "1px solid var(--color-indigo-500, #3F4FA8)";
     shadow = "0 4px 12px rgba(63, 79, 168, 0.28)";
   } else if (variant === "subtle") {
     background = "var(--color-surface-subtle, #F8F9FD)";

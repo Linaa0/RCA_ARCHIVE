@@ -12,14 +12,14 @@ export default function WaterDecoration({ variant = "subtle", className = "" }) 
       >
         <defs>
           <linearGradient id="waterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#4895EF" stopOpacity="0.8" />
-            <stop offset="50%" stopColor="#5B73E0" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#38B2AC" stopOpacity="0.3" />
+            <stop offset="0%" stopColor="#174F83" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#0B2D52" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#123D6A" stopOpacity="0.3" />
           </linearGradient>
           <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#4895EF" stopOpacity="0.4" />
-            <stop offset="50%" stopColor="#8FA2FF" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="#38B2AC" stopOpacity="0.4" />
+            <stop offset="0%" stopColor="#174F83" stopOpacity="0.4" />
+            <stop offset="50%" stopColor="#2C6798" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#123D6A" stopOpacity="0.4" />
           </linearGradient>
         </defs>
 

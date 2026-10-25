@@ -85,7 +85,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(91, 115, 224, 0.12) !important;
+  background: rgba(63, 79, 168, 0.12) !important;
   color: var(--primary-accent) !important;
   flex-shrink: 0;
 }

@@ -5,7 +5,7 @@ import Modal from "../ui/Modal";
 import Badge from "../ui/Badge";
 import { DownloadIcon, PlusIcon } from "../ui/Icons";
 import { errorMessage, formatDateTime } from "../assignments/common";
-import { downloadFrom, fetchBlob } from "../assignments/fileUtils";
+import { downloadFrom } from "../assignments/fileUtils";
 import { DEMO_RESOURCES } from "./demoData";
 import "../assignments/assignments.css";
 
@@ -95,23 +95,18 @@ export default function TeacherResources() {
     }
   };
 
-  const openResource = async (resource) => {
+  const openResource = (resource) => {
     if (resource.isDemo) return;
-    const previewTab = window.open("about:blank", "_blank");
-    if (!previewTab) {
+    // PDFs open in their own browser tab; Word files are rendered by the viewer page
+    const opened = window.open(
+      `/view/${resource.id}?type=resource&name=${encodeURIComponent(resource.originalName || resource.title)}`,
+      "_blank"
+    );
+    if (!opened) {
       setError("Allow pop-ups to open the resource in a new tab.");
       return;
     }
-    previewTab.opener = null;
-    previewTab.document.title = resource.title;
-    previewTab.document.body.textContent = "Opening resource...";
-    try {
-      const blob = await fetchBlob(`/teacher/resources/${resource.id}/file`);
-      previewTab.location.href = URL.createObjectURL(blob);
-    } catch (err) {
-      previewTab.close();
-      setError(errorMessage(err, "Could not open this resource."));
-    }
+    opened.opener = null;
   };
 
   const visibleResources = resources.filter((resource) => resource.type === tab);

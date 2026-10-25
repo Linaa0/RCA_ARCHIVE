@@ -62,6 +62,10 @@
   line-height: 1.25;
 }
 
+.signup-form-title {
+  margin-bottom: 14px;
+}
+
 .auth-form-subtitle {
   font-size: 0.86rem;
   color: var(--color-text-secondary);
@@ -155,7 +159,7 @@
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: #FFFFFF;
-  box-shadow: 0 2px 8px rgba(63, 79, 168, 0.35);
+  box-shadow: 0 2px 8px rgba(11, 45, 82, 0.35);
 }
 
 .step-bubble.completed {
@@ -209,7 +213,7 @@
 
 .otp-digit-box:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.25);
+  box-shadow: 0 0 0 3px rgba(23, 79, 131, 0.25);
   transform: translateY(-1px);
 }
 

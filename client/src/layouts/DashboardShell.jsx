@@ -19,11 +19,11 @@ import {
   SunIcon,
   MoonIcon,
 } from "../components/ui/Icons";
+import Logo from "../components/ui/Logo";
 import "./DashboardShell.css";
 import api from "../services/api";
 import { clearAuthStorage, getStoredRole, getStoredUser, isAuthenticated } from "../utils/auth";
 import { toggleTheme, getInitialTheme } from "../utils/theme";
-import Logo from "../components/ui/Logo";
 import Avatar from "../components/ui/Avatar";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import UserMenu from "../components/ui/UserMenu";
@@ -162,12 +162,16 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
 
   // Build role-specific navigation according to exact specifications
   let navItems = [];
-  if (role === "admin") {
+  const isAdminStudentView =
+    role === "admin" &&
+    (location.pathname === "/home" || location.pathname === "/student/assignments");
+  if (role === "admin" && !isAdminStudentView) {
     navItems = [
       { label: "Dashboard", path: "/admin", icon: <DashboardIcon size={20} /> },
       { label: "Teachers", path: "/admin?tab=teachers", icon: <UsersIcon size={20} /> },
       { label: "Students", path: "/admin?tab=students", icon: <GraduationCapIcon size={20} /> },
       { label: "Deletion Requests", path: "/admin?tab=deletions", icon: <TrashIcon size={20} /> },
+      { label: "Student View", path: "/home", icon: <GraduationCapIcon size={20} /> },
       { label: "Settings", path: "/settings", icon: <SettingsIcon size={20} /> },
     ];
   } else if (role === "teacher") {
@@ -189,6 +193,9 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
       { label: "Academic Years", path: "/home", icon: <GraduationCapIcon size={20} /> },
       { label: "Subjects", path: "/subjects", icon: <LayersIcon size={20} /> },
       { label: "Appeal for Assignment", path: "/student/assignments", icon: <FileTextIcon size={20} /> },
+      ...(isAdminStudentView
+        ? [{ label: "Admin Dashboard", path: "/admin", icon: <DashboardIcon size={20} /> }]
+        : []),
       { label: "Settings", path: "/settings", icon: <SettingsIcon size={20} /> },
     ];
   }
@@ -251,7 +258,10 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
       <aside className={`dashboard-sidebar ${mobileMenuOpen ? "open" : ""}`}>
         {/* Brand Header */}
         <div className="sidebar-brand">
-          <Logo variant="knockout" size="sidebar" wordmarkColor="#FFFFFF" />
+          <div className="sidebar-brand-heading">
+            <Logo variant="knockout" size={60} showWordmark={false} />
+            <span className="sidebar-brand-name">RCA Archive</span>
+          </div>
           <div className="sidebar-brand-badge-wrap">
             {role === "admin" && (
               <span className="sidebar-brand-badge admin-badge">
@@ -356,7 +366,7 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
         {needsPasswordChange && (
           <div
             style={{
-              background: "rgba(91, 115, 224, 0.12)",
+              background: "rgba(23, 79, 131, 0.12)",
               borderBottom: "1px solid var(--color-border)",
               padding: "10px 24px",
               display: "flex",

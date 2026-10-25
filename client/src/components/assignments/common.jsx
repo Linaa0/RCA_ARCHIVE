@@ -40,7 +40,6 @@ export function StudentStatusBadge({ status }) {
   const map = {
     pending: { variant: "indigo", label: "To do" },
     extended: { variant: "primary", label: "Extended" },
-    submitted: { variant: "success", label: "Submitted" },
     overdue: { variant: "danger", label: "Overdue" },
   };
   const item = map[status] || { variant: "neutral", label: status };

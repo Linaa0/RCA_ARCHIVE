@@ -52,8 +52,8 @@ export default function BarChartWidget({
               border: "1px solid #D8E0FB",
               fontSize: "12px",
               fontWeight: "600",
-              color: "#3F4FA8",
-              backgroundColor: "#F7F9FF",
+              color: "#174F83",
+              backgroundColor: "#F1F6FA",
               transition: "all 0.2s ease",
             }}
           >
@@ -102,10 +102,8 @@ export default function BarChartWidget({
                   transition: "height 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
               >
-                {/* Top lighter blue cap */}
-                <div style={{ height: "30%", background: "#667EEA" }} />
-                {/* Bottom deep indigo body */}
-                <div style={{ height: "70%", background: "#3F4FA8" }} />
+                <div style={{ height: "30%", background: "#2C6798" }} />
+                <div style={{ height: "70%", background: "#0B2D52" }} />
               </div>
               <span
                 style={{

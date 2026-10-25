@@ -5,7 +5,7 @@ export default function ProgressRing({
   label = "",
   size = 72,
   strokeWidth = 8,
-  color = "var(--color-indigo-500, #5B73E0)",
+  color = "var(--color-indigo-500, #3F4FA8)",
   trackColor = "var(--color-border, rgba(63, 79, 168, 0.12))",
   showValue = true,
   className = "",

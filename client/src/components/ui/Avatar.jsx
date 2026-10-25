@@ -1,5 +1,7 @@
 import React from "react";
 import { UserIcon } from "./Icons";
+import studentBoy from "../../assets/figures/student-boy.png";
+import studentGirl from "../../assets/figures/student-girl.png";
 
 /**
  * RCA Archive Standard Default Avatar
@@ -10,6 +12,7 @@ import { UserIcon } from "./Icons";
 export default function Avatar({
   name = "User",
   src = null,
+  gender = null,
   size = "md",
   className = "",
   style = {},
@@ -36,7 +39,14 @@ export default function Avatar({
   };
 
   const initials = getInitials(name);
-  const effectiveSrc = src;
+  const normalizedGender = typeof gender === "string" ? gender.toLowerCase() : "";
+  const effectiveSrc =
+    src ||
+    (normalizedGender === "male"
+      ? studentBoy
+      : normalizedGender === "female"
+      ? studentGirl
+      : null);
 
   return (
     <div
@@ -62,6 +72,7 @@ export default function Avatar({
             height: "100%",
             borderRadius: "50%",
             objectFit: "cover",
+            objectPosition: "center top",
             border: "2px solid var(--color-surface)",
             boxShadow: "var(--shadow-xs)",
           }}

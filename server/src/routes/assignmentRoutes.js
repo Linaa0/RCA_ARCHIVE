@@ -4,7 +4,7 @@ const ctrl = require("../controllers/assignmentController");
 const teacherResources = require("../controllers/teacherResourceController");
 const profile = require("../controllers/profileController");
 const { requireAuth } = require("../middleware/authMiddleware");
-const { requireTeacher, requireStudent } = require("../middleware/roleGuard");
+const { requireTeacher, requireStudent, hasStudentAccess } = require("../middleware/roleGuard");
 const { handleSubmissionUpload } = require("../services/submissionStorage");
 
 const { appealLimiter, uploadLimiter } = require("../middleware/rateLimiter");
@@ -13,7 +13,7 @@ const { appealLimiter, uploadLimiter } = require("../middleware/rateLimiter");
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const teacherOrStudent = (req, res, next) =>
-  ["teacher", "student"].includes(req.user.role)
+  (req.user.role === "teacher" || hasStudentAccess(req.user))
     ? next()
     : res.status(403).json({ error: "Only teachers and students can use assignments" });
 
@@ -24,9 +24,6 @@ router.put("/me/password", requireAuth, wrap(profile.changePassword));
 
 // Teacher dashboard
 router.get("/teacher/stats", requireAuth, requireTeacher, wrap(ctrl.teacherStats));
-router.get("/teacher/submissions/classes", requireAuth, requireTeacher, wrap(ctrl.submissionClasses));
-router.get("/teacher/submissions/download-all", requireAuth, requireTeacher, wrap(ctrl.downloadAllSubmissions));
-router.get("/teacher/submissions", requireAuth, requireTeacher, wrap(ctrl.listSubmissions));
 router.get("/teacher/students", requireAuth, requireTeacher, wrap(ctrl.listStudentsForTeacher));
 router.get("/teacher/resources", requireAuth, requireTeacher, wrap(teacherResources.listResources));
 router.post("/teacher/resources", requireAuth, requireTeacher, uploadLimiter, handleSubmissionUpload, wrap(teacherResources.createResource));
@@ -41,14 +38,8 @@ router.get("/assignments/:id/attachment", requireAuth, teacherOrStudent, wrap(ct
 router.get("/assignments/:id/view", requireAuth, teacherOrStudent, wrap(ctrl.viewAttachment));
 router.delete("/assignments/:id", requireAuth, requireTeacher, wrap(ctrl.deleteAssignment));
 
-router.post("/assignments/:id/submit", requireAuth, requireStudent, uploadLimiter, handleSubmissionUpload, wrap(ctrl.submitAssignment));
-router.get("/submissions/:submissionId", requireAuth, teacherOrStudent, wrap(ctrl.getSubmission));
-router.get("/submissions/:submissionId/file", requireAuth, teacherOrStudent, wrap(ctrl.downloadSubmissionFile));
-router.get("/submissions/:submissionId/view", requireAuth, teacherOrStudent, wrap(ctrl.viewSubmissionFile));
-router.get("/assignments/:id/submissions/:submissionId/file", requireAuth, teacherOrStudent, wrap(ctrl.downloadSubmissionFile));
-router.get("/assignments/:id/submissions/:submissionId/view", requireAuth, teacherOrStudent, wrap(ctrl.viewSubmissionFile));
-router.get("/assignments/submissions/:submissionId/view", requireAuth, teacherOrStudent, wrap(ctrl.viewSubmissionFile));
 router.post("/assignments/:id/appeal", requireAuth, requireStudent, appealLimiter, wrap(ctrl.createAppeal));
+router.post("/assignments/:id/no-appeal", requireAuth, requireStudent, wrap(ctrl.dismissAppeal));
 
 // Appeals
 router.get("/appeals", requireAuth, teacherOrStudent, wrap(ctrl.listAppeals));

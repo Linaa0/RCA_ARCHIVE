@@ -1,6 +1,6 @@
 .asg-page { max-width: 1100px; margin: 0 auto; }
 .asg-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin: 8px 0 24px; }
-.asg-eyebrow { font-size: 0.75rem; font-weight: 700; color: var(--primary-accent, #5B73E0); text-transform: uppercase; letter-spacing: 0.08em; }
+.asg-eyebrow { font-size: 0.75rem; font-weight: 700; color: var(--primary-accent, #174F83); text-transform: uppercase; letter-spacing: 0.08em; }
 .asg-title { font-size: 1.6rem; font-weight: 800; color: var(--color-ink, #1B2142); margin-top: 2px; }
 .asg-sub { color: var(--color-muted, #6A7399); font-size: 0.9rem; margin-top: 4px; }
 
@@ -48,16 +48,16 @@
 .asg-alert.success { background: rgba(16,185,129,.1); color: #047857; border: 1px solid rgba(16,185,129,.25); }
 .asg-alert.info { background: rgba(245,158,11,.1); color: #92400E; border: 1px solid rgba(245,158,11,.25); }
 
-.asg-quote { background: #F8F9FD; border-left: 3px solid #5B73E0; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 0.88rem; white-space: pre-wrap; color: var(--color-ink-subtle, #3A4269); }
+.asg-quote { background: #F8F9FD; border-left: 3px solid #174F83; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 0.88rem; white-space: pre-wrap; color: var(--color-ink-subtle, #3A4269); }
 .asg-empty { text-align: center; padding: 40px 16px; color: var(--color-muted, #6A7399); font-size: 0.95rem; }
 .asg-modal-scroll { max-height: 70vh; overflow-y: auto; padding-right: 4px; }
 .asg-section-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--color-muted, #6A7399); margin: 18px 0 6px; }
 
 .profile-card { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-.profile-avatar-lg { width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg,#5B73E0,#3F4FA8); color: #fff; font-size: 2rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.profile-avatar-lg { width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg,#174F83,#0B2D52); color: #fff; font-size: 2rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 
 /* ===================== Teacher dashboard redesign ===================== */
-.th-hero { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 190px; padding: 30px 40px; margin: 8px 0 24px; border-radius: 24px; color: #fff; background: linear-gradient(120deg, #4361D8 0%, #3F4FA8 100%); box-shadow: 0 10px 30px rgba(63,79,168,.25); }
+.th-hero { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 190px; padding: 30px 40px; margin: 8px 0 24px; border-radius: 24px; color: #fff; background: linear-gradient(120deg, #0B2D52 0%, #174F83 100%); box-shadow: 0 10px 30px rgba(11,45,82,.25); }
 .th-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 78% 20%, rgba(255,255,255,.14) 0, transparent 45%), radial-gradient(circle at 10% 110%, rgba(255,255,255,.10) 0, transparent 40%); pointer-events: none; }
 .th-hero-text { position: relative; z-index: 1; }
 .th-date-chip { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.2); padding: 6px 14px; border-radius: 10px; font-size: .78rem; font-weight: 600; margin-bottom: 26px; }
@@ -73,7 +73,7 @@
 .th-stat-label { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--color-tertiary); }
 .th-stat-body { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
 .th-stat-icon { width: 54px; height: 54px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.th-stat-icon.blue { background: rgba(91, 115, 224, 0.14); color: var(--color-indigo-400); }
+.th-stat-icon.blue { background: rgba(23, 79, 131, 0.14); color: var(--color-indigo-400); }
 .th-stat-icon.green { background: rgba(16,185,129,.14); color: var(--color-success); }
 .th-stat-icon.orange { background: rgba(245,158,11,.15); color: var(--color-warning); }
 .th-stat-icon.pink { background: rgba(236,72,153,.13); color: #F472B6; }

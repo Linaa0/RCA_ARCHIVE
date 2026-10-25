@@ -1,6 +1,6 @@
 /* ==========================================================================
    RCA ARCHIVE - UNIFIED APP SHELL (STUDENT, TEACHER, ADMIN)
-   Indigo Sidebar (#3F4FA8) | High Contrast White Text | Concave Cutout
+   Deep Blue Sidebar | High Contrast White Text | Concave Cutout
    ========================================================================== */
 
 .dashboard-layout {
@@ -18,7 +18,7 @@
    ========================================================================== */
 .dashboard-sidebar {
   width: 256px;
-  background: var(--sidebar-bg-gradient, linear-gradient(180deg, #3F4FA8 0%, #2A3676 100%));
+  background: var(--sidebar-bg-gradient, linear-gradient(180deg, #123D6A 0%, #071B33 100%));
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -38,6 +38,22 @@
   flex-direction: column;
   gap: 8px;
   padding: 0 16px 28px 8px;
+}
+
+.sidebar-brand-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sidebar-brand-name {
+  color: #FFFFFF;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .sidebar-brand-badge-wrap {
@@ -128,13 +144,13 @@
    ========================================================================== */
 .sidebar-item.active {
   background: var(--color-bg, #EEF0F6);
-  color: #3F4FA8;
+  color: var(--color-indigo-900, #0B2D52);
   font-weight: 700;
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.04);
 }
 
 .sidebar-item.active .sidebar-item-icon {
-  color: #3F4FA8;
+  color: var(--color-indigo-900, #0B2D52);
 }
 
 .sidebar-item.active::before {
@@ -259,7 +275,7 @@
 .dashboard-topbar {
   height: 72px;
   background: var(--color-surface, #FFFFFF);
-  border-bottom: 1px solid var(--color-border, rgba(63, 79, 168, 0.09));
+  border-bottom: 1px solid var(--color-border, rgba(23, 79, 131, 0.09));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -304,7 +320,7 @@
   height: 42px;
   padding: 0 16px 0 42px;
   border-radius: var(--radius-pill, 999px);
-  border: 1.5px solid var(--color-border-med, rgba(63, 79, 168, 0.16));
+  border: 1.5px solid var(--color-border-med, rgba(23, 79, 131, 0.16));
   background: var(--color-surface-subtle, #F8F9FD);
   color: var(--color-ink, #1B2142);
   font-size: 0.875rem;
@@ -315,7 +331,7 @@
 }
 
 .topbar-search-form input:focus {
-  border-color: var(--color-indigo-500, #5B73E0);
+  border-color: var(--color-indigo-500, #174F83);
   background: var(--color-surface, #FFFFFF);
   box-shadow: var(--focus-ring);
 }
@@ -335,7 +351,7 @@
   height: 40px;
   border-radius: 50%;
   background: var(--color-surface-subtle, #F8F9FD);
-  border: 1px solid var(--color-border-med, rgba(63, 79, 168, 0.16));
+  border: 1px solid var(--color-border-med, rgba(23, 79, 131, 0.16));
   color: var(--color-ink, #1B2142);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -343,7 +359,7 @@
 
 .topbar-theme-toggle:hover {
   background: var(--color-indigo-50, #F4F6FD);
-  color: var(--color-indigo-600, #4B62CE);
+  color: var(--color-indigo-600, #123D6A);
   transform: rotate(15deg);
 }
 
@@ -354,14 +370,14 @@
   padding: 6px 14px 6px 6px;
   border-radius: var(--radius-pill, 999px);
   background: var(--color-surface-subtle, #F8F9FD);
-  border: 1px solid var(--color-border, rgba(63, 79, 168, 0.09));
+  border: 1px solid var(--color-border, rgba(23, 79, 131, 0.09));
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .topbar-profile-link:hover {
   background: var(--color-surface-hover, #F3F5FC);
-  border-color: var(--color-border-med, rgba(63, 79, 168, 0.2));
+  border-color: var(--color-border-med, rgba(23, 79, 131, 0.2));
 }
 
 .topbar-profile-name {

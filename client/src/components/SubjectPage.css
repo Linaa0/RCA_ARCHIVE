@@ -134,7 +134,7 @@
   background: var(--primary-accent);
   color: #ffffff;
   border-color: var(--primary-accent);
-  box-shadow: 0 4px 12px rgba(91, 115, 224, 0.3);
+  box-shadow: 0 4px 12px rgba(63, 79, 168, 0.3);
 }
 
 .subject-search-input {
@@ -152,7 +152,7 @@
 
 .subject-search-input:focus {
   border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+  box-shadow: 0 0 0 3px rgba(63, 79, 168, 0.18);
 }
 
 /* Papers Grid */
@@ -179,7 +179,7 @@
 .paper-item-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-hover);
-  border-color: rgba(91, 115, 224, 0.4);
+  border-color: rgba(63, 79, 168, 0.4);
 }
 
 .paper-top-row {
@@ -370,7 +370,7 @@
 
 .upload-dropzone:hover {
   border-color: var(--primary-accent);
-  background: rgba(91, 115, 224, 0.04);
+  background: rgba(63, 79, 168, 0.04);
 }
 
 .modal-form-actions {
@@ -490,7 +490,7 @@
   font-weight: 600;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(91, 115, 224, 0.25);
+  box-shadow: 0 4px 12px rgba(63, 79, 168, 0.25);
   transition: all var(--transition-fast);
 }
 
@@ -545,7 +545,7 @@
 .upload-form-box select:focus {
   background: #ffffff;
   border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(91, 115, 224, 0.18);
+  box-shadow: 0 0 0 3px rgba(63, 79, 168, 0.18);
 }
 
 .upload-btn {
@@ -596,7 +596,7 @@
 .paper-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
-  border-color: rgba(91, 115, 224, 0.4);
+  border-color: rgba(63, 79, 168, 0.4);
 }
 
 .paper-info strong {

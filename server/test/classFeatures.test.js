@@ -13,7 +13,13 @@ const {
   getPapersCollection,
   getAssignmentsCollection,
   getAppealsCollection,
+  getNotificationsCollection,
 } = require("../src/models");
+const {
+  dispatchDueAssignmentReminders,
+  getAssignmentReminderDueAt,
+} = require("../src/services/deadlineReminderService");
+const { emitAssignmentEvent } = require("../src/services/socketService");
 
 let studentToken;
 let teacherToken;
@@ -116,6 +122,18 @@ test("STUDENT UPLOAD PERMISSION: rejects student uploading to a class other than
   assert.strictEqual(res.statusCode, 403);
   assert.ok(res.body.error);
   assert.match(res.body.error, /only permitted to upload papers to their own enrolled class/i);
+});
+
+test("ASSIGNMENTS: student responses include the assigned cohort label", async () => {
+  const res = await request(app)
+    .get("/api/assignments")
+    .set("Authorization", `Bearer ${studentToken}`);
+
+  assert.strictEqual(res.status, 200);
+  const assignment = res.body.assignments.find((item) => item.id === testAssignmentId);
+  assert.ok(assignment);
+  assert.deepStrictEqual(assignment.classes, ["Y1A"]);
+  assert.deepStrictEqual(assignment.classLabels, ["Year 1A"]);
 });
 
 test("STUDENT UPLOAD PERMISSION: allows student uploading to their own enrolled class", async () => {
@@ -256,6 +274,154 @@ test("PROFILE UPDATE: successfully updates username, class, gender, and notifica
   assert.strictEqual(getMeRes.body.user.username, "studentfeaturesupdated");
   assert.strictEqual(getMeRes.body.user.class, "Y1A");
   assert.strictEqual(getMeRes.body.user.gender, "male");
+  assert.deepStrictEqual(getMeRes.body.user.notifications, {
+    inAppAlerts: true,
+    dueReminders: false,
+    emailNotifications: true,
+  });
+
+  const preferencesOnlyRes = await request(app)
+    .put("/api/me")
+    .set("Authorization", `Bearer ${studentToken}`)
+    .send({
+      notifications: {
+        inAppAlerts: false,
+        dueReminders: true,
+        emailNotifications: false,
+      },
+    });
+  assert.strictEqual(preferencesOnlyRes.statusCode, 200);
+  assert.deepStrictEqual(preferencesOnlyRes.body.notifications, {
+    inAppAlerts: false,
+    dueReminders: true,
+    emailNotifications: false,
+  });
+});
+
+test("DEADLINE REMINDERS: sends an unread alert only after one hour to opted-in students", async () => {
+  const now = new Date();
+  const dueAt = new Date(now.getTime() - 60 * 1000).toISOString();
+  const reminderStudent = {
+    ...studentUser,
+    id: "test-reminder-opted-in",
+    email: "reminder.opted.in@rca.ac.rw",
+    notifications: { dueReminders: true },
+  };
+  const optedOutStudent = {
+    ...secondStudentUser,
+    id: "test-reminder-opted-out",
+    email: "reminder.opted.out@rca.ac.rw",
+    class: "Y1A",
+    notifications: { dueReminders: false },
+  };
+  const assignment = {
+    id: "test-assignment-reminder-" + Date.now(),
+    title: `Reminder test assignment ${Date.now()}`,
+    subject: "Testing",
+    deadline: new Date(now.getTime() + 60 * 60 * 1000).toISOString(),
+    classes: [],
+    studentIds: [reminderStudent.id, optedOutStudent.id],
+    reminderDueAt: new Date(now.getTime() + 60 * 1000).toISOString(),
+  };
+  const users = getUsersCollection();
+  const assignments = getAssignmentsCollection();
+  const notifications = getNotificationsCollection();
+  await users.insertMany([reminderStudent, optedOutStudent]);
+  await assignments.insertOne(assignment);
+
+  try {
+    await emitAssignmentEvent("created", assignment);
+    await dispatchDueAssignmentReminders(now);
+    const early = await notifications.find({
+      userId: reminderStudent.id,
+      title: `Assignment Reminder: ${assignment.title}`,
+    }).toArray();
+    assert.strictEqual(early.length, 0);
+
+    await assignments.updateOne(
+      { id: assignment.id },
+      { $set: { reminderDueAt: dueAt } }
+    );
+    await dispatchDueAssignmentReminders(now);
+    const sent = await notifications.find({
+      userId: reminderStudent.id,
+      title: `Assignment Reminder: ${assignment.title}`,
+    }).toArray();
+    const optedOut = await notifications.find({
+      userId: optedOutStudent.id,
+      title: `Assignment Reminder: ${assignment.title}`,
+    }).toArray();
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(sent[0].read, false);
+    assert.strictEqual(optedOut.length, 0);
+
+    await dispatchDueAssignmentReminders(now);
+    const duplicateCheck = await notifications.find({
+      userId: reminderStudent.id,
+      title: `Assignment Reminder: ${assignment.title}`,
+    }).toArray();
+    assert.strictEqual(duplicateCheck.length, 1);
+  } finally {
+    await users.deleteMany({ id: { $in: [reminderStudent.id, optedOutStudent.id] } });
+    await assignments.deleteOne({ id: assignment.id });
+    await notifications.deleteMany({
+      userId: { $in: [reminderStudent.id, optedOutStudent.id] },
+      title: `Assignment Reminder: ${assignment.title}`,
+    });
+  }
+});
+
+test("DEADLINE REMINDERS: use 20 minutes only when the deadline is under one hour away", () => {
+  const givenAt = new Date("2026-10-25T08:00:00.000Z");
+  assert.strictEqual(
+    getAssignmentReminderDueAt(givenAt, new Date(givenAt.getTime() + 59 * 60 * 1000)),
+    new Date(givenAt.getTime() + 20 * 60 * 1000).toISOString()
+  );
+  assert.strictEqual(
+    getAssignmentReminderDueAt(givenAt, new Date(givenAt.getTime() + 60 * 60 * 1000)),
+    new Date(givenAt.getTime() + 60 * 60 * 1000).toISOString()
+  );
+});
+
+test("DEADLINE REMINDERS: send the scheduled 20-minute reminder even if the deadline has passed", async () => {
+  const givenAt = new Date("2026-10-25T08:00:00.000Z");
+  const now = new Date(givenAt.getTime() + 25 * 60 * 1000);
+  const reminderStudent = {
+    ...studentUser,
+    id: "test-reminder-after-deadline",
+    email: "reminder.after.deadline@rca.ac.rw",
+    notifications: { dueReminders: true },
+  };
+  const assignment = {
+    id: "test-assignment-after-deadline-" + Date.now(),
+    title: "Short deadline assignment",
+    subject: "Testing",
+    givenAt: givenAt.toISOString(),
+    deadline: new Date(givenAt.getTime() + 15 * 60 * 1000).toISOString(),
+    reminderDueAt: new Date(givenAt.getTime() + 20 * 60 * 1000).toISOString(),
+    classes: [],
+    studentIds: [reminderStudent.id],
+  };
+  const users = getUsersCollection();
+  const assignments = getAssignmentsCollection();
+  const notifications = getNotificationsCollection();
+  await users.insertOne(reminderStudent);
+  await assignments.insertOne(assignment);
+
+  try {
+    await dispatchDueAssignmentReminders(now);
+    const sent = await notifications.find({
+      userId: reminderStudent.id,
+      title: `Assignment Reminder: ${assignment.title}`,
+    }).toArray();
+    assert.strictEqual(sent.length, 1);
+    assert.match(sent[0].message, /20 minutes ago/);
+    assert.ok(sent[0].read === false);
+  } finally {
+    await users.deleteOne({ id: reminderStudent.id });
+    await assignments.deleteOne({ id: assignment.id });
+    await notifications.deleteMany({ userId: reminderStudent.id });
+  }
 });
 
 test("TEARDOWN: clean up database fixtures and test files", async () => {

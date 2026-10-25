@@ -5,6 +5,7 @@ const { requireAuth } = require("../middleware/authMiddleware");
 const { requireAdmin } = require("../middleware/roleGuard");
 
 router.get("/papers", paperController.listPapers);
+router.get("/papers/dashboard", requireAuth, paperController.getDashboardSummary);
 router.post("/papers/:id/access-link", requireAuth, paperController.createAccessLink);
 router.get("/papers/access/:token/:mode", paperController.accessPaperFile);
 router.get("/papers/:id/file", paperController.getPaperFile);

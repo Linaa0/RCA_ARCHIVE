@@ -13,6 +13,11 @@ const TABS = [
   { key: "overdue", label: "Overdue" },
 ];
 
+// Assignments the student marked "no appeal needed" disappear until the teacher gives a new one
+function isDismissed(a) {
+  return Boolean(a.appealDismissed) && !a.appeal;
+}
+
 function isAssignmentOverdue(a) {
   const effective = a.effectiveDeadline || a.deadline;
   return new Date() > new Date(effective);
@@ -66,6 +71,21 @@ export default function StudentAssignments() {
 
   const appealWordCount = reason.trim().split(/\s+/).filter(Boolean).length;
 
+  const sendNoAppeal = async (a) => {
+    setModalError("");
+    setSaving(true);
+    try {
+      await api.post(`/assignments/${a.id}/no-appeal`);
+      setAssignments((prev) => prev.map((item) => (item.id === a.id ? { ...item, appealDismissed: true, canAppeal: false } : item)));
+      setAppealFor(null);
+      setNotice(`Okay. "${a.title}" will not ask you to appeal.`);
+    } catch (err) {
+      setModalError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const sendAppeal = async (e) => {
     e.preventDefault();
     setModalError("");
@@ -87,7 +107,7 @@ export default function StudentAssignments() {
     }
   };
 
-  const shown = assignments.filter((a) => matchesTab(a, tab));
+  const shown = assignments.filter((a) => !(isDismissed(a) && isAssignmentOverdue(a)) && matchesTab(a, tab));
 
   return (
     <div className="asg-page">
@@ -191,9 +211,12 @@ export default function StudentAssignments() {
                 )}
 
                 {overdue && !a.appeal && (
-                  <div className="asg-actions">
+                  <div className="asg-actions" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                     <Button size="sm" variant="outline" onClick={() => openAppeal(a)}>
                       Appeal to teacher
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => sendNoAppeal(a)}>
+                      No appeal
                     </Button>
                   </div>
                 )}
@@ -237,6 +260,9 @@ export default function StudentAssignments() {
             </div>
             <div className="asg-form-actions">
               <Button variant="secondary" onClick={() => setAppealFor(null)}>Cancel</Button>
+              <Button variant="secondary" loading={saving} onClick={() => sendNoAppeal(appealFor)}>
+                No appeal needed, I did the work
+              </Button>
               <Button type="submit" loading={saving} disabled={appealWordCount < 50 || appealWordCount > 100}>
                 Send appeal
               </Button>

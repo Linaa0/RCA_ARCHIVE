@@ -343,7 +343,7 @@ export default function AdminDashboard() {
               width: "136px",
               height: "136px",
               borderRadius: "50%",
-              background: "linear-gradient(135deg, rgba(91, 115, 224, 0.22) 0%, rgba(63, 79, 168, 0.08) 100%)",
+              background: "linear-gradient(135deg, rgba(23, 79, 131, 0.22) 0%, rgba(23, 79, 131, 0.08) 100%)",
               border: "3px solid var(--color-surface)",
               boxShadow: "0 8px 24px rgba(15, 20, 36, 0.15)",
               overflow: "hidden",
@@ -455,13 +455,13 @@ export default function AdminDashboard() {
               label="Total Students"
               value={totalStudents}
               icon={<UsersIcon size={22} />}
-              accentColor="#3F4FA8"
+              accentColor="#174F83"
             />
             <StatCard
               label="Faculty Members"
               value={totalTeachersCount}
               icon={<UsersIcon size={22} />}
-              accentColor="#5B73E0"
+              accentColor="#174F83"
             />
             <StatCard
               label="Archived Papers"

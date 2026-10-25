@@ -16,6 +16,7 @@ const { findUserByEmail } = require("../middleware/authMiddleware");
 const { isValidEmail } = require("../middleware/validation");
 const {
   normalizeEmail,
+  getNotificationPreferences,
   safeUserFields,
   getDisplayName,
 } = require("../utils/userUtils");
@@ -352,26 +353,32 @@ async function resendTeacherInvite(req, res) {
 
   let inviteEmailStatus = "sent";
   let previewUrl = null;
-  try {
-    const sendResult = await sendTeacherInviteEmail(
-      normalizedEmail,
-      user.name || user.username || "Teacher",
-      null,
-      getFrontendBaseUrl(req),
-      newTempPassword
-    );
-    previewUrl = sendResult?.previewUrl || null;
-    await users.updateOne({ id: user.id }, { $set: { inviteEmailStatus: "sent" } });
-  } catch (err) {
-    console.error("Resend teacher credentials email failed:", err.message);
-    inviteEmailStatus = "failed";
-    await users.updateOne({ id: user.id }, { $set: { inviteEmailStatus: "failed" } });
+  if (!getNotificationPreferences(user).emailNotifications) {
+    inviteEmailStatus = "disabled";
+  } else {
+    try {
+      const sendResult = await sendTeacherInviteEmail(
+        normalizedEmail,
+        user.name || user.username || "Teacher",
+        null,
+        getFrontendBaseUrl(req),
+        newTempPassword
+      );
+      previewUrl = sendResult?.previewUrl || null;
+      await users.updateOne({ id: user.id }, { $set: { inviteEmailStatus: "sent" } });
+    } catch (err) {
+      console.error("Resend teacher credentials email failed:", err.message);
+      inviteEmailStatus = "failed";
+      await users.updateOne({ id: user.id }, { $set: { inviteEmailStatus: "failed" } });
+    }
   }
 
   return res.json({
     message:
       inviteEmailStatus === "sent"
         ? "New credentials sent to teacher."
+        : inviteEmailStatus === "disabled"
+          ? "New credentials generated, but email notifications are disabled for this teacher."
         : "New credentials generated, but email could not be delivered.",
     inviteEmailStatus,
     credentials: {

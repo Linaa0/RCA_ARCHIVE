@@ -11,7 +11,7 @@ export default function StatCard({
   icon,
   trend,
   trendType = "neutral", // "up" | "down" | "neutral"
-  color = "#3F4FA8",
+  color = "#174F83",
   onClick,
   className = "",
   style = {},
@@ -27,7 +27,7 @@ export default function StatCard({
         background: "var(--color-surface, #FFFFFF)",
         borderRadius: "var(--radius-card, 24px)",
         padding: "24px 28px",
-        border: "1px solid var(--color-border, rgba(63, 79, 168, 0.08))",
+        border: "1px solid var(--color-border, rgba(23, 79, 131, 0.08))",
         boxShadow: "var(--shadow-card, 0 8px 24px -4px rgba(35, 44, 107, 0.06))",
         display: "flex",
         flexDirection: "column",
@@ -113,7 +113,7 @@ export default function StatCard({
                       ? "#10B981"
                       : trendType === "down"
                       ? "#EF4444"
-                      : "var(--color-indigo-500, #5B73E0)",
+                      : "var(--color-indigo-500, #174F83)",
                 }}
               >
                 {trend}

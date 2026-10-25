@@ -1,7 +1,10 @@
 const bcrypt = require("bcryptjs");
 const { getUsersCollection } = require("../models");
 const { validatePasswordStrength } = require("../middleware/validation");
-const { safeUserFields } = require("../utils/userUtils");
+const {
+  getNotificationPreferences,
+  safeUserFields,
+} = require("../utils/userUtils");
 const { normalizeClass } = require("../config/classes");
 
 async function getMe(req, res) {
@@ -11,10 +14,13 @@ async function getMe(req, res) {
 }
 
 async function updateMe(req, res) {
-  const name = String(req.body.name || "").trim().slice(0, 80);
-  if (name.length < 2) return res.status(400).json({ error: "Name must be at least 2 characters" });
-
-  const update = { name, updatedAt: new Date().toISOString() };
+  const update = {};
+  let name = req.user.name;
+  if (req.body.name !== undefined) {
+    name = String(req.body.name || "").trim().slice(0, 80);
+    if (name.length < 2) return res.status(400).json({ error: "Name must be at least 2 characters" });
+    update.name = name;
+  }
 
   // Username update
   if (req.body.username !== undefined) {
@@ -55,13 +61,34 @@ async function updateMe(req, res) {
   }
 
   // Notification preferences
-  if (req.body.notifications !== undefined && typeof req.body.notifications === "object") {
-    update.notifications = {
-      inAppAlerts: Boolean(req.body.notifications.inAppAlerts),
-      dueReminders: Boolean(req.body.notifications.dueReminders),
-      emailNotifications: Boolean(req.body.notifications.emailNotifications),
-    };
+  if (req.body.notifications !== undefined) {
+    if (
+      !req.body.notifications ||
+      typeof req.body.notifications !== "object" ||
+      Array.isArray(req.body.notifications)
+    ) {
+      return res.status(400).json({ error: "Notification preferences must be an object" });
+    }
+    const preferenceKeys = ["inAppAlerts", "dueReminders", "emailNotifications"];
+    if (preferenceKeys.some((key) => (
+      req.body.notifications[key] !== undefined &&
+      typeof req.body.notifications[key] !== "boolean"
+    ))) {
+      return res.status(400).json({ error: "Notification preferences must be boolean values" });
+    }
+    const preferences = getNotificationPreferences({
+      notifications: {
+        ...getNotificationPreferences(req.user),
+        ...req.body.notifications,
+      },
+    });
+    update.notifications = preferences;
   }
+
+  if (Object.keys(update).length === 0) {
+    return res.status(400).json({ error: "No profile changes were provided" });
+  }
+  update.updatedAt = new Date().toISOString();
 
   await getUsersCollection().updateOne({ email: req.user.email }, { $set: update });
   res.json({
@@ -70,7 +97,7 @@ async function updateMe(req, res) {
     username: update.username || req.user.username,
     class: update.class !== undefined ? update.class : req.user.class,
     gender: update.gender !== undefined ? update.gender : req.user.gender,
-    notifications: update.notifications,
+    notifications: update.notifications || getNotificationPreferences(req.user),
   });
 }
 
@@ -92,6 +119,14 @@ async function changePassword(req, res) {
     { email: req.user.email },
     { $set: { password: await bcrypt.hash(newPassword, 10), updatedAt: new Date().toISOString() } }
   );
+  if (getNotificationPreferences(user).emailNotifications) {
+    const { sendPasswordChangedEmail } = require("../services/emailService");
+    try {
+      await sendPasswordChangedEmail(user.email, user.name || user.username);
+    } catch (err) {
+      console.error("Password changed, but notification email failed:", err.message);
+    }
+  }
   res.json({ message: "Password changed" });
 }
 

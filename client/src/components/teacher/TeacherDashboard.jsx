@@ -56,7 +56,7 @@ export default function TeacherDashboard() {
             display: "inline-flex",
             alignItems: "center",
             gap: "8px",
-            boxShadow: "0 4px 12px rgba(63, 79, 168, 0.25)",
+            boxShadow: "0 4px 12px rgba(11, 45, 82, 0.25)",
           }}
         >
           <PlusIcon size={16} />
@@ -77,7 +77,7 @@ export default function TeacherDashboard() {
           label="Total Assignments"
           value={stats ? stats.totalAssignments : 0}
           icon={<LessonsIcon size={22} />}
-          accentColor="#3F4FA8"
+          accentColor="#174F83"
         />
         <StatCardUI
           label="Total Resources"

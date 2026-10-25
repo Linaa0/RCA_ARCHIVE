@@ -49,10 +49,10 @@ export default function ClassChips({
             fontSize: size === "sm" ? "0.75rem" : "0.85rem",
             fontWeight: 600,
             cursor: "pointer",
-            border: selectedClass === null ? "1.5px solid #3F4FA8" : "1px solid rgba(63, 79, 168, 0.12)",
-            background: selectedClass === null ? "#3F4FA8" : "#FFFFFF",
+            border: selectedClass === null ? "1.5px solid #174F83" : "1px solid rgba(23, 79, 131, 0.12)",
+            background: selectedClass === null ? "#174F83" : "#FFFFFF",
             color: selectedClass === null ? "#FFFFFF" : "#3A4269",
-            boxShadow: selectedClass === null ? "0 4px 12px rgba(63, 79, 168, 0.22)" : "0 1px 3px rgba(35, 44, 107, 0.04)",
+            boxShadow: selectedClass === null ? "0 4px 12px rgba(11, 45, 82, 0.22)" : "0 1px 3px rgba(11, 45, 82, 0.04)",
             transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
             whiteSpace: "nowrap",
             flexShrink: 0,
@@ -76,14 +76,14 @@ export default function ClassChips({
               fontWeight: isSelected ? 700 : 600,
               cursor: "pointer",
               border: isSelected
-                ? "1.5px solid #5B73E0"
-                : "1px solid rgba(63, 79, 168, 0.12)",
+                ? "1.5px solid #174F83"
+                : "1px solid rgba(23, 79, 131, 0.12)",
               background: isSelected
-                ? "linear-gradient(135deg, #3F4FA8 0%, #232C6B 100%)"
+                ? "linear-gradient(135deg, #174F83 0%, #0B2D52 100%)"
                 : "#FFFFFF",
               color: isSelected ? "#FFFFFF" : "#3A4269",
               boxShadow: isSelected
-                ? "0 4px 14px rgba(63, 79, 168, 0.28)"
+                ? "0 4px 14px rgba(11, 45, 82, 0.28)"
                 : "0 2px 6px rgba(35, 44, 107, 0.04)",
               transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
               whiteSpace: "nowrap",

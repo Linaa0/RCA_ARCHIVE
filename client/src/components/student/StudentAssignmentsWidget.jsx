@@ -8,6 +8,14 @@ import "../assignments/assignments.css";
 export default function StudentAssignmentsWidget() {
   const [items, setItems] = useState(null);
 
+  // "No appeal": the work was done, so the notice goes away until a new assignment is given
+  const dismissAppeal = async (assignment) => {
+    try {
+      await api.post(`/assignments/${assignment.id}/no-appeal`);
+      setItems((prev) => (prev || []).map((a) => (a.id === assignment.id ? { ...a, appealDismissed: true } : a)));
+    } catch (_) {}
+  };
+
   useEffect(() => {
     api
       .get("/assignments")
@@ -27,7 +35,7 @@ export default function StudentAssignmentsWidget() {
   if (!items) return null;
 
   const todo = items.filter((a) => a.status === "pending" || a.status === "extended");
-  const overdue = items.filter((a) => a.status === "overdue" && !a.appeal);
+  const overdue = items.filter((a) => a.status === "overdue" && !a.appeal && !a.appealDismissed);
   const acknowledgedAppeals = items.filter((a) => a.appeal?.teacherHasRead).length;
   const nextUp = [...todo].sort((a, b) => new Date(a.effectiveDeadline) - new Date(b.effectiveDeadline)).slice(0, 3);
 
@@ -35,14 +43,31 @@ export default function StudentAssignmentsWidget() {
     <div className="asg-panel" style={{ marginBottom: 28 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <h3 style={{ marginBottom: 0 }}>My assignments</h3>
-        <Link to="/student/assignments" style={{ color: "#3F4FA8", fontWeight: 700, fontSize: "0.88rem" }}>
+        <Link to="/student/assignments" style={{ color: "var(--color-indigo-500, #174F83)", fontWeight: 700, fontSize: "0.88rem" }}>
           Open all →
         </Link>
       </div>
 
       {overdue.length > 0 && (
         <div className="asg-alert info" style={{ marginTop: 14, marginBottom: 0 }}>
-          You have {overdue.length} overdue assignment{overdue.length > 1 ? "s" : ""}. You can appeal to the teacher from “My Assignments”.
+          <div>
+            You have {overdue.length} overdue assignment{overdue.length > 1 ? "s" : ""}. You can appeal to the teacher from “My Assignments”, or choose “No appeal” if you already did the work.
+          </div>
+          {overdue.map((a) => (
+            <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+              <strong>{a.title}</strong>
+              <span style={{ display: "flex", gap: 8 }}>
+                <Link to="/student/assignments" style={{ fontWeight: 700 }}>Appeal</Link>
+                <button
+                  type="button"
+                  onClick={() => dismissAppeal(a)}
+                  style={{ border: "1px solid currentColor", background: "transparent", color: "inherit", borderRadius: 999, padding: "2px 12px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  No appeal
+                </button>
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

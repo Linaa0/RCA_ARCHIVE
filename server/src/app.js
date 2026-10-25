@@ -13,6 +13,7 @@ const usersRoutes = require("./routes/usersRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const assignmentRoutes = require("./routes/assignmentRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const subjectMaterialsRoutes = require("./routes/subjectMaterialsRoutes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const helmet = require("helmet");
@@ -120,6 +121,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api", usersRoutes);
 app.use("/api", assignmentRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", subjectMaterialsRoutes);
 app.use("/", uploadRoutes);
 
 // Optional static frontend serving if build directory exists

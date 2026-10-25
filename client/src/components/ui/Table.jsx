@@ -85,7 +85,7 @@ export default function Table({
                       height: "18px",
                       borderRadius: "50%",
                       border: "2px solid var(--color-indigo-200, #C7D2FE)",
-                      borderTopColor: "var(--color-indigo-500, #5B73E0)",
+                      borderTopColor: "var(--color-indigo-500, #3F4FA8)",
                       animation: "spin 0.8s linear infinite",
                     }}
                   />

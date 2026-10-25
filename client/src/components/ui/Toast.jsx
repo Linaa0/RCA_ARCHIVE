@@ -18,7 +18,7 @@ export default function Toast({
     success: "#10B981",
     error: "#EF4444",
     warning: "#F59E0B",
-    info: "#3F4FA8",
+    info: "#174F83",
   };
 
   return (
@@ -32,7 +32,7 @@ export default function Toast({
         color: "#FFFFFF",
         padding: "12px 22px",
         borderRadius: "var(--radius-pill, 999px)",
-        boxShadow: "0 8px 24px rgba(35, 44, 107, 0.22)",
+        boxShadow: "0 8px 24px rgba(11, 45, 82, 0.22)",
         display: "flex",
         alignItems: "center",
         gap: "12px",

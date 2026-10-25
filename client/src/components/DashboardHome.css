@@ -267,7 +267,7 @@
 .timeline-lesson-card.highlight {
   background: var(--color-indigo-600);
   color: #FFFFFF;
-  box-shadow: 0 4px 14px rgba(59, 76, 163, 0.28);
+  box-shadow: 0 4px 14px rgba(11, 45, 82, 0.28);
 }
 
 .timeline-lesson-card.highlight .timeline-sub {

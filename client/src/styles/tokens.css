@@ -5,18 +5,18 @@
 
 :root,
 [data-theme="light"] {
-  /* Brand Palette - Deep Indigo Family & Periwinkle */
-  --color-indigo-950: #191F4D;
-  --color-indigo-900: #232C6B;
-  --color-indigo-800: #303E8A;
-  --color-indigo-700: #3F4FA8; /* Primary Brand & Sidebar */
-  --color-indigo-600: #3E53B8;
-  --color-indigo-500: #4B62CE; /* Primary Interactive Accent (WCAG AA 5.33:1) */
-  --color-indigo-400: #7C91E8;
-  --color-indigo-300: #A5B4FC;
-  --color-indigo-200: #C7D2FE;
-  --color-indigo-100: #E4E8FA;
-  --color-indigo-50:  #F4F6FD;
+  /* Brand Palette - Deep RCA Blue */
+  --color-indigo-950: #071B33;
+  --color-indigo-900: #0B2D52;
+  --color-indigo-800: #123D6A;
+  --color-indigo-700: #174F83;
+  --color-indigo-600: #123D6A;
+  --color-indigo-500: #174F83;
+  --color-indigo-400: #2C6798;
+  --color-indigo-300: #82AFCF;
+  --color-indigo-200: #B8D1E5;
+  --color-indigo-100: #DCEAF5;
+  --color-indigo-50:  #F1F6FA;
 
   /* Surfaces & Backgrounds - Light */
   --color-bg:             #EEF0F6; /* Lavender-gray page canvas */
@@ -25,7 +25,7 @@
   --color-surface-subtle: #F8F9FD;
   --color-surface-hover:  #F3F5FC;
   --color-card:           #FFFFFF;
-  --color-card-border:    rgba(63, 79, 168, 0.08);
+  --color-card-border:     rgba(23, 79, 131, 0.08);
 
   /* Typography Colors - Light */
   --color-ink:            #1B2142; /* Deep primary ink */
@@ -35,19 +35,19 @@
   --color-disabled:       #B0B8D4;
 
   /* Borders & Dividers - Light */
-  --color-border:         rgba(63, 79, 168, 0.09);
-  --color-border-med:     rgba(63, 79, 168, 0.16);
-  --color-border-strong:  rgba(63, 79, 168, 0.28);
+  --color-border:         rgba(23, 79, 131, 0.09);
+  --color-border-med:     rgba(23, 79, 131, 0.16);
+  --color-border-strong:  rgba(23, 79, 131, 0.28);
   --color-divider:        #E4E8F2;
 
   /* Sidebar Tokens (Identical across student, teacher, admin) */
-  --sidebar-bg:           #3F4FA8;
-  --sidebar-bg-gradient:  linear-gradient(180deg, #3F4FA8 0%, #2A3676 100%);
+  --sidebar-bg:           #0B2D52;
+  --sidebar-bg-gradient:  linear-gradient(180deg, #123D6A 0%, #071B33 100%);
   --sidebar-text:         #FFFFFF;
   --sidebar-text-muted:   rgba(255, 255, 255, 0.72);
   --sidebar-item-hover:   rgba(255, 255, 255, 0.10);
   --sidebar-active-bg:    #FFFFFF;
-  --sidebar-active-text:  #3F4FA8;
+  --sidebar-active-text:  #0B2D52;
 
   /* Semantic Colors */
   --color-success:        #10B981;
@@ -59,22 +59,22 @@
   --color-danger:         #EF4444;
   --color-danger-bg:      rgba(239, 68, 68, 0.10);
   --color-danger-border:  rgba(239, 68, 68, 0.25);
-  --color-info:           #3B82F6;
-  --color-info-bg:        rgba(59, 130, 246, 0.10);
-  --color-info-border:    rgba(59, 130, 246, 0.25);
+  --color-info:           #174F83;
+  --color-info-bg:        rgba(23, 79, 131, 0.10);
+  --color-info-border:    rgba(23, 79, 131, 0.25);
 
   /* Gradients */
-  --gradient-accent:      linear-gradient(135deg, #5B73E0 0%, #3F4FA8 100%);
-  --gradient-hero:        linear-gradient(135deg, #232C6B 0%, #3F4FA8 55%, #5B73E0 100%);
+  --gradient-accent:      linear-gradient(135deg, #174F83 0%, #0B2D52 100%);
+  --gradient-hero:        linear-gradient(135deg, #071B33 0%, #0B2D52 55%, #174F83 100%);
   --gradient-card-top:    linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #FFFFFF 100%);
 
   /* Shadows - Layered Indigo Tinted */
-  --shadow-xs:         0 1px 3px rgba(35, 44, 107, 0.04);
-  --shadow-sm:         0 2px 8px rgba(35, 44, 107, 0.05);
-  --shadow-card:       0 8px 24px -4px rgba(35, 44, 107, 0.06), 0 2px 6px -1px rgba(35, 44, 107, 0.03);
-  --shadow-card-hover: 0 16px 36px -6px rgba(35, 44, 107, 0.12), 0 4px 12px -2px rgba(35, 44, 107, 0.05);
-  --shadow-dropdown:   0 20px 40px -8px rgba(35, 44, 107, 0.16), 0 4px 12px rgba(35, 44, 107, 0.05);
-  --shadow-modal:      0 24px 60px -12px rgba(35, 44, 107, 0.25);
+  --shadow-xs:         0 1px 3px rgba(11, 45, 82, 0.04);
+  --shadow-sm:         0 2px 8px rgba(11, 45, 82, 0.05);
+  --shadow-card:       0 8px 24px -4px rgba(11, 45, 82, 0.06), 0 2px 6px -1px rgba(11, 45, 82, 0.03);
+  --shadow-card-hover: 0 16px 36px -6px rgba(11, 45, 82, 0.12), 0 4px 12px -2px rgba(11, 45, 82, 0.05);
+  --shadow-dropdown:   0 20px 40px -8px rgba(11, 45, 82, 0.16), 0 4px 12px rgba(11, 45, 82, 0.05);
+  --shadow-modal:      0 24px 60px -12px rgba(11, 45, 82, 0.25);
 
   /* Backward-Compatible Token Aliases - Light */
   --color-primary:        var(--color-indigo-500);
@@ -99,7 +99,7 @@
   --color-surface-raised: #FFFFFF;
 
   /* Focus Ring */
-  --focus-ring:        0 0 0 3px rgba(91, 115, 224, 0.35);
+  --focus-ring:        0 0 0 3px rgba(23, 79, 131, 0.35);
 }
 
 /* ==========================================================================
@@ -113,14 +113,14 @@
   --color-indigo-900: #141C38;
   --color-indigo-800: #1D264F;
   --color-indigo-700: #293570;
-  --color-indigo-600: #8FA2FF; /* High contrast interactive text */
-  --color-indigo-500: #8FA2FF; /* Lighter periwinkle for dark links and active states */
-  --color-indigo-400: #A5B4FC;
-  --color-indigo-300: #C7D2FE;
-  --color-indigo-200: #E0E7FF;
-  --color-indigo-100: #1E2756;
-  --color-indigo-50:  #161D42;
-  --color-surface-indigo: #293570; /* Surface blue for dark tiles */
+  --color-indigo-600: #79B8E8; /* High contrast interactive text */
+  --color-indigo-500: #79B8E8;
+  --color-indigo-400: #96C9EF;
+  --color-indigo-300: #B9DCF5;
+  --color-indigo-200: #D5EAF8;
+  --color-indigo-100: #1A3550;
+  --color-indigo-50:  #142A40;
+  --color-surface-indigo: #173B5C;
 
   /* Surfaces & Backgrounds - Dark (Calm & Eye-Friendly) */
   --color-bg:             #0F1424; /* Deep navy-charcoal app canvas */
@@ -146,12 +146,12 @@
   --color-divider:        rgba(255, 255, 255, 0.07);
 
   /* Sidebar & Topbar (Distinct Indigo Family) */
-  --sidebar-bg:           #1C2348;
-  --sidebar-bg-gradient:  linear-gradient(180deg, #1E2756 0%, #161D42 100%);
+  --sidebar-bg:           #0B2D52;
+  --sidebar-bg-gradient:  linear-gradient(180deg, #123D6A 0%, #071B33 100%);
   --sidebar-text:         #FFFFFF;
   --sidebar-text-muted:   rgba(255, 255, 255, 0.72);
   --sidebar-item-hover:   rgba(255, 255, 255, 0.08);
-  --sidebar-active-bg:    #8FA2FF;
+  --sidebar-active-bg:    #79B8E8;
   --sidebar-active-text:  #0F1424;
 
   /* Semantic Colors - High Contrast Tinted Variants */
@@ -169,8 +169,8 @@
   --color-info-border:    rgba(96, 165, 250, 0.28);
 
   /* Gradients - Dark */
-  --gradient-accent:      linear-gradient(135deg, #8FA2FF 0%, #4B62CE 100%);
-  --gradient-hero:        linear-gradient(135deg, #10142A 0%, #1A2148 55%, #293570 100%);
+  --gradient-accent:      linear-gradient(135deg, #174F83 0%, #0B2D52 100%);
+  --gradient-hero:        linear-gradient(135deg, #071B33 0%, #0B2D52 55%, #123D6A 100%);
   --gradient-card-top:    linear-gradient(180deg, rgba(34, 43, 77, 0.5) 0%, rgba(27, 35, 64, 1) 100%);
 
   /* Shadows - Dark Mode Depth via Soft Opacities */
@@ -182,7 +182,7 @@
   --shadow-modal:      0 24px 60px -12px rgba(0, 0, 0, 0.80);
 
   /* Focus Ring */
-  --focus-ring:        0 0 0 3px rgba(143, 162, 255, 0.45);
+  --focus-ring:        0 0 0 3px rgba(121, 184, 232, 0.45);
 
   /* Backward-Compatible Token Aliases - Dark */
   --color-primary:        var(--color-indigo-500);

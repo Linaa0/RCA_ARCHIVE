@@ -59,6 +59,7 @@ function requireAuth(req, res, next) {
           status: user.status || "active",
           class: user.class || "",
           gender: user.gender || "",
+          notifications: user.notifications,
         };
         next();
         return null;

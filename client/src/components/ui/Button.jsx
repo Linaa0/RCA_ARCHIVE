@@ -39,27 +39,27 @@ export default function Button({
 
   const variantStyles = {
     primary: {
-      background: "var(--gradient-accent, linear-gradient(135deg, #5B73E0 0%, #3F4FA8 100%))",
+      background: "var(--gradient-accent, linear-gradient(135deg, #174F83 0%, #0B2D52 100%))",
       color: "#FFFFFF",
-      boxShadow: "0 4px 14px rgba(63, 79, 168, 0.28)",
+      boxShadow: "0 4px 14px rgba(11, 45, 82, 0.28)",
       border: "none",
     },
     indigo: {
-      background: "var(--color-indigo-700, #3F4FA8)",
+      background: "var(--color-indigo-700, #174F83)",
       color: "#FFFFFF",
-      boxShadow: "0 4px 14px rgba(63, 79, 168, 0.24)",
+      boxShadow: "0 4px 14px rgba(11, 45, 82, 0.24)",
       border: "none",
     },
     outline: {
       background: "var(--color-surface, #FFFFFF)",
-      color: "var(--color-indigo-500, #4B62CE)",
-      border: "1.5px solid var(--color-border-med, rgba(63, 79, 168, 0.16))",
+      color: "var(--color-indigo-500, #174F83)",
+      border: "1.5px solid var(--color-border-med, rgba(23, 79, 131, 0.16))",
       boxShadow: "var(--shadow-xs)",
     },
     secondary: {
       background: "var(--color-surface-subtle, #F8F9FD)",
       color: "var(--color-ink, #1B2142)",
-      border: "1px solid var(--color-border, rgba(63, 79, 168, 0.09))",
+      border: "1px solid var(--color-border, rgba(23, 79, 131, 0.09))",
     },
     ghost: {
       background: "transparent",
