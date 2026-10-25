@@ -664,3 +664,50 @@ Every location in the codebase where user or paper data could potentially be del
    - Work conducted on branch main without branch creation or unapproved commits.
    - Zero emojis, zero em dashes, and zero en dashes used.
    - No secrets printed or logged.
+
+## Phase 4: Fix GitHub Actions CI, Test Discovery, Dependencies, and Clean Checkout
+
+### 1. What was wrong
+1. **Unexpanded Glob Test Script Failure in CI**:
+   - The test script in `server/package.json` was defined as `node --test --test-concurrency=1 test/**/*.test.js`.
+   - On Linux environments (Ubuntu runner in GitHub Actions CI), `sh` does not expand globstar (`**`) patterns by default, passing the unexpanded literal string `test/**/*.test.js` to Node.
+   - Node 20 and Node 22 do not expand glob patterns internally when passed as command line arguments, causing the test runner to fail immediately with `Could not find '/home/runner/work/RCA_ARCHIVE/RCA_ARCHIVE/server/test/**/*.test.js'`.
+2. **Missing Undeclared Test Dependency**:
+   - `server/test/papersAndRealtime.test.js` imported `{ io: ClientIo } from "socket.io-client"`, but `socket.io-client` was missing from `devDependencies` in `server/package.json` and `server/package-lock.json`. Clean checkouts with `npm ci` could not resolve the package.
+3. **Outdated Submission Route Tests**:
+   - In commit 27a3947, assignment submission routes (`/api/assignments/submissions/:submissionId/view` and `/api/submissions/:submissionId/file`) were removed as assignment submissions are handled outside the application portal.
+   - Subtests 5 and 6 of `server/test/fileViewDownload.test.js` were still asserting HTTP 200 responses on these removed endpoints, failing with `404 !== 200`.
+4. **Transient File Lock on Windows Teardown**:
+   - `server/test/uploadRestrictionsAndPermissions.test.js` called `fs.unlinkSync(samplePdfPath)` without handling Windows file locking delays from supertest streams, occasionally raising `EBUSY: resource busy or locked`.
+
+### 2. What was changed
+1. **Cross-Platform Test Script (`server/package.json`)**:
+   - Changed `"test"` to `"node --test --test-concurrency=1"`.
+   - Built-in test runner automatically discovers all test files matching `*.test.js` in `server/test` across Node 20 and Node 22 on Linux, macOS, and Windows without relying on shell glob expansion.
+2. **Declared Test Dependency (`server/package.json` & `server/package-lock.json`)**:
+   - Added `"socket.io-client": "^4.8.4"` to `devDependencies` and synchronized `server/package-lock.json`.
+   - Tested clean checkout by deleting `node_modules` and running `npm ci`.
+3. **Updated Tests for Removed Submission Endpoints (`server/test/fileViewDownload.test.js`)**:
+   - Subtests 5 and 6 were updated to assert HTTP 404 status. Because submission routes were intentionally removed by the latest commit, asserting 404 verifies that these routes are no longer active and cannot be accessed.
+4. **Safe Fixture Cleanup (`server/test/uploadRestrictionsAndPermissions.test.js`)**:
+   - Wrapped `fs.unlinkSync(samplePdfPath)` in a try/catch block during `test.after` to prevent transient Windows EBUSY locking errors from interrupting test execution.
+
+### 3. Test Evidence and Verification
+1. **Clean Installation (`npm ci`)**:
+   - Deleted `server/node_modules` and executed `npm ci`. Successfully resolved and installed 205 packages with 0 vulnerabilities.
+2. **Node 20 Test Suite Execution (`npx node@20`)**:
+   - Ran complete server test suite under Node 20.20.2 with CI environment variables against real local MongoDB.
+   - Total test suites: 11.
+   - Total subtests: 69.
+   - Results: 69 passed, 0 failed (100% PASS, exit code 0).
+3. **Default Node Test Suite Execution (`npm test`)**:
+   - Ran `npm test` under default Node (v22.20.0).
+   - Results: 69 passed, 0 failed (100% PASS, exit code 0).
+4. **Client Production Bundle Build (`npm run build`)**:
+   - Executed `npm run build` in `client/`: 207 modules built in 4.41s with 0 errors.
+5. **Repository Cleanliness and Compliance**:
+   - Branch: `main`.
+   - Changes uncommitted for review with `git status`.
+   - Zero emojis, zero em dashes, and zero en dashes used.
+   - No secrets or invented values present.
+

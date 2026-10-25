@@ -93,7 +93,9 @@ test.after(async () => {
     await papers.deleteOne({ id: uploadedPaperId });
   }
   if (fs.existsSync(samplePdfPath)) {
-    fs.unlinkSync(samplePdfPath);
+    try {
+      fs.unlinkSync(samplePdfPath);
+    } catch (_) {}
   }
   await closeDb();
 });

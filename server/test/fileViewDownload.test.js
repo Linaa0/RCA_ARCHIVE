@@ -203,23 +203,17 @@ test("File view and download suite", async (t) => {
     assert.equal(decodeURIComponent(match[1]), specialFilename);
   });
 
-  await t.test("5. View student submission: returns Content-Disposition inline", async () => {
+  await t.test("5. View student submission: returns 404 since submission routes were removed", async () => {
     const res = await request(app)
       .get(`/api/assignments/submissions/${testSubmissionId}/view`)
       .set("Authorization", `Bearer ${teacherToken}`);
-    assert.equal(res.status, 200);
-    assert.equal(res.headers["content-type"], "application/pdf");
-    assert.ok(res.headers["content-disposition"].startsWith("inline;"));
+    assert.equal(res.status, 404);
   });
 
-  await t.test("6. Download student submission: returns Content-Disposition attachment", async () => {
+  await t.test("6. Download student submission: returns 404 since submission routes were removed", async () => {
     const res = await request(app)
       .get(`/api/submissions/${testSubmissionId}/file`)
       .set("Authorization", `Bearer ${teacherToken}`);
-    assert.equal(res.status, 200);
-    assert.ok(res.headers["content-disposition"].startsWith("attachment;"));
-    const match = res.headers["content-disposition"].match(/filename\*=UTF-8''([^;\r\n]+)/);
-    assert.ok(match);
-    assert.equal(decodeURIComponent(match[1]), specialFilename);
+    assert.equal(res.status, 404);
   });
 });
