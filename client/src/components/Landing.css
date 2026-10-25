@@ -268,21 +268,22 @@
   min-height: 500px;
 }
 
-/* Bigger Pale Circle Overlap */
+/* Pale circular backdrop behind the hero illustration */
 .hero-pale-circle {
   position: absolute;
-  width: 600px;
-  height: 600px;
+  width: 500px;
+  height: 500px;
   border-radius: 50%;
   background: linear-gradient(135deg, #d4dce9 0%, #e0e5ef 100%);
   top: 50%;
-  left: 50%;
+  left: calc(50% - 25px);
   transform: translate(-50%, -50%);
   z-index: 1;
 }
 
 .hero-illustration {
   position: relative;
+  left: 48px;
   z-index: 3;
   width: min(450px, calc(100vw - 48px));
 }
@@ -291,6 +292,7 @@
   display: block;
   width: 100%;
   height: auto;
+  filter: contrast(1.22) saturate(1.04);
 }
 
 /* Scattered Decorative Dots */
@@ -1514,12 +1516,14 @@
   }
 
   .hero-pale-circle {
-    width: min(90vw, 380px);
-    height: min(90vw, 380px);
+    width: min(76vw, 330px);
+    height: min(76vw, 330px);
+    left: calc(50% - 12px);
   }
 
   .hero-illustration {
     width: min(450px, calc(90vw - 24px));
+    left: 24px;
   }
 
   .float-card-1 {
