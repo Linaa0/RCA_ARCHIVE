@@ -33,8 +33,17 @@ const TEACHER_EMAILS = process.env.TEACHER_EMAILS
       .filter(Boolean)
   : [];
 
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
-const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "http://localhost:3074";
+const BASE_URL =
+  process.env.BASE_URL ||
+  (NODE_ENV === "production"
+    ? "https://api.archive.innov.rw"
+    : `http://localhost:${PORT}`);
+
+const FRONTEND_BASE_URL =
+  process.env.FRONTEND_BASE_URL ||
+  (NODE_ENV === "production"
+    ? "https://rcaarchive.innov.rw"
+    : "http://localhost:3074");
 
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || "")
   .split(",")

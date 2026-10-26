@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { renderAsync } from "docx-preview";
-import api, { API_ROOT } from "../services/api";
+import api, { API_ROOT, apiUrl } from "../services/api";
 import { getStoredToken } from "../utils/auth";
 import { ArrowLeftIcon, DownloadIcon, EyeIcon } from "./ui/Icons";
 
@@ -117,8 +117,8 @@ export default function FileViewer() {
             setAccessData({
               title: nameParam || "Academic Past Paper",
               originalName: nameParam || "past-paper.pdf",
-              viewUrl: `/api/papers/${id}/view?inline=1`,
-              downloadUrl: `/api/papers/${id}/download`,
+              viewUrl: apiUrl(`/papers/${id}/view?inline=1`),
+              downloadUrl: apiUrl(`/papers/${id}/download`),
             });
             setLoading(false);
           }
@@ -160,14 +160,10 @@ export default function FileViewer() {
     };
   }, [accessData, type]);
 
-  const remoteViewUrl = accessData?.viewUrl
-    ? (accessData.viewUrl.startsWith("http") ? accessData.viewUrl : `${API_ROOT}${accessData.viewUrl}`)
-    : null;
+  const remoteViewUrl = accessData?.viewUrl ? apiUrl(accessData.viewUrl) : null;
   // Papers wait for the authenticated blob; everything else is already a blob URL
   const viewUrl = type === "paper" ? paperPreviewUrl : remoteViewUrl;
-  const downloadUrl = accessData?.downloadUrl
-    ? (accessData.downloadUrl.startsWith("http") ? accessData.downloadUrl : `${API_ROOT}${accessData.downloadUrl}`)
-    : null;
+  const downloadUrl = accessData?.downloadUrl ? apiUrl(accessData.downloadUrl) : null;
 
   const originalName = accessData?.originalName || accessData?.title || "document";
   const ext = originalName.split(".").pop().toLowerCase();

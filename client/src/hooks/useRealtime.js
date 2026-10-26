@@ -17,7 +17,7 @@ function getSocket() {
   }
 
   if (!sharedSocket) {
-    const socketUrl = API_ROOT || window.location.origin;
+    const socketUrl = API_ROOT || undefined;
     sharedSocket = io(socketUrl, {
       auth: { token },
       transports: ["websocket", "polling"],

@@ -8,7 +8,7 @@ import { RCA_CLASSES } from "./ui/ClassChips";
 import { CheckIcon, EyeIcon } from "./ui/Icons";
 import studentBoy from "../assets/figures/student-boy.png";
 import studentGirl from "../assets/figures/student-girl.png";
-import api from "../services/api";
+import api, { getApiErrorMessage } from "../services/api";
 import "./Login.css";
 
 const PROGRESS_STORAGE_KEY = "rca_signup_progress";
@@ -182,8 +182,7 @@ export default function Signup() {
       setStep(3);
       setInfo("Verification code dispatched to your email. Valid for 15 minutes.");
     } catch (err) {
-      const respError = err.response?.data?.error || err.response?.data?.message || err.message || "Failed to send verification code.";
-      setError(respError);
+      setError(getApiErrorMessage(err, "Failed to send verification code."));
       if (err.response?.data?.retryAfter) {
         setResendTimer(err.response.data.retryAfter);
       }
@@ -225,7 +224,7 @@ export default function Signup() {
         );
       } catch (e) {}
     } catch (err) {
-      setError(err.response?.data?.error || "Unable to resend code.");
+      setError(getApiErrorMessage(err, "Unable to resend code."));
     } finally {
       setLoading(false);
     }
@@ -311,8 +310,7 @@ export default function Signup() {
       }, 1200);
     } catch (err) {
       const resp = err.response?.data;
-      const msg = resp?.error || resp?.message || "Verification failed. Please check the code.";
-      setError(msg);
+      setError(getApiErrorMessage(err, "Verification failed. Please check the code."));
       if (resp?.codeExpired) {
         setIsCodeExpired(true);
       }

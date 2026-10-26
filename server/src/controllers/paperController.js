@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { UPLOADS_DIR } = require("../config/env");
+const { UPLOADS_DIR, BASE_URL } = require("../config/env");
 const { MIME_TYPES } = require("../config/constants");
 const {
   getPapersCollection,
@@ -317,13 +317,17 @@ async function createAccessLink(req, res) {
   const ext = path.extname(paper.originalName || paper.filename || ".pdf");
   const originalName = paper.originalName || `${paper.title || "document"}${ext}`;
 
+  const apiOrigin = (BASE_URL || "").replace(/\/+$/, "");
+  const viewUrl = `${apiOrigin}/api/papers/access/${viewToken}/view`;
+  const downloadUrl = `${apiOrigin}/api/papers/access/${downloadToken}/download`;
+
   res.json({
     paperId: paper.id,
     title: paper.title,
     originalName,
     expiresAt,
-    viewUrl: `/api/papers/access/${viewToken}/view`,
-    downloadUrl: `/api/papers/access/${downloadToken}/download`,
+    viewUrl,
+    downloadUrl,
   });
 }
 

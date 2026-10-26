@@ -71,3 +71,7 @@ jobs:
         run: |
           cd client
           npm run build
+
+      - name: Verify Built Bundle API URLs
+        run: |
+          node scripts/check-built-api-url.js

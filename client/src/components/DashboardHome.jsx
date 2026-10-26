@@ -17,7 +17,7 @@ import {
   DashboardIcon,
 } from "./ui/Icons";
 import { getStoredUser } from "../utils/auth";
-import api from "../services/api";
+import api, { openPaperDownload } from "../services/api";
 
 export default function DashboardHome({
   papers = [],
@@ -518,9 +518,9 @@ export default function DashboardHome({
                       >
                         <EyeIcon size={13} /> View
                       </Link>
-                      <a
-                        href={`/api/papers/${paperId}/download`}
-                        download
+                      <button
+                        type="button"
+                        onClick={() => openPaperDownload(paperId)}
                         style={{
                           padding: "6px 10px",
                           borderRadius: "999px",
@@ -530,12 +530,12 @@ export default function DashboardHome({
                           fontSize: "0.8rem",
                           display: "inline-flex",
                           alignItems: "center",
-                          textDecoration: "none",
+                          cursor: "pointer",
                         }}
                         title="Download paper"
                       >
                         <DownloadIcon size={13} />
-                      </a>
+                      </button>
                     </div>
                   </div>
                 );

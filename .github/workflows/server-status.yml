@@ -80,3 +80,74 @@ jobs:
         run: |
           cd "${RCA_ARCHIVE_APP_DIR}/server"
           node scripts/data-check.js
+
+      - name: Connectivity
+        run: |
+          echo "=== Nginx Status ==="
+          if systemctl is-active --quiet nginx 2>/dev/null; then
+            echo "active"
+          elif pgrep -x nginx >/dev/null 2>&1; then
+            echo "active"
+          else
+            echo "not available"
+          fi
+
+          echo ""
+          echo "=== Enabled Nginx Site Files ==="
+          if [ -d /etc/nginx/sites-enabled ]; then
+            ls -1 /etc/nginx/sites-enabled 2>/dev/null || echo "not available"
+          else
+            echo "not available"
+          fi
+
+          echo ""
+          echo "=== Backend Local Port Status ==="
+          PORT=$(grep -E '^PORT=' "${RCA_ARCHIVE_CONFIG_ENV}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//')
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+            PORT=5009
+          fi
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://127.0.0.1:${PORT}/api/health" 2>/dev/null || echo "not available")
+          echo "Local port ${PORT} HTTP status: ${HTTP_STATUS}"
+
+          echo ""
+          echo "=== Self API Health Check ==="
+          HEALTH_RAW=$(curl -s --max-time 10 -w "\n%{http_code}" "https://api.archive.innov.rw/api/health" 2>/dev/null || echo -e "\nnot available")
+          HEALTH_HTTP_CODE=$(echo "$HEALTH_RAW" | tail -n1)
+          HEALTH_BODY=$(echo "$HEALTH_RAW" | sed '$d')
+          HEALTH_JSON_STATUS=$(echo "$HEALTH_BODY" | node -e '
+            let buf = "";
+            process.stdin.on("data", c => buf += c);
+            process.stdin.on("end", () => {
+              try {
+                const parsed = JSON.parse(buf);
+                console.log(parsed.status || "not available");
+              } catch {
+                console.log("not available");
+              }
+            });
+          ' 2>/dev/null || echo "not available")
+          echo "HTTP status: ${HEALTH_HTTP_CODE}"
+          echo "JSON status field: ${HEALTH_JSON_STATUS}"
+
+          echo ""
+          echo "=== DNS Resolution ==="
+          echo -n "api.archive.innov.rw: "
+          getent ahosts api.archive.innov.rw 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' || echo "not available"
+          echo ""
+          echo -n "rcaarchive.innov.rw: "
+          getent ahosts rcaarchive.innov.rw 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' || echo "not available"
+          echo ""
+
+          echo ""
+          echo "=== Server Public IP ==="
+          PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "not available")
+          echo "${PUBLIC_IP}"
+
+          echo ""
+          echo "=== TLS Certificate Expiry ==="
+          CERT_END=$(echo | openssl s_client -servername api.archive.innov.rw -connect api.archive.innov.rw:443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null || echo "not available")
+          if [ -n "$CERT_END" ]; then
+            echo "$CERT_END"
+          else
+            echo "not available"
+          fi

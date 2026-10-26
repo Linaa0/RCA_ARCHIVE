@@ -106,12 +106,12 @@ function getCachedCurriculum() {
 
 let activePromotions = getCachedCurriculum();
 
+import api from "./api";
+
 export async function fetchCurriculum() {
   try {
-    const res = await fetch("/api/curriculum");
-    if (!res.ok) throw new Error("Failed to fetch curriculum");
-    const data = await res.json();
-    if (Array.isArray(data.promotions) && data.promotions.length > 0) {
+    const { data } = await api.get("/curriculum");
+    if (Array.isArray(data?.promotions) && data.promotions.length > 0) {
       activePromotions = data.promotions;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data.promotions));

@@ -1,8 +1,8 @@
-import React, { lazy, Suspense, useState, useEffect, useLayoutEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
 import PrivateRoute from "./components/PrivateRoute";
 import "./styles/App.css";
-import api from "./services/api";
+import api, { openPaperDownload, apiUrl, API_ROOT } from "./services/api";
 import { isAuthenticated, getStoredRole, getHomePathForRole } from "./utils/auth";
 import { applyTheme, getThemePreference } from "./utils/theme";
 import curriculumService from "./services/curriculum";
@@ -69,8 +69,9 @@ function PaperResultCard({ paper }) {
         >
           View
         </a>
-        <a
-          href={`/api/papers/${paper.id}/download`}
+        <button
+          type="button"
+          onClick={() => openPaperDownload(paper.id)}
           style={{
             padding: "8px 22px",
             borderRadius: "999px",
@@ -79,11 +80,11 @@ function PaperResultCard({ paper }) {
             border: "1px solid var(--border-subtle)",
             fontWeight: 600,
             fontSize: "0.85rem",
-            textDecoration: "none",
+            cursor: "pointer",
           }}
         >
           Download
-        </a>
+        </button>
       </div>
     </div>
   );
@@ -258,8 +259,33 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [activePromotionId, setActivePromotionId] = useState("Y1");
   const [papers, setPapers] = useState([]);
+  const [serverUnreachable, setServerUnreachable] = useState(false);
+  const [checkingHealth, setCheckingHealth] = useState(false);
   const location = useLocation();
   const isAuthPage = location.pathname === "/login" || location.pathname === "/signup";
+
+  const checkHealth = useCallback(async () => {
+    setCheckingHealth(true);
+    try {
+      const response = await fetch(apiUrl("/api/health"), {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      if (response.ok) {
+        setServerUnreachable(false);
+      } else {
+        setServerUnreachable(true);
+      }
+    } catch (_) {
+      setServerUnreachable(true);
+    } finally {
+      setCheckingHealth(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkHealth();
+  }, [checkHealth]);
 
   useLayoutEffect(() => {
     if (!isAuthPage) return undefined;
@@ -328,10 +354,50 @@ function App() {
 
   return (
     <div className="app-container">
+      {serverUnreachable && (
+        <div
+          role="alert"
+          style={{
+            background: "#fee2e2",
+            color: "#991b1b",
+            borderBottom: "1px solid #f87171",
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "12px",
+            fontSize: "0.9rem",
+            fontWeight: 500,
+            position: "sticky",
+            top: 0,
+            zIndex: 9999,
+            textAlign: "center",
+          }}
+        >
+          <span>We cannot reach the server right now.</span>
+          <button
+            type="button"
+            onClick={checkHealth}
+            disabled={checkingHealth}
+            style={{
+              padding: "4px 12px",
+              background: "#991b1b",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "4px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: checkingHealth ? "default" : "pointer",
+            }}
+          >
+            {checkingHealth ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      )}
       <Suspense
         fallback={
           <div role="status" aria-live="polite" style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-            Loading page…
+            Loading page...
           </div>
         }
       >

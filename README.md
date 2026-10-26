@@ -99,8 +99,8 @@ cp client/.env.example client/.env
 
 | Variable | Description | Default |
 |---|---|---|
-| `VITE_API_URL` | Base URL for API requests | `http://localhost:5077/api` |
-| `VITE_BACKEND_URL` | Dev proxy destination URL | `http://localhost:5077` |
+| `VITE_API_URL` | Base URL for API requests (production defaults to https://api.archive.innov.rw/api) | `/api` (Dev via Vite proxy) / `https://api.archive.innov.rw/api` (Production) |
+| `VITE_BACKEND_URL` | Dev proxy destination URL for Vite | `http://localhost:5077` |
 
 #### Backend (`server/.env`)
 Copy `server/.env.example` to `server/.env`:

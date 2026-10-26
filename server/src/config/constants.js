@@ -9,8 +9,6 @@ const ALLOWED_MIME_TYPES = [
 const DEFAULT_CORS_ORIGINS = [
   "https://rcaarchive.innov.rw",
   "https://rca-archive.vercel.app",
-  "http://localhost:3000",
-  "http://localhost:3074",
 ];
 
 const MIME_TYPES = {

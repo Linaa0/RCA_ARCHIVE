@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../services/api";
+import api, { apiUrl } from "../services/api";
 import { useRealtime } from "../hooks/useRealtime";
 import { BellIcon, CheckIcon, CloseIcon } from "./ui/Icons";
 
@@ -135,9 +135,12 @@ export default function NotificationBell() {
   };
 
   const handleItemClick = async (notif) => {
+    const isApiLink = notif.link?.startsWith("/api/");
     const opensFile = notif.link?.startsWith("/view/");
     if (opensFile) {
       window.open(notif.link, "_blank", "noopener,noreferrer");
+    } else if (isApiLink) {
+      window.open(apiUrl(notif.link), "_blank", "noopener,noreferrer");
     }
 
     if (!notif.read) {
@@ -150,7 +153,7 @@ export default function NotificationBell() {
       } catch (_) {}
     }
     setOpen(false);
-    if (notif.link && !opensFile) {
+    if (notif.link && !opensFile && !isApiLink) {
       navigate(notif.link);
     }
   };

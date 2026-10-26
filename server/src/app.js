@@ -2,9 +2,17 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
-const { CORS_ORIGINS, UPLOADS_DIR, SERVE_FRONTEND } = require("./config/env");
+const { CORS_ORIGINS, UPLOADS_DIR, SERVE_FRONTEND, NODE_ENV } = require("./config/env");
 const { DEFAULT_CORS_ORIGINS } = require("./config/constants");
 const { getPapersCollection } = require("./models");
+
+let packageVersion = "1.0.0";
+try {
+  const pkg = require("../package.json");
+  if (pkg.version) packageVersion = pkg.version;
+} catch (_) {}
+
+const commitSha = process.env.COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || undefined;
 
 const authRoutes = require("./routes/authRoutes");
 const papersRoutes = require("./routes/papersRoutes");
@@ -41,26 +49,32 @@ const allowedOrigins = [
   ...new Set([...DEFAULT_CORS_ORIGINS, ...CORS_ORIGINS]),
 ];
 
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+
+  // Allow Vercel preview deployments for this project (rca-archive*.vercel.app)
+  if (/^https:\/\/rca-archive.*\.vercel\.app$/.test(origin)) {
+    return true;
+  }
+
+  // Allow localhost ports dynamically in development only
+  if (NODE_ENV !== "production") {
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:[0-9]+)?$/.test(origin)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
+    if (isOriginAllowed(origin)) {
+      return callback(null, true);
     }
-
-    // Allow localhost ports dynamically in development
-    if (/^http:\/\/(localhost|127\.0\.0\.1):[0-9]+$/.test(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    // Allow Vercel preview deployments
-    if (/^https:\/\/rca-archive(-[a-z0-9_-]+)?\.vercel\.app$/.test(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    callback(null, false);
+    console.warn(`[CORS] Rejected origin: ${origin}`);
+    return callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -77,32 +91,44 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "100kb" }));
 app.use(mongoSanitize());
 app.use(hpp());
-app.use("/api", globalLimiter);
-app.use("/uploads", express.static(UPLOADS_DIR));
 
+// Health check endpoint mounted before rate limiting and authentication
 app.get("/api/health", async (_req, res) => {
   const { checkDbHealth } = require("./models");
   const { MONGO_DB_NAME } = require("./config/env");
 
   const isDbOk = await checkDbHealth();
+  const allowedCorsOriginsCount = allowedOrigins.length;
+
   if (isDbOk) {
-    return res.json({
+    const payload = {
       status: "ok",
-      service: "rca-archive-backend",
-      database: "ok",
+      server: "ok",
+      database: "connected",
       databaseName: MONGO_DB_NAME,
+      version: packageVersion,
+      allowedCorsOriginsCount,
       uptimeSeconds: Math.floor(process.uptime()),
-    });
+    };
+    if (commitSha) payload.commit = commitSha;
+    return res.json(payload);
   }
 
-  return res.status(503).json({
+  const errorPayload = {
     status: "error",
-    service: "rca-archive-backend",
+    server: "ok",
     database: "down",
     databaseName: MONGO_DB_NAME,
+    version: packageVersion,
+    allowedCorsOriginsCount,
     error: "Database connection failed",
-  });
+  };
+  if (commitSha) errorPayload.commit = commitSha;
+  return res.status(503).json(errorPayload);
 });
+
+app.use("/api", globalLimiter);
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 // Public single source of truth curriculum endpoint
 app.get("/api/curriculum", (_req, res) => {

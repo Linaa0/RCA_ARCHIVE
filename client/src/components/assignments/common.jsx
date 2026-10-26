@@ -1,4 +1,5 @@
 import React from "react";
+import { getApiErrorMessage } from "../../services/api";
 import Badge from "../ui/Badge";
 
 export function formatDateTime(value) {
@@ -23,7 +24,7 @@ export function toLocalInput(value, offsetDays = 0) {
 }
 
 export function errorMessage(err, fallback = "Something went wrong. Please try again.") {
-  return err?.response?.data?.error || err?.response?.data?.message || fallback;
+  return getApiErrorMessage(err, fallback);
 }
 
 export function AppealBadge({ status }) {

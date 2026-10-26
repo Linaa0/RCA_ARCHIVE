@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import "./SubjectPage.css";
-import api from "../services/api";
+import api, { openPaperDownload } from "../services/api";
 import { RCA_CLASSES } from "./ui/ClassChips";
 import SubjectMaterials from "./SubjectMaterials";
 
@@ -575,12 +575,13 @@ function SubjectPage() {
                         ⋮
                       </button>
                       <div className="more-menu">
-                        <a
-                          href={paper.downloadUrl || `/api/papers/${paper.id}/download`}
+                        <button
+                          type="button"
                           className="more-menu-item"
+                          onClick={() => openPaperDownload(paper.id)}
                         >
                           Download
-                        </a>
+                        </button>
                         {isOwnerOrAdmin && (
                           <button
                             type="button"

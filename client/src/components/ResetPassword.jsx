@@ -4,7 +4,7 @@ import AuthBrandPanel from "./ui/AuthBrandPanel";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
 import { EyeIcon } from "./ui/Icons";
-import api from "../services/api";
+import api, { getApiErrorMessage } from "../services/api";
 import "./Login.css";
 
 export default function ResetPassword() {
@@ -48,11 +48,7 @@ export default function ResetPassword() {
         "A password recovery link has been dispatched to your email address."
       );
     } catch (err) {
-      setError(
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Unable to send recovery link."
-      );
+      setError(getApiErrorMessage(err, "Unable to send recovery link."));
     } finally {
       setLoading(false);
     }
@@ -82,11 +78,7 @@ export default function ResetPassword() {
       setSuccess(data?.message || "Password updated successfully.");
       setTimeout(() => navigate("/login"), 1800);
     } catch (err) {
-      setError(
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Password setup link is invalid or has expired."
-      );
+      setError(getApiErrorMessage(err, "Password setup link is invalid or has expired."));
     } finally {
       setLoading(false);
     }

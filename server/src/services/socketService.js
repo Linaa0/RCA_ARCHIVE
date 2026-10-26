@@ -1,14 +1,24 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET, CORS_ORIGINS } = require("../config/env");
+const { JWT_SECRET, CORS_ORIGINS, NODE_ENV } = require("../config/env");
 const { DEFAULT_CORS_ORIGINS } = require("../config/constants");
 
-// Same allowed sites as the REST API, plus local development ports
-const CORS_ORIGIN_LIST = [
+const allowedOrigins = [
   ...new Set([...DEFAULT_CORS_ORIGINS, ...CORS_ORIGINS]),
-  /^http:\/\/(localhost|127\.0\.0\.1):[0-9]+$/,
-  /^https:\/\/rca-archive(-[a-z0-9_-]+)?\.vercel\.app$/,
 ];
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (/^https:\/\/rca-archive.*\.vercel\.app$/.test(origin)) return true;
+  if (NODE_ENV !== "production") {
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:[0-9]+)?$/.test(origin)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const { getNotificationsCollection } = require("../models");
 
 let io = null;
@@ -16,8 +26,15 @@ let io = null;
 function initSocketServer(httpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: CORS_ORIGIN_LIST,
-      methods: ["GET", "POST", "PUT", "DELETE"],
+      origin(origin, callback) {
+        if (isOriginAllowed(origin)) {
+          return callback(null, true);
+        }
+        console.warn(`[CORS] Rejected origin: ${origin}`);
+        return callback(new Error("Origin not allowed by CORS"), false);
+      },
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     },
     transports: ["websocket", "polling"],

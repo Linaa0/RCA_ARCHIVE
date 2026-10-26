@@ -5,7 +5,7 @@ import Input from "./ui/Input";
 import Button from "./ui/Button";
 import { EyeIcon } from "./ui/Icons";
 import { persistAuth, getHomePathForRole } from "../utils/auth";
-import api from "../services/api";
+import api, { getApiErrorMessage } from "../services/api";
 import "./Login.css";
 
 export default function Login() {
@@ -58,11 +58,7 @@ export default function Login() {
       const canUseRedirect = redirectTarget && role === "student";
       navigate(canUseRedirect ? redirectTarget : home, { replace: true });
     } catch (err) {
-      const msg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Invalid email or password.";
-      setError(msg);
+      setError(getApiErrorMessage(err, "Invalid email or password."));
     } finally {
       setLoading(false);
     }

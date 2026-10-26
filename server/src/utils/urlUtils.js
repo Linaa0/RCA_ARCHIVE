@@ -1,4 +1,4 @@
-const { FRONTEND_BASE_URL } = require("../config/env");
+const { FRONTEND_BASE_URL, NODE_ENV } = require("../config/env");
 
 function getFrontendBaseUrl(req) {
   if (FRONTEND_BASE_URL) {
@@ -19,11 +19,12 @@ function getFrontendBaseUrl(req) {
     }
   }
 
-  return "http://localhost:3074";
+  return NODE_ENV === "production" ? "https://rcaarchive.innov.rw" : "http://localhost:3074";
 }
 
 function buildPasswordSetupUrl(frontendBaseUrl, token) {
-  const baseUrl = (frontendBaseUrl || "http://localhost:3074").replace(/\/$/, "");
+  const defaultBase = NODE_ENV === "production" ? "https://rcaarchive.innov.rw" : "http://localhost:3074";
+  const baseUrl = (frontendBaseUrl || defaultBase).replace(/\/$/, "");
   return `${baseUrl}/reset-password/${encodeURIComponent(token)}`;
 }
 

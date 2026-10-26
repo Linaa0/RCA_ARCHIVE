@@ -710,4 +710,103 @@ Every location in the codebase where user or paper data could potentially be del
    - Changes uncommitted for review with `git status`.
    - Zero emojis, zero em dashes, and zero en dashes used.
    - No secrets or invented values present.
+## Phase 5: Production API Resolution, One Backend Architecture, and Routing Verification
 
+### 1. What was wrong
+1. **Production Login and Signup 405 Method Not Allowed**:
+   - The built frontend bundle was submitting API calls to its own origin (`https://rcaarchive.innov.rw/api/...` or `https://rca-archive.vercel.app/api/...`) instead of the dedicated VPS backend API at `https://api.archive.innov.rw/api`.
+   - Vercel returned HTTP 405 Method Not Allowed on POST requests because no serverless handler existed to accept mutating requests on the frontend host, and an incomplete root `api/[...path].js` file interfered with request routing.
+2. **Scattered and Inconsistent API Endpoints**:
+   - Multiple components were constructing API paths ad-hoc or using hardcoded relative paths without central normalization.
+   - `openPaperDownload`, `FileViewer.jsx`, and `NotificationBell.jsx` constructed download/view and socket links inconsistently.
+3. **Stray and Duplicate Service Files**:
+   - `server/src/services/api.js` and `server/src/services/curriculum.js` were accidental client file duplicates committed inside the backend server tree, risking developer confusion.
+4. **CORS and Origin Whitelisting**:
+   - The backend did not dynamically accommodate Vercel preview deployments (`https://rca-archive-*.vercel.app` or `https://rca-archive-git-*.vercel.app`), causing preflight CORS failures on preview branches.
+   - Socket.IO CORS configuration was decoupled from Express CORS configuration, risking mismatched connection policies.
+5. **Missing Pre-flight Validation for URLs**:
+   - `BASE_URL` and `FRONTEND_BASE_URL` could silently fall back to `localhost:5077` in production if omitted from environment variables.
+   - `check-env.js` did not validate production values for `BASE_URL`, `FRONTEND_BASE_URL`, or `CORS_ORIGINS`.
+6. **Health Endpoint Behind Rate Limiting**:
+   - `/api/health` was mounted behind the global rate limiter, meaning frequent health probes or monitoring checks could trigger HTTP 429 rate limit errors.
+7. **No Automated Regression Protection**:
+   - CI had no check ensuring built client bundles point to `https://api.archive.innov.rw/api` when built without `VITE_API_URL`.
+
+### 2. What was changed
+1. **Unified Client API Configuration (`client/src/services/api.js` & `client/src/config.js`)**:
+   - Implemented centralized URL normalization in `client/src/services/api.js`:
+     * If `VITE_API_URL` is set, normalize trailing slashes and ensure `/api` suffix.
+     * In production (`import.meta.env.PROD`), default strictly to `https://api.archive.innov.rw/api`.
+     * In development, use `VITE_API_URL` or default to `http://localhost:5077/api`.
+   - Exported constants `API_BASE_URL` (with `/api`), `API_ROOT` (origin without `/api`), `apiUrl(path)` helper, `getApiErrorMessage(err)`, and `openPaperDownload(paperId, title)`.
+   - Updated `client/src/config.js` to derive `API_URL` directly from `api.js`.
+   - Audited all client components (`App.js`, `DashboardHome.jsx`, `SubjectPage.jsx`, `FileViewer.jsx`, `NotificationBell.jsx`, `useRealtime.js`, `services/curriculum.js`) to use `openPaperDownload` and `apiUrl`.
+2. **Server Unreachable Banner and Error Mapping (`client/src/App.js`, `Login.jsx`, `Signup.jsx`, `ResetPassword.jsx`)**:
+   - Added automatic health probe (`GET /api/health`) on app launch in `App.js`.
+   - If the API server is unreachable, displays a friendly sticky top banner: `"We cannot reach the server right now."` with a `"Retry"` button.
+   - Mapped HTTP 405 ("Backend API is misconfigured: received 405 Method Not Allowed"), HTTP 404 ("The authentication service is temporarily unavailable"), and network connection failures across login, sign-up, and password reset screens.
+3. **One Backend Only (Vercel & VPS Clean-Up)**:
+   - Deleted root `api/[...path].js` and removed root `api/` directory. Vercel now exclusively serves static SPA files.
+   - Deleted duplicate files `server/src/services/api.js` and `server/src/services/curriculum.js`.
+   - Updated `vercel.json` with SPA rewrites (`"source": "/(.*)", "destination": "/index.html"`), security headers, and clean install command.
+   - Updated Nginx configuration comment in `nginx/rcaarchive.innov.rw.conf` referencing `VITE_API_URL`.
+4. **CORS Origin Whitelist & Socket.IO Parity (`server/src/app.js` & `socketService.js`)**:
+   - Implemented shared `isOriginAllowed` logic:
+     * Allows configured `CORS_ORIGINS` from environment.
+     * Allows primary frontend `https://rcaarchive.innov.rw` and `https://rca-archive.vercel.app`.
+     * Allows Vercel preview domain pattern `/^https:\/\/rca-archive(-[a-z0-9-]+)?\.vercel\.app$/i`.
+     * Allows `localhost` origins only when `NODE_ENV !== "production"`.
+   - Applied identical origin policy to Express CORS middleware and Socket.IO server options.
+5. **Pre-Flight Environment Validation & Health Check (`server/src/config/env.js`, `check-env.js`, `app.js`)**:
+   - Updated `env.js` and `urlUtils.js` to throw or fail loudly if `BASE_URL` or `FRONTEND_BASE_URL` contains `localhost` in production.
+   - Updated `paperController.js` `createAccessLink` to return absolute `viewUrl` and `downloadUrl` prefixed with `BASE_URL`.
+   - Extended `server/scripts/check-env.js` to enforce production presence and valid URLs for `BASE_URL`, `FRONTEND_BASE_URL`, and `CORS_ORIGINS`.
+   - Mounted `/api/health` before `globalLimiter`, returning:
+     ```json
+     {
+       "status": "ok",
+       "server": "ok",
+       "database": "connected",
+       "version": "1.0.0",
+       "allowedCorsOriginsCount": 2
+     }
+     ```
+6. **Diagnostics Workflow (`.github/workflows/server-status.yml`)**:
+   - Extended workflow with step `Connectivity` running safe non-secret diagnostics (DNS lookup, curl loopback, port check) with `not available` fallbacks and zero sudo commands.
+7. **Deployment Map Documentation (`docs/DEPLOYMENT_MAP.md`)**:
+   - Authored comprehensive architecture map, environment variable tables, DNS ownership records, 5-minute owner verification checklist, and troubleshooting table.
+
+### 3. Test Evidence and Verification
+1. **API Resolution and CORS Integration Test (`server/test/apiResolution.test.js`)**:
+   - Subtest 1: Client API configuration defaults to production URL when VITE_API_URL is unset.
+   - Subtest 2: Client API configuration respects explicit VITE_API_URL.
+   - Subtest 3: GET /api/health returns 200 with server ok and database connected before rate limiting.
+   - Subtest 4: CORS allows requests from production origin https://rcaarchive.innov.rw.
+   - Subtest 5: CORS allows requests from production origin https://rca-archive.vercel.app.
+   - Subtest 6: CORS allows requests from Vercel preview subdomains.
+   - Subtest 7: Paper access link generates absolute URLs prefixed with BASE_URL.
+   - Result: 7 subtests passed out of 7 (100% PASS, duration 309ms).
+2. **Bundle Build Verification Script (`scripts/check-built-api-url.js`)**:
+   - Temporarily removes local `.env`, builds the production client with `VITE_API_URL` unset, and scans all generated chunks.
+   - Verified that `https://api.archive.innov.rw/api` is present in the bundle and zero bare relative `/api` network calls exist.
+   - Added as an automated step in `.github/workflows/ci.yml`.
+3. **Playwright Browser Routing Test Suite (`client/scripts/test-production-api-routing.js`)**:
+   - Built production client bundle and served on local static port with mock API server.
+   - Tested all 8 browser test scenarios:
+     1. App load sends GET /api/health to backend API.
+     2. Login submits POST to backend API (not frontend domain).
+     3. Signup step 1 and step 2 submit to backend API.
+     4. Forgot-password submits to backend API.
+     5. Paper view opens signed URL on backend API.
+     6. Paper download uses signed URL on backend API.
+     7. Zero relative /api network requests made to frontend static origin.
+     8. When API server is unreachable, friendly banner "We cannot reach the server right now" is displayed with a working Retry button.
+   - Result: All 8 browser test suites passed cleanly (100% PASS).
+4. **Full Server Test Suite (`npm test`)**:
+   - Executed all test suites with `--test-concurrency=1`.
+   - Total tests executed: 77.
+   - Results: 77 passed, 0 failed (100% PASS, duration 96.1s).
+5. **Repository Hygiene**:
+   - Active branch: `main`.
+   - All changes uncommitted for user review via `git status`.
+   - Zero emojis, zero em dashes, and zero en dashes used across all code, tests, docs, and comments.
