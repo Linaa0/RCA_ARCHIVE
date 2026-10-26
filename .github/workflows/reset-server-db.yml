@@ -26,8 +26,9 @@ jobs:
 
       - name: Validate Confirmation
         run: |
-          if [ "${{ github.event.inputs.confirmation }}" != "RESET" ]; then
-            echo "ERROR: Confirmation input did not match 'RESET'. Aborting."
+          CONFIRM_VAL=$(echo "${{ github.event.inputs.confirmation }}" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')
+          if [ "$CONFIRM_VAL" != "RESET" ]; then
+            echo "ERROR: Confirmation input did not match 'RESET'. Received: '${{ github.event.inputs.confirmation }}'"
             exit 1
           fi
           echo "Confirmation validated."

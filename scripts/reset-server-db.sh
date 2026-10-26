@@ -2,13 +2,18 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+APP_DIR="${RCA_ARCHIVE_APP_DIR:-/opt/apps/rca_archive}"
 CONFIG_ENV="${RCA_ARCHIVE_CONFIG_ENV:-/opt/configs/rca_archive/.env}"
 
 if [[ ! -r "$CONFIG_ENV" ]]; then
   if [[ -r "$REPO_ROOT/server/.env" ]]; then
     CONFIG_ENV="$REPO_ROOT/server/.env"
+  elif [[ -r "$APP_DIR/.env" ]]; then
+    CONFIG_ENV="$APP_DIR/.env"
+  elif [[ -r "$APP_DIR/server/.env" ]]; then
+    CONFIG_ENV="$APP_DIR/server/.env"
   else
-    echo "ERROR: Could not read environment file at $CONFIG_ENV or $REPO_ROOT/server/.env"
+    echo "ERROR: Could not read environment file at $CONFIG_ENV, $REPO_ROOT/server/.env, or $APP_DIR/.env"
     exit 1
   fi
 fi
@@ -23,20 +28,30 @@ fi
 echo "=== RCA Archive Server Database Reset ==="
 echo "Target database: $DB_NAME"
 
-cd "$REPO_ROOT/server"
+TARGET_DIR="$REPO_ROOT/server"
+if [[ ! -d "$TARGET_DIR/node_modules" && -d "$APP_DIR/server/node_modules" ]]; then
+  echo "Linking node_modules from deployed backend at $APP_DIR/server..."
+  ln -sfn "$APP_DIR/server/node_modules" "$TARGET_DIR/node_modules"
+fi
+
+if [[ ! -d "$TARGET_DIR/node_modules" ]]; then
+  echo "Installing dependencies in $TARGET_DIR..."
+  cd "$TARGET_DIR"
+  npm ci --omit=dev --no-audit --no-fund
+fi
+
+cd "$TARGET_DIR"
 node scripts/reset-db.js --confirm --allow-remote "--db-name=$DB_NAME" "--env-file=$CONFIG_ENV"
 
 PM2_NAME="${RCA_ARCHIVE_PM2_NAME:-rca-archive-backend}"
 if command -v pm2 >/dev/null 2>&1; then
-  if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
-    echo "Restarting PM2 process $PM2_NAME..."
-    pm2 restart "$PM2_NAME" || true
-  fi
+  echo "Restarting PM2 process $PM2_NAME..."
+  pm2 restart "$PM2_NAME" || (cd "$APP_DIR" && pm2 startOrReload ecosystem.config.cjs --update-env) || true
 fi
 
 PORT=$(grep -E '^PORT=' "$CONFIG_ENV" | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//')
 if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
-  PORT=5077
+  PORT=5009
 fi
 
 HEALTH_URL="http://127.0.0.1:${PORT}/api/health"
