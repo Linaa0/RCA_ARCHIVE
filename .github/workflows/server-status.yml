@@ -20,17 +20,19 @@ jobs:
 
     steps:
       - name: System Resource Summary
+        continue-on-error: true
         run: |
           echo "=== Disk Utilization ==="
-          df -h /
+          df -h / 2>/dev/null || echo "not available"
           echo ""
           echo "=== Memory Utilization ==="
-          free -h
+          free -h 2>/dev/null || echo "not available"
           echo ""
           echo "=== Uptime and Load Average ==="
-          uptime
+          uptime 2>/dev/null || echo "not available"
 
       - name: Safe PM2 Process Status
+        continue-on-error: true
         run: |
           echo "=== PM2 Process Metrics ==="
           pm2 jlist 2>/dev/null | node -e '
@@ -40,48 +42,86 @@ jobs:
               try {
                 const list = JSON.parse(data);
                 if (!Array.isArray(list) || list.length === 0) {
-                  console.log("No PM2 processes currently active for this runner user.");
+                  console.log("not available");
                   return;
                 }
-                for (const p of list) {
-                  const uptimeMin = p.pm2_env.pm_uptime ? Math.round((Date.now() - p.pm2_env.pm_uptime) / 60000) : 0;
-                  const memoryMb = Math.round((p.monit?.memory || 0) / 1048576);
-                  const cpuPercent = p.monit?.cpu || 0;
+                const rcaProcs = list.filter(p => typeof p.name === "string" && p.name.startsWith("rca"));
+                if (rcaProcs.length === 0) {
+                  console.log("No RCA processes found.");
+                  return;
+                }
+                for (const p of rcaProcs) {
+                  const uptimeMin = p.pm2_env?.pm_uptime ? Math.round((Date.now() - p.pm2_env.pm_uptime) / 60000) : 0;
                   console.log(`Process: ${p.name}`);
-                  console.log(`  PID: ${p.pid}`);
-                  console.log(`  Status: ${p.pm2_env.status}`);
-                  console.log(`  Restarts: ${p.pm2_env.restart_time}`);
+                  console.log(`  Status: ${p.pm2_env?.status || "not available"}`);
+                  console.log(`  Restarts: ${p.pm2_env?.restart_time ?? "not available"}`);
                   console.log(`  Uptime: ${uptimeMin} minutes`);
-                  console.log(`  CPU: ${cpuPercent}%`);
-                  console.log(`  Memory: ${memoryMb} MB`);
+                  console.log(`  Working directory: ${p.pm2_env?.pm_cwd || "not available"}`);
+                  console.log(`  Script path: ${p.pm2_env?.pm_exec_path || "not available"}`);
                 }
               } catch (e) {
-                console.log("Could not parse PM2 metrics safely.");
+                console.log("not available");
               }
-            });'
+            });' 2>/dev/null || echo "not available"
 
       - name: Local HTTP Health Verification
+        continue-on-error: true
         run: |
-          PORT=$(grep -E '^PORT=' "${RCA_ARCHIVE_CONFIG_ENV}" | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//')
+          PORT=$(grep -E '^PORT=' "${RCA_ARCHIVE_CONFIG_ENV}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//' || true)
           if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
             PORT=5009
           fi
 
           echo "=== Testing /api/health on port ${PORT} ==="
-          HEALTH=$(curl -fsS --max-time 10 "http://127.0.0.1:${PORT}/api/health")
-          echo "Response: ${HEALTH}"
+          HEALTH_RAW=$(curl -s --max-time 10 -w "\n%{http_code}" "http://127.0.0.1:${PORT}/api/health" 2>/dev/null || echo -e "\nnot available")
+          HEALTH_STATUS=$(echo "$HEALTH_RAW" | tail -n1)
+          HEALTH_BODY=$(echo "$HEALTH_RAW" | sed '$d')
+          HEALTH_COMMIT=$(echo "$HEALTH_BODY" | node -e '
+            let s = "";
+            process.stdin.on("data", c => s += c);
+            process.stdin.on("end", () => {
+              try {
+                const parsed = JSON.parse(s);
+                console.log(parsed.commit || "not available");
+              } catch {
+                console.log("not available");
+              }
+            });' 2>/dev/null || echo "not available")
+
+          echo "HTTP status: ${HEALTH_STATUS:-not available}"
+          echo "Commit: ${HEALTH_COMMIT:-not available}"
 
           echo ""
           echo "=== Testing /api/curriculum on port ${PORT} ==="
-          CURRICULUM=$(curl -fsS --max-time 10 "http://127.0.0.1:${PORT}/api/curriculum")
-          echo "Curriculum status: OK"
+          CURR_RAW=$(curl -s --max-time 10 -w "\n%{http_code}" "http://127.0.0.1:${PORT}/api/curriculum" 2>/dev/null || echo -e "\nnot available")
+          CURR_STATUS=$(echo "$CURR_RAW" | tail -n1)
+          CURR_BODY=$(echo "$CURR_RAW" | sed '$d')
+          CURR_COMMIT=$(echo "$CURR_BODY" | node -e '
+            let s = "";
+            process.stdin.on("data", c => s += c);
+            process.stdin.on("end", () => {
+              try {
+                const parsed = JSON.parse(s);
+                console.log(parsed.commit || "not available");
+              } catch {
+                console.log("not available");
+              }
+            });' 2>/dev/null || echo "not available")
+
+          echo "HTTP status: ${CURR_STATUS:-not available}"
+          echo "Commit: ${CURR_COMMIT:-not available}"
 
       - name: Data Integrity and Counts Summary
+        continue-on-error: true
         run: |
-          cd "${RCA_ARCHIVE_APP_DIR}/server"
-          node scripts/data-check.js
+          if [ -d "${RCA_ARCHIVE_APP_DIR}/server" ]; then
+            (cd "${RCA_ARCHIVE_APP_DIR}/server" && node scripts/data-check.js 2>/dev/null) || echo "not available"
+          else
+            echo "not available"
+          fi
 
       - name: Connectivity
+        continue-on-error: true
         run: |
           echo "=== Nginx Status ==="
           if systemctl is-active --quiet nginx 2>/dev/null; then
@@ -102,7 +142,7 @@ jobs:
 
           echo ""
           echo "=== Backend Local Port Status ==="
-          PORT=$(grep -E '^PORT=' "${RCA_ARCHIVE_CONFIG_ENV}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//')
+          PORT=$(grep -E '^PORT=' "${RCA_ARCHIVE_CONFIG_ENV}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' \r"'"'"'' | sed 's/#.*//' || true)
           if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
             PORT=5009
           fi

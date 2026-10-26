@@ -12,7 +12,8 @@ try {
   if (pkg.version) packageVersion = pkg.version;
 } catch (_) {}
 
-const commitSha = process.env.COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || undefined;
+const serverStartTime = new Date().toISOString();
+const commitSha = process.env.APP_COMMIT || process.env.COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || undefined;
 
 const authRoutes = require("./routes/authRoutes");
 const papersRoutes = require("./routes/papersRoutes");
@@ -99,6 +100,8 @@ app.get("/api/health", async (_req, res) => {
 
   const isDbOk = await checkDbHealth();
   const allowedCorsOriginsCount = allowedOrigins.length;
+  const currentCommit =
+    process.env.APP_COMMIT || commitSha || null;
 
   if (isDbOk) {
     const payload = {
@@ -109,8 +112,9 @@ app.get("/api/health", async (_req, res) => {
       version: packageVersion,
       allowedCorsOriginsCount,
       uptimeSeconds: Math.floor(process.uptime()),
+      startTime: serverStartTime,
+      commit: currentCommit,
     };
-    if (commitSha) payload.commit = commitSha;
     return res.json(payload);
   }
 
@@ -122,8 +126,9 @@ app.get("/api/health", async (_req, res) => {
     version: packageVersion,
     allowedCorsOriginsCount,
     error: "Database connection failed",
+    startTime: serverStartTime,
+    commit: currentCommit,
   };
-  if (commitSha) errorPayload.commit = commitSha;
   return res.status(503).json(errorPayload);
 });
 

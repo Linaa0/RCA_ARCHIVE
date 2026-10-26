@@ -12,7 +12,7 @@ on:
 
 concurrency:
   group: rca-archive-backend-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -47,35 +47,47 @@ jobs:
           fi
 
           URL="http://127.0.0.1:${PORT}/api/health"
-          echo "Checking ${URL} (up to 180s)..."
+          echo "Checking ${URL} and /api/curriculum (up to 180s)..."
 
           for i in $(seq 1 60); do
-            if curl -fsS \
-              --connect-timeout 5 \
-              --max-time 20 \
-              --retry 2 \
-              --retry-delay 2 \
-              --retry-all-errors \
-              "$URL"; then
-              echo ""
-              echo "Health check OK on port ${PORT}"
+            HEALTH_RAW=$(curl -s --connect-timeout 5 --max-time 20 "$URL" 2>/dev/null || true)
+            HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 20 "$URL" 2>/dev/null || true)
+            CURR_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 20 "http://127.0.0.1:${PORT}/api/curriculum" 2>/dev/null || true)
+            RETURNED_COMMIT=$(echo "$HEALTH_RAW" | node -e '
+              let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
+                try { const j=JSON.parse(s); console.log(j.commit||""); } catch { console.log(""); }
+              });' 2>/dev/null || true)
+
+            COMMIT_OK=0
+            if [[ -z "${GITHUB_SHA:-}" || "$RETURNED_COMMIT" == "$GITHUB_SHA" ]]; then
+              COMMIT_OK=1
+            fi
+
+            if [[ "$HEALTH_CODE" == "200" && "$CURR_CODE" == "200" && "$COMMIT_OK" -eq 1 ]]; then
+              echo "Health check OK on port ${PORT} (commit: ${RETURNED_COMMIT})"
               exit 0
             fi
-            echo "Waiting for API... (${i}/60)"
+            echo "Waiting for API... (${i}/60, health=${HEALTH_CODE}, curriculum=${CURR_CODE}, commit=${RETURNED_COMMIT})"
             sleep 3
           done
 
           echo "Health check failed after 180s"
-          echo "--- Safe Process Status Summary ---"
-          pm2 jlist 2>/dev/null | node -e '
-            let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
-              try {
-                const list = JSON.parse(s);
-                if (!list.length) { console.log("No PM2 processes found for this user."); return; }
-                for (const p of list) {
-                  const up = p.pm2_env.pm_uptime ? Math.round((Date.now()-p.pm2_env.pm_uptime)/60000) : 0;
-                  console.log(`${p.name}: status=${p.pm2_env.status} restarts=${p.pm2_env.restart_time} uptime_min=${up} memory_mb=${Math.round((p.monit.memory||0)/1048576)}`);
-                }
-              } catch (e) { console.log("Could not read PM2 status."); }
-            });' || true
+          echo "--- Port Listener Info ---"
+          raw=$(ss -ltnp "sport = :${PORT}" 2>/dev/null || ss -ltnp 2>/dev/null | grep -E ":${PORT}\b" || true)
+          proc=$(echo "$raw" | sed -nE 's/.*users:\(\("([^"]+)".*/\1/p' | head -n1)
+          pid=$(echo "$raw" | sed -nE 's/.*pid=([0-9]+).*/\1/p' | head -n1)
+          user=""
+          if [[ -n "$pid" ]]; then
+            user=$(ps -o user= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+            if [[ -z "$proc" ]]; then
+              proc=$(ps -o comm= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+            fi
+          fi
+          if [[ -n "$proc" && -n "$user" ]]; then
+            echo "Port ${PORT} listener: user=${user} process=${proc}"
+          elif [[ -n "$proc" ]]; then
+            echo "Port ${PORT} listener: process=${proc}"
+          else
+            echo "Port ${PORT} listener: not available"
+          fi
           exit 1
