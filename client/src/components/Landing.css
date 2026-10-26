@@ -278,8 +278,8 @@
   position: relative;
   left: 0;
   z-index: 3;
-  width: min(540px, 100%);
-  max-width: 540px;
+  width: 100%;
+  max-width: 600px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -295,9 +295,9 @@
   display: block;
   width: 100%;
   height: auto;
-  max-height: 540px;
+  max-height: 580px;
   object-fit: contain;
-  filter: drop-shadow(0 14px 32px rgba(16, 45, 116, 0.10));
+  filter: drop-shadow(0 16px 36px rgba(16, 45, 116, 0.12));
 }
 
 /* Scattered Decorative Dots */
@@ -1527,7 +1527,8 @@
   }
 
   .hero-illustration {
-    width: min(450px, calc(90vw - 24px));
+    width: min(520px, calc(95vw - 24px));
+    max-width: 520px;
     left: 0;
     margin: 0 auto;
   }
