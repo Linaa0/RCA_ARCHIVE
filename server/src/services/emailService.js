@@ -123,7 +123,11 @@ async function createMailTransporter() {
     }
   }
 
-  if (currentEnv === "test") {
+  if (
+    currentEnv === "test" ||
+    (Array.isArray(process.argv) && process.argv.some((arg) => arg.includes("test"))) ||
+    (Array.isArray(process.execArgv) && process.execArgv.some((arg) => arg.includes("test")))
+  ) {
     const transporter = nodemailer.createTransport({
       jsonTransport: true,
     });
@@ -172,9 +176,21 @@ async function createMailTransporter() {
 }
 
 function getSender() {
-  const fromAddress = process.env.EMAIL_FROM || EMAIL_FROM || SMTP_USER || "noreply@rca.ac.rw";
-  if (fromAddress.includes("<")) return fromAddress;
-  return `"RCA Archive" <${fromAddress}>`;
+  const raw = process.env.EMAIL_FROM || EMAIL_FROM || SMTP_USER || "noreply@rca.ac.rw";
+  const match = raw.match(/"?([^"<]+)"?\s*<([^>]+)>/);
+  if (match) {
+    const name = match[1].trim();
+    const address = match[2].trim();
+    return `"${name}" <${address}>`;
+  }
+  return `"RCA Archive" <${raw.trim()}>`;
+}
+
+function getSenderEmailOnly() {
+  const raw = process.env.EMAIL_FROM || EMAIL_FROM || SMTP_USER || "noreply@rca.ac.rw";
+  const match = raw.match(/<([^>]+)>/);
+  if (match) return match[1].trim();
+  return raw.trim();
 }
 
 function getAttachments() {
@@ -201,6 +217,7 @@ async function sendViaResend({ to, subject, html, text }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured in environment");
   const sender = getSender();
+  const replyTo = process.env.EMAIL_REPLY_TO || process.env.SMTP_USER || getSenderEmailOnly();
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -211,9 +228,16 @@ async function sendViaResend({ to, subject, html, text }) {
     body: JSON.stringify({
       from: sender,
       to: Array.isArray(to) ? to : [to],
+      reply_to: replyTo,
       subject,
       html,
       text,
+      headers: {
+        "Auto-Submitted": "auto-generated",
+        "X-Auto-Response-Suppress": "All",
+        "X-Mailer": "RCA Archive Mailer",
+        "Feedback-ID": "rca-archive:transactional:v1",
+      },
     }),
   });
 
@@ -240,6 +264,8 @@ async function sendViaBrevo({ to, subject, html, text }) {
     senderEmail = senderStr.trim();
   }
 
+  const replyTo = process.env.EMAIL_REPLY_TO || process.env.SMTP_USER || senderEmail;
+
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
@@ -249,10 +275,15 @@ async function sendViaBrevo({ to, subject, html, text }) {
     },
     body: JSON.stringify({
       sender: { name: senderName, email: senderEmail },
-      to: [{ email: to }],
+      to: (Array.isArray(to) ? to : [to]).map((email) => ({ email })),
+      replyTo: { email: replyTo },
       subject,
       htmlContent: html,
       textContent: text,
+      headers: {
+        "Auto-Submitted": "auto-generated",
+        "X-Auto-Response-Suppress": "All",
+      },
     }),
   });
 
@@ -327,7 +358,8 @@ async function sendMailWithOptions({ to, subject, text, html }) {
   }
 
   // 3. SMTP Provider (default)
-  const replyTo = SMTP_USER || EMAIL_FROM || "support@rca.ac.rw";
+  const replyTo = process.env.EMAIL_REPLY_TO || SMTP_USER || EMAIL_FROM || "support@rca.ac.rw";
+  const envelopeFrom = process.env.SMTP_USER || getSenderEmailOnly();
   try {
     const { transporter, isReal } = await createMailTransporter();
 
@@ -335,13 +367,21 @@ async function sendMailWithOptions({ to, subject, text, html }) {
       from: getSender(),
       to,
       replyTo,
+      envelope: {
+        from: envelopeFrom,
+        to: Array.isArray(to) ? to : [to],
+      },
       subject,
       text,
       html,
+      date: new Date(),
       messageId,
       headers: {
         "Auto-Submitted": "auto-generated",
         "X-Auto-Response-Suppress": "All",
+        "X-Mailer": "RCA Archive Mailer",
+        "X-Report-Abuse-To": replyTo,
+        "Feedback-ID": "rca-archive:transactional:v1",
         "Message-ID": messageId,
       },
       attachments: getAttachments(),
@@ -436,11 +476,20 @@ async function getEmailHealth() {
     // Database check optional
   }
 
+  const senderDomain = getSenderDomain();
+  const dnsGuidance = {
+    domain: senderDomain,
+    spfRecord: `v=spf1 include:_spf.${senderDomain} ~all`,
+    dmarcRecord: `v=DMARC1; p=quarantine; pct=100; adkim=r; aspf=r; rua=mailto:dmarc-reports@${senderDomain}`,
+    dkimGuidance: "Ensure a 2048-bit DKIM DNS TXT key is published on your DNS provider matching your sending service.",
+  };
+
   return {
     status: configured ? "healthy" : "unconfigured",
     provider,
     isRealConfigured: configured,
     from: getSender(),
+    dnsGuidance,
     outboxStats,
     recentOutbox,
   };

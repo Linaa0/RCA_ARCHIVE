@@ -133,7 +133,17 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.use("/api", globalLimiter);
-app.use("/uploads", express.static(UPLOADS_DIR));
+app.use(
+  "/uploads",
+  express.static(UPLOADS_DIR, {
+    dotfiles: "ignore",
+    index: false,
+    setHeaders: (res) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+    },
+  })
+);
 
 // Public single source of truth curriculum endpoint
 app.get("/api/curriculum", (_req, res) => {

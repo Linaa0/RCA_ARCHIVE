@@ -90,11 +90,16 @@ async function getSubjectResourceFile(req, res) {
   const resource = await getTeacherResourcesCollection().findOne({ id: req.params.id }, NO_ID);
   if (!resource) return res.status(404).json({ error: "Resource not found." });
 
-  const filePath = path.join(SUBMISSIONS_DIR, path.basename(resource.filename));
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: "This file is no longer available on storage." });
+  const safeBase = path.basename(resource.filename);
+  const filePath = path.resolve(SUBMISSIONS_DIR, safeBase);
+  if (!filePath.startsWith(path.resolve(SUBMISSIONS_DIR) + path.sep) || !fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "This file is no longer available on storage." });
+  }
 
   const ext = path.extname(resource.originalName).toLowerCase();
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
   res.type(MIME_TYPES[ext] || "application/octet-stream");
   const disposition = req.query.download === "1" ? "attachment" : "inline";
   res.setHeader("Content-Disposition", `${disposition}; filename*=UTF-8''${encodeURIComponent(resource.originalName)}`);

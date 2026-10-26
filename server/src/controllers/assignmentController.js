@@ -366,14 +366,19 @@ async function downloadAttachment(req, res) {
     (hasStudentAccess(req.user) && isVisibleToStudent(a, req.user));
   if (!allowed) return res.status(404).json({ error: "No file attached" });
 
-  const full = path.join(SUBMISSIONS_DIR, path.basename(a.attachment.filename));
-  if (!fs.existsSync(full)) return res.status(404).json({ error: "This file is no longer available." });
+  const safeBase = path.basename(a.attachment.filename);
+  const full = path.resolve(SUBMISSIONS_DIR, safeBase);
+  if (!full.startsWith(path.resolve(SUBMISSIONS_DIR) + path.sep) || !fs.existsSync(full)) {
+    return res.status(404).json({ error: "This file is no longer available." });
+  }
 
-  const originalName = a.attachment.originalName || path.basename(a.attachment.filename);
+  const originalName = a.attachment.originalName || safeBase;
   const ext = path.extname(originalName).toLowerCase();
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
   res.setHeader("Content-Type", contentType);
 
   const isInline = req.query.inline === "1" || req.path.endsWith("/view");

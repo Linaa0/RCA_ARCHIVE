@@ -343,6 +343,16 @@ async function createAccessLink(req, res) {
   });
 }
 
+function resolveSafeUploadPath(filename) {
+  if (!filename || typeof filename !== "string") return null;
+  const safeName = path.basename(filename);
+  const resolved = path.resolve(UPLOADS_DIR, safeName);
+  if (!resolved.startsWith(path.resolve(UPLOADS_DIR) + path.sep)) {
+    return null;
+  }
+  return resolved;
+}
+
 async function accessPaperFile(req, res) {
   const { token, mode } = req.params;
   const verified = verifyAccessLink(token);
@@ -358,8 +368,8 @@ async function accessPaperFile(req, res) {
     return res.status(404).json({ error: "Paper not found." });
   }
 
-  const filePath = path.join(UPLOADS_DIR, paper.filename);
-  if (!fs.existsSync(filePath)) {
+  const filePath = resolveSafeUploadPath(paper.filename);
+  if (!filePath || !fs.existsSync(filePath)) {
     return res.status(404).json({ error: "This file is no longer available on storage." });
   }
 
@@ -368,6 +378,8 @@ async function accessPaperFile(req, res) {
   const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
 
   if (mode === "download" || verified.action === "download") {
     res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
@@ -384,8 +396,8 @@ async function getPaperFile(req, res) {
   const paper = await getPaperById(req.params.id);
   if (!paper) return res.status(404).json({ error: "Paper not found" });
 
-  const filePath = path.join(UPLOADS_DIR, paper.filename);
-  if (!fs.existsSync(filePath)) {
+  const filePath = resolveSafeUploadPath(paper.filename);
+  if (!filePath || !fs.existsSync(filePath)) {
     return res.status(404).json({ error: "This file is no longer available on storage." });
   }
 
@@ -394,6 +406,8 @@ async function getPaperFile(req, res) {
   const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
 
   if (req.query.download === "1") {
     res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
@@ -410,8 +424,8 @@ async function viewPaper(req, res) {
   const paper = await getPaperById(req.params.id);
   if (!paper) return res.status(404).json({ error: "Paper not found" });
 
-  const filePath = path.join(UPLOADS_DIR, paper.filename);
-  if (!fs.existsSync(filePath)) {
+  const filePath = resolveSafeUploadPath(paper.filename);
+  if (!filePath || !fs.existsSync(filePath)) {
     return res.status(404).json({ error: "This file is no longer available on storage." });
   }
 
@@ -420,6 +434,8 @@ async function viewPaper(req, res) {
   const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
   res.setHeader("Content-Type", contentType);
   res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
   return res.sendFile(filePath);
@@ -429,8 +445,8 @@ async function downloadPaper(req, res) {
   const paper = await getPaperById(req.params.id);
   if (!paper) return res.status(404).json({ error: "Paper not found" });
 
-  const filePath = path.join(UPLOADS_DIR, paper.filename);
-  if (!fs.existsSync(filePath)) {
+  const filePath = resolveSafeUploadPath(paper.filename);
+  if (!filePath || !fs.existsSync(filePath)) {
     return res.status(404).json({ error: "This file is no longer available on storage." });
   }
 
@@ -439,6 +455,8 @@ async function downloadPaper(req, res) {
   const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
   res.setHeader("Content-Type", contentType);
   res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
   return res.sendFile(filePath);
@@ -482,7 +500,12 @@ async function updatePaper(req, res) {
     return res.status(404).json({ error: "Paper not found" });
   }
 
-  if (req.user.role !== "admin" && paper.uploadedBy !== req.user.username) {
+  const isUploader =
+    Boolean(paper.uploadedById && String(paper.uploadedById) === String(req.user.id)) ||
+    Boolean(paper.uploadedBy && paper.uploadedBy === req.user.username) ||
+    Boolean(paper.uploadedByEmail && paper.uploadedByEmail === req.user.email);
+
+  if (req.user.role !== "admin" && !isUploader) {
     return res.status(403).json({
       error: "You can only edit papers that you uploaded.",
     });
@@ -491,10 +514,34 @@ async function updatePaper(req, res) {
   const { title, subject, year, type } = req.body;
   const update = {};
 
-  if (typeof title === "string" && title.trim()) update.title = title.trim();
-  if (typeof subject === "string" && subject.trim()) update.subject = subject.trim();
-  if (typeof year === "string" && year.trim()) update.year = year.trim();
-  if (typeof type === "string" && type.trim()) update.type = type.trim();
+  if (typeof title === "string" && title.trim()) {
+    const trimmed = title.trim();
+    if (trimmed.length > 200) {
+      return res.status(400).json({ error: "Title must be 200 characters or fewer." });
+    }
+    update.title = trimmed;
+  }
+  if (typeof subject === "string" && subject.trim()) {
+    const trimmed = subject.trim();
+    if (trimmed.length > 100) {
+      return res.status(400).json({ error: "Subject must be 100 characters or fewer." });
+    }
+    update.subject = trimmed;
+  }
+  if (typeof year === "string" && year.trim()) {
+    const trimmed = year.trim();
+    if (trimmed.length > 50) {
+      return res.status(400).json({ error: "Year must be 50 characters or fewer." });
+    }
+    update.year = trimmed;
+  }
+  if (typeof type === "string" && type.trim()) {
+    const trimmed = type.trim();
+    if (trimmed.length > 50) {
+      return res.status(400).json({ error: "Type must be 50 characters or fewer." });
+    }
+    update.type = trimmed;
+  }
 
   if (Object.keys(update).length === 0) {
     return res.status(400).json({ error: "No changes were provided." });

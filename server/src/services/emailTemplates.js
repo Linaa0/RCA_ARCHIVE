@@ -34,9 +34,10 @@ function baseLayout({ title, previewText, contentHtml }) {
   </style>
 </head>
 <body bgcolor="#EEF0F6" style="margin: 0; padding: 0; background-color: #EEF0F6; color: #1B2142;">
-  <!-- Preview Text Spacing Hack -->
-  <div style="display: none; font-size: 1px; color: #EEF0F6; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+  <!-- Preview Text Anti-Leak Hack -->
+  <div style="display: none; font-size: 1px; color: #EEF0F6; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">
     ${escapeHtml(previewText || title)}
+    &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
   </div>
 
   <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#EEF0F6" style="background-color: #EEF0F6;">

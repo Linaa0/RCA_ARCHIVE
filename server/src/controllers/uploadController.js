@@ -7,8 +7,43 @@ const { buildRatingSummary } = require("../services/ratingService");
 const { validatePlainText } = require("../utils/validation");
 const { emitPaperEvent } = require("../services/socketService");
 
+function isValidDocumentMagicBytes(filePath) {
+  try {
+    const fd = fs.openSync(filePath, "r");
+    const buffer = Buffer.alloc(8);
+    const bytesRead = fs.readSync(fd, buffer, 0, 8, 0);
+    fs.closeSync(fd);
+
+    if (bytesRead < 4) return false;
+
+    // PDF: %PDF- (0x25 0x50 0x44 0x46)
+    if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
+      return true;
+    }
+    // DOC (Compound Binary): D0 CF 11 E0
+    if (buffer[0] === 0xd0 && buffer[1] === 0xcf && buffer[2] === 0x11 && buffer[3] === 0xe0) {
+      return true;
+    }
+    // DOCX (ZIP archive): PK\x03\x04
+    if (buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04) {
+      return true;
+    }
+
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function uploadPaper(req, res) {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+  if (!isValidDocumentMagicBytes(req.file.path)) {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    return res.status(400).json({
+      error: "Invalid file content. Uploaded file must be a genuine PDF or Word document.",
+    });
+  }
 
   const { title, subject, year, type, classId, category } = req.body;
 
@@ -130,8 +165,21 @@ async function uploadPaper(req, res) {
 }
 
 async function serveUpload(req, res) {
-  const { filename } = req.params;
-  const filePath = path.join(UPLOADS_DIR, filename);
+  const rawFilename = String(req.params.filename || "").replace(/[\0\r\n]/g, "");
+  const safeFilename = path.basename(rawFilename);
+  if (!safeFilename || safeFilename === "." || safeFilename === "..") {
+    return res.status(400).json({ error: "Invalid filename" });
+  }
+
+  const resolvedDir = path.resolve(UPLOADS_DIR);
+  const filePath = path.resolve(resolvedDir, safeFilename);
+
+  if (!filePath.startsWith(resolvedDir + path.sep)) {
+    return res.status(403).json({ error: "Access denied" });
+  }
+
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
 
   if (fs.existsSync(filePath)) {
     return res.sendFile(filePath);
@@ -139,10 +187,11 @@ async function serveUpload(req, res) {
 
   try {
     const papers = getPapersCollection();
-    const paper = await papers.findOne({ filename });
+    const paper = await papers.findOne({ filename: safeFilename });
     if (paper) {
-      const paperPath = path.join(UPLOADS_DIR, paper.filename);
-      if (fs.existsSync(paperPath)) {
+      const paperSafe = path.basename(paper.filename);
+      const paperPath = path.resolve(resolvedDir, paperSafe);
+      if (paperPath.startsWith(resolvedDir + path.sep) && fs.existsSync(paperPath)) {
         return res.sendFile(paperPath);
       }
     }

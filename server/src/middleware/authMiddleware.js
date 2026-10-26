@@ -29,7 +29,7 @@ function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
     if (
       !payload ||
       typeof payload.id !== "string" ||

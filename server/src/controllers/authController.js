@@ -640,7 +640,7 @@ async function login(req, res) {
       role,
     },
     JWT_SECRET,
-    { expiresIn: "12h" }
+    { algorithm: "HS256", expiresIn: "12h" }
   );
 
   return res.json({

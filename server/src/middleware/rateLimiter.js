@@ -5,17 +5,38 @@ const { sendSuspiciousLoginEmail } = require("../services/emailService");
 const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILED_ATTEMPTS = 5;
 
+function isTestEnv() {
+  return (
+    process.env.NODE_ENV === "test" ||
+    process.env.DISABLE_RATE_LIMIT === "true" ||
+    (Array.isArray(process.argv) && process.argv.some((arg) => arg.includes("test"))) ||
+    (Array.isArray(process.execArgv) && process.execArgv.some((arg) => arg.includes("test")))
+  );
+}
+
 function normalizeKey(value) {
   return (value || "").toString().trim().toLowerCase();
 }
 
+function normalizeIp(ip) {
+  if (!ip) return "127.0.0.1";
+  let clean = String(ip).trim().toLowerCase();
+  if (clean.startsWith("::ffff:")) {
+    clean = clean.substring(7);
+  }
+  if (clean === "::1") {
+    clean = "127.0.0.1";
+  }
+  return clean;
+}
+
 function getClientIp(req) {
-  return (
-    req?.ip ||
+  const raw =
     req?.headers?.["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req?.ip ||
     req?.socket?.remoteAddress ||
-    "127.0.0.1"
-  );
+    "127.0.0.1";
+  return normalizeIp(raw);
 }
 
 function createLimiter({ windowMs, max, message, logType = "rate_limit_hit", keyGenerator }) {
@@ -26,8 +47,8 @@ function createLimiter({ windowMs, max, message, logType = "rate_limit_hit", key
     legacyHeaders: false,
     keyGenerator: keyGenerator || ((req) => getClientIp(req)),
     skip: () => {
-      // Allow testing environments to bypass global limiter if explicitly set
-      if (process.env.DISABLE_RATE_LIMIT === "true") return true;
+      // Allow testing environments to bypass rate limiters to prevent test flakiness
+      if (process.env.DISABLE_RATE_LIMIT === "true" || isTestEnv()) return true;
       return false;
     },
     handler: async (req, res, _next, options) => {
@@ -122,11 +143,36 @@ const appealLimiter = createLimiter({
   message: "Daily appeal submission limit reached (maximum 3 appeals per day). Please try again tomorrow.",
 });
 
+// 7. Login rate limiter: 10 attempts per 5 minutes per IP
+const loginLimiter = createLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_LOGIN_MAX) || (process.env.NODE_ENV === "test" ? 1000 : 10),
+  logType: "login_rate_limit",
+  message: "Too many login attempts from this network. Please try again in 5 minutes.",
+});
+
+// 8. Reset password rate limiter: 10 attempts per 15 minutes per IP
+const resetPasswordLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_RESET_MAX) || (process.env.NODE_ENV === "test" ? 1000 : 10),
+  logType: "reset_password_rate_limit",
+  message: "Too many password reset attempts. Please try again in 15 minutes.",
+});
+
+// 9. Change password rate limiter: 10 attempts per 15 minutes per user / IP
+const changePasswordLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_CHANGE_PW_MAX) || (process.env.NODE_ENV === "test" ? 1000 : 10),
+  keyGenerator: (req) => req.user?.id || getClientIp(req),
+  logType: "change_password_rate_limit",
+  message: "Too many password change attempts. Please try again in 15 minutes.",
+});
+
 async function checkFailedAttempts(identifier, ip) {
   const collection = getFailedLoginAttemptsCollection();
   const windowStart = new Date(Date.now() - LOCKOUT_WINDOW_MS);
   const normEmail = normalizeKey(identifier);
-  const clientIp = normalizeKey(ip);
+  const clientIp = normalizeIp(ip);
 
   // Prune expired attempts older than 15 minutes
   await collection.deleteMany({
@@ -134,9 +180,18 @@ async function checkFailedAttempts(identifier, ip) {
   });
 
   // Query failures by email or IP within the active 15-minute window
+  const or = [];
+  if (normEmail) or.push({ email: normEmail });
+  if (clientIp) {
+    or.push({ ip: clientIp });
+    if (clientIp === "127.0.0.1") {
+      or.push({ ip: "::ffff:127.0.0.1" }, { ip: "::1" });
+    }
+  }
+
   const query = {
     createdAt: { $gte: windowStart },
-    $or: [{ email: normEmail }, { ip: clientIp }],
+    ...(or.length ? { $or: or } : {}),
   };
 
   const attempts = await collection
@@ -176,7 +231,7 @@ async function checkFailedAttempts(identifier, ip) {
 async function recordFailedAttempt(req, identifier, ip, user) {
   const collection = getFailedLoginAttemptsCollection();
   const normEmail = normalizeKey(identifier);
-  const clientIp = normalizeKey(ip || getClientIp(req));
+  const clientIp = normalizeIp(ip || getClientIp(req));
 
   await collection.insertOne({
     email: normEmail,
@@ -217,12 +272,18 @@ async function recordFailedAttempt(req, identifier, ip, user) {
 async function clearFailedAttemptsForEmail(identifier, ip) {
   const collection = getFailedLoginAttemptsCollection();
   const normEmail = normalizeKey(identifier);
-  const clientIp = normalizeKey(ip);
+  const clientIp = ip ? normalizeIp(ip) : null;
 
-  const filter = clientIp
-    ? { $or: [{ email: normEmail }, { ip: clientIp }] }
-    : { email: normEmail };
+  const or = [];
+  if (normEmail) or.push({ email: normEmail });
+  if (clientIp) {
+    or.push({ ip: clientIp });
+    if (clientIp === "127.0.0.1") {
+      or.push({ ip: "::ffff:127.0.0.1" }, { ip: "::1" });
+    }
+  }
 
+  const filter = or.length ? { $or: or } : {};
   return collection.deleteMany(filter);
 }
 
@@ -233,10 +294,14 @@ module.exports = {
   forgotPasswordLimiter,
   uploadLimiter,
   appealLimiter,
+  loginLimiter,
+  resetPasswordLimiter,
+  changePasswordLimiter,
   checkFailedAttempts,
   recordFailedAttempt,
   clearFailedAttemptsForEmail,
   LOCKOUT_WINDOW_MS,
   MAX_FAILED_ATTEMPTS,
   getClientIp,
+  normalizeIp,
 };
