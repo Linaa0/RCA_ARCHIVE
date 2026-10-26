@@ -856,3 +856,20 @@ Every location in the codebase where user or paper data could potentially be del
 3. **Backend Integration Tests**:
    - Ran `node --test test/classFeatures.test.js`: 14 passed out of 14 in 1.66s.
 
+## Phase 7: Fix Backend Deployment Script Permission Denied
+
+### 1. What was wrong
+1. **Permission Denied on Production Configuration File**:
+   - Workflow run #49 failed at step "Deploy backend to /opt/apps/rca_archive" with `scripts/deploy-backend.sh: line 73: /opt/configs/rca_archive/.env: Permission denied`.
+   - Line 73 attempted to write (`>> "$CONFIG_ENV"`) to append `CORS_ORIGINS`. Because the configuration file on the VPS is owned by root or read-only to the GitHub Actions self-hosted runner process, the write operation failed immediately.
+
+### 2. What was changed
+1. **Removed Write Operations on Configuration File (`scripts/deploy-backend.sh`)**:
+   - Removed all `>> "$CONFIG_ENV"` append operations. The deployment script strictly treats `/opt/configs/rca_archive/.env` as a read-only configuration source.
+   - Fallback production URLs (`https://api.archive.innov.rw` and `https://rcaarchive.innov.rw`) are already resolved cleanly in application code (`server/src/config/env.js` and `server/src/app.js`), meaning the file never needs modification during deployment.
+2. **Early Readability Check (`scripts/deploy-backend.sh`)**:
+   - Added `[[ ! -r "$CONFIG_ENV" ]]` check in addition to `[[ ! -f "$CONFIG_ENV" ]]` before taking any actions. If the file is missing or unreadable, the script aborts immediately with a clear explanatory error before changing files or stopping the running application.
+   - Guaranteed that secrets are never printed or logged.
+3. **Verified Production Safety**:
+   - Confirmed that neither `deploy-backend.yml` nor `deploy-backend.sh` runs any database reset or seed commands.
+

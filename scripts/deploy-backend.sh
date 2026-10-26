@@ -59,18 +59,15 @@ wait_for_health() {
 }
 
 if [[ ! -f "$CONFIG_ENV" ]]; then
-  echo "ERROR: Missing $CONFIG_ENV"
+  echo "ERROR: Configuration file is missing at: $CONFIG_ENV"
+  echo "Deployment aborted before changing or stopping running application."
   exit 1
 fi
 
-if ! grep -q -E '^BASE_URL=' "$CONFIG_ENV"; then
-  echo "BASE_URL=https://api.archive.innov.rw" >> "$CONFIG_ENV"
-fi
-if ! grep -q -E '^FRONTEND_BASE_URL=' "$CONFIG_ENV"; then
-  echo "FRONTEND_BASE_URL=https://rcaarchive.innov.rw" >> "$CONFIG_ENV"
-fi
-if ! grep -q -E '^CORS_ORIGINS=' "$CONFIG_ENV"; then
-  echo "CORS_ORIGINS=https://rcaarchive.innov.rw,https://rca-archive.vercel.app" >> "$CONFIG_ENV"
+if [[ ! -r "$CONFIG_ENV" ]]; then
+  echo "ERROR: Configuration file is not readable at: $CONFIG_ENV"
+  echo "Deployment aborted before changing or stopping running application."
+  exit 1
 fi
 
 echo "Running pre-flight environment settings check..."
