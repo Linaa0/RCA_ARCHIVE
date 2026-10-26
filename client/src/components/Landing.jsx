@@ -86,15 +86,13 @@ export default function Landing() {
           </div>
 
           <div className="landing-hero-right">
-            <div className="hero-pale-circle" />
-
-            <div className="hero-decor-dot dot-1" />
-            <div className="hero-decor-dot dot-2" />
-            <div className="hero-decor-dot dot-3" />
-            <div className="hero-decor-dot dot-4" />
-
             <div className="hero-illustration">
-              <img src={heroAcademicIllustration} alt="" fetchPriority="high" decoding="async" />
+              <img
+                src={heroAcademicIllustration}
+                alt="Past papers, assignments and academic revision illustration"
+                fetchPriority="high"
+                decoding="async"
+              />
             </div>
           </div>
         </div>

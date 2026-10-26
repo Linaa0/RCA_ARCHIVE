@@ -268,31 +268,36 @@
   min-height: 500px;
 }
 
-/* Pale circular backdrop behind the hero illustration */
-.hero-pale-circle {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #d4dce9 0%, #e0e5ef 100%);
-  top: 50%;
-  left: calc(50% - 25px);
-  transform: translate(-50%, -50%);
-  z-index: 1;
+/* Redundant pale circular backdrop and dots hidden as they are built into the illustration */
+.hero-pale-circle,
+.hero-decor-dot {
+  display: none;
 }
 
 .hero-illustration {
   position: relative;
-  left: 48px;
+  left: 0;
   z-index: 3;
-  width: min(450px, calc(100vw - 48px));
+  width: min(540px, 100%);
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.hero-illustration:hover {
+  transform: translateY(-4px);
 }
 
 .hero-illustration img {
   display: block;
   width: 100%;
   height: auto;
-  filter: contrast(1.22) saturate(1.04);
+  max-height: 540px;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 32px rgba(16, 45, 116, 0.10));
 }
 
 /* Scattered Decorative Dots */
@@ -1523,7 +1528,8 @@
 
   .hero-illustration {
     width: min(450px, calc(90vw - 24px));
-    left: 24px;
+    left: 0;
+    margin: 0 auto;
   }
 
   .float-card-1 {
