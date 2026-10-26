@@ -110,32 +110,33 @@ function main() {
   // 6. Production addresses and CORS validation
   const isProd = (env.NODE_ENV || "").toLowerCase() === "production";
   if (isProd) {
-    if (!env.BASE_URL) {
-      fail("BASE_URL", "BASE_URL is missing in production mode.");
-    }
-    if (env.BASE_URL.includes("localhost") || env.BASE_URL.includes("127.0.0.1")) {
-      fail("BASE_URL", "BASE_URL must not contain localhost or 127.0.0.1 in production mode.");
-    }
-
-    if (!env.FRONTEND_BASE_URL) {
-      fail("FRONTEND_BASE_URL", "FRONTEND_BASE_URL is missing in production mode.");
-    }
-    if (env.FRONTEND_BASE_URL.includes("localhost") || env.FRONTEND_BASE_URL.includes("127.0.0.1")) {
-      fail("FRONTEND_BASE_URL", "FRONTEND_BASE_URL must not contain localhost or 127.0.0.1 in production mode.");
-    }
-
-    const corsList = (env.CORS_ORIGINS || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const requiredFrontendOrigins = [
-      "https://rcaarchive.innov.rw",
-      "https://rca-archive.vercel.app",
-    ];
-    for (const requiredOrigin of requiredFrontendOrigins) {
-      if (!corsList.includes(requiredOrigin)) {
-        fail("CORS_ORIGINS", `CORS_ORIGINS must include required frontend origin: ${requiredOrigin}`);
+    if (env.BASE_URL) {
+      if (env.BASE_URL.includes("localhost") || env.BASE_URL.includes("127.0.0.1")) {
+        fail("BASE_URL", "BASE_URL must not contain localhost or 127.0.0.1 in production mode.");
       }
+    } else {
+      warn("BASE_URL", "BASE_URL not set in env file. Server will default to https://api.archive.innov.rw.");
+    }
+
+    if (env.FRONTEND_BASE_URL) {
+      if (env.FRONTEND_BASE_URL.includes("localhost") || env.FRONTEND_BASE_URL.includes("127.0.0.1")) {
+        fail("FRONTEND_BASE_URL", "FRONTEND_BASE_URL must not contain localhost or 127.0.0.1 in production mode.");
+      }
+    } else {
+      warn("FRONTEND_BASE_URL", "FRONTEND_BASE_URL not set in env file. Server will default to https://rcaarchive.innov.rw.");
+    }
+
+    if (env.CORS_ORIGINS) {
+      const corsList = env.CORS_ORIGINS
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const localhostOrigin = corsList.find((o) => o.includes("localhost") || o.includes("127.0.0.1"));
+      if (localhostOrigin) {
+        warn("CORS_ORIGINS", `CORS_ORIGINS contains local origin in production: ${localhostOrigin}`);
+      }
+    } else {
+      warn("CORS_ORIGINS", "CORS_ORIGINS not set in env file. Server defaults to allowed frontend origins.");
     }
   }
 

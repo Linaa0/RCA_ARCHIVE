@@ -63,6 +63,16 @@ if [[ ! -f "$CONFIG_ENV" ]]; then
   exit 1
 fi
 
+if ! grep -q -E '^BASE_URL=' "$CONFIG_ENV"; then
+  echo "BASE_URL=https://api.archive.innov.rw" >> "$CONFIG_ENV"
+fi
+if ! grep -q -E '^FRONTEND_BASE_URL=' "$CONFIG_ENV"; then
+  echo "FRONTEND_BASE_URL=https://rcaarchive.innov.rw" >> "$CONFIG_ENV"
+fi
+if ! grep -q -E '^CORS_ORIGINS=' "$CONFIG_ENV"; then
+  echo "CORS_ORIGINS=https://rcaarchive.innov.rw,https://rca-archive.vercel.app" >> "$CONFIG_ENV"
+fi
+
 echo "Running pre-flight environment settings check..."
 node "$REPO_ROOT/server/scripts/check-env.js" "$CONFIG_ENV"
 
