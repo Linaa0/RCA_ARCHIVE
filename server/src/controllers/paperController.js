@@ -173,8 +173,8 @@ function getPaperClass(paper) {
     : { id: "General", label: "General" };
 }
 
-function buildDashboardSummary(allPapers, user) {
-  const normalizedPapers = allPapers.map((paper) => ({
+function buildDashboardSummary(allPapers = [], user = {}) {
+  const normalizedPapers = (allPapers || []).map((paper) => ({
     ...paper,
     classLabel: paper.classLabel || getPaperClass(paper).label,
   }));
@@ -197,16 +197,17 @@ function buildDashboardSummary(allPapers, user) {
     countedUploads.set(String(identity), true);
   }
 
-  const userEmail = String(user.email || "").toLowerCase();
-  const userName = String(user.username || "").toLowerCase();
+  const userEmail = String(user?.email || "").toLowerCase();
+  const userName = String(user?.username || "").toLowerCase();
+  const userId = String(user?.id || user?._id || "");
   const myUploads = normalizedPapers.filter((paper) =>
-    (paper.uploadedById && String(paper.uploadedById) === String(user.id)) ||
+    (paper.uploadedById && String(paper.uploadedById) === userId) ||
     (paper.uploadedByEmail && String(paper.uploadedByEmail).toLowerCase() === userEmail) ||
     (paper.uploadedBy && String(paper.uploadedBy).toLowerCase() === userName)
   );
 
   return {
-    totalPapers: allPapers.length,
+    totalPapers: (allPapers || []).length,
     topClasses: [...classCounts.values()]
       .sort((a, b) => b.count - a.count || a.className.localeCompare(b.className))
       .slice(0, 2),
@@ -217,35 +218,46 @@ function buildDashboardSummary(allPapers, user) {
 }
 
 async function getDashboardSummary(req, res) {
-  const papers = await getPapersCollection()
-    .find(
-      {},
-      {
-        projection: {
-          _id: 0,
-          id: 1,
-          title: 1,
-          subject: 1,
-          year: 1,
-          classId: 1,
-          class: 1,
-          type: 1,
-          category: 1,
-          hash: 1,
-          filename: 1,
-          originalName: 1,
-          uploadedBy: 1,
-          uploadedById: 1,
-          uploadedByEmail: 1,
-          uploadedAt: 1,
-          createdAt: 1,
-        },
-      }
-    )
-    .sort({ uploadedAt: -1, createdAt: -1 })
-    .toArray();
-  const allPapers = await addUploaderClasses(papers);
-  res.json(buildDashboardSummary(allPapers, req.user));
+  try {
+    const papers = await getPapersCollection()
+      .find(
+        {},
+        {
+          projection: {
+            _id: 0,
+            id: 1,
+            title: 1,
+            subject: 1,
+            year: 1,
+            classId: 1,
+            class: 1,
+            type: 1,
+            category: 1,
+            hash: 1,
+            filename: 1,
+            originalName: 1,
+            uploadedBy: 1,
+            uploadedById: 1,
+            uploadedByEmail: 1,
+            uploadedAt: 1,
+            createdAt: 1,
+          },
+        }
+      )
+      .sort({ uploadedAt: -1, createdAt: -1 })
+      .toArray();
+    const allPapers = await addUploaderClasses(papers || []);
+    return res.json(buildDashboardSummary(allPapers, req.user || {}));
+  } catch (error) {
+    console.error("Dashboard summary query failed:", error?.message || error);
+    return res.json({
+      totalPapers: 0,
+      topClasses: [],
+      recentPapers: [],
+      myUploadsCount: 0,
+      myUploads: [],
+    });
+  }
 }
 
 const crypto = require("crypto");

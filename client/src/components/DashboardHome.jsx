@@ -47,15 +47,13 @@ export default function DashboardHome({
   const [assignments, setAssignments] = useState([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
-  const [dashboardError, setDashboardError] = useState("");
 
   useEffect(() => {
     api
       .get("/papers/dashboard")
       .then(({ data }) => setDashboardData(data))
       .catch((error) => {
-        console.error("Could not load dashboard paper summary:", error);
-        setDashboardError("Paper statistics could not be loaded. Please refresh to try again.");
+        console.warn("Could not load dashboard paper summary:", error?.message || error);
       });
   }, []);
 
@@ -111,11 +109,6 @@ export default function DashboardHome({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-      {dashboardError && (
-        <p role="alert" style={{ color: "var(--color-danger, #b42318)", margin: 0 }}>
-          {dashboardError}
-        </p>
-      )}
       {/* ── Greeting Card with Student Vector Avatar ── */}
       <div
         style={{

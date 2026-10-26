@@ -5,6 +5,11 @@ const { execSync } = require("child_process");
 const bcrypt = require("bcryptjs");
 const { MongoClient } = require("mongodb");
 
+const envFileArg = process.argv.slice(2).find((a) => a.startsWith("--env-file="))?.split("=")[1];
+const customEnvPath = envFileArg || process.env.RCA_ARCHIVE_CONFIG_ENV;
+if (customEnvPath && fs.existsSync(customEnvPath)) {
+  require("dotenv").config({ path: customEnvPath });
+}
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 require("dotenv").config();
 
@@ -144,6 +149,7 @@ async function resetDb() {
   const args = process.argv.slice(2);
   const isConfirm = args.includes("--confirm");
   const isAllowRemote = args.includes("--allow-remote");
+  const dbNameArg = args.find((a) => a.startsWith("--db-name="))?.split("=")[1];
 
   const host = parseMongoHost(MONGO_URI);
   const dbName = MONGO_DB_NAME;
@@ -168,7 +174,7 @@ async function resetDb() {
       process.exit(1);
     }
 
-    const typedName = await promptDatabaseConfirmation(dbName);
+    const typedName = dbNameArg || (await promptDatabaseConfirmation(dbName));
     if (typedName !== dbName) {
       console.error(
         `[SECURITY ERROR] Database name confirmation did not match ("${typedName}" !== "${dbName}"). Aborting.`

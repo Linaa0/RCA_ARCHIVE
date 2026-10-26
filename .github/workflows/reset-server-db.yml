@@ -1,0 +1,43 @@
+name: Reset Server Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RESET to confirm wiping the database and reseeding with the 3 test users"
+        required: true
+        type: string
+
+concurrency:
+  group: rca-archive-db-reset
+  cancel-in-progress: false
+
+jobs:
+  reset-db:
+    runs-on: self-hosted
+    env:
+      RCA_ARCHIVE_CONFIG_ENV: /opt/configs/rca_archive/.env
+      RCA_ARCHIVE_APP_DIR: /opt/apps/rca_archive
+      RCA_ARCHIVE_PM2_NAME: rca-archive-backend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "RESET" ]; then
+            echo "ERROR: Confirmation input did not match 'RESET'. Aborting."
+            exit 1
+          fi
+          echo "Confirmation validated."
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Execute Database Reset and Seed
+        run: |
+          chmod +x scripts/reset-server-db.sh
+          bash scripts/reset-server-db.sh

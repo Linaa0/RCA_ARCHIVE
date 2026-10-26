@@ -451,8 +451,12 @@ test("TEARDOWN: clean up database fixtures and test files", async () => {
   await papers.deleteMany({ uploadedById: studentUser.id });
 
   // Remove test fixture files
-  if (fs.existsSync(samplePdfPath)) fs.unlinkSync(samplePdfPath);
-  if (fs.existsSync(duplicatePdfPath)) fs.unlinkSync(duplicatePdfPath);
+  try {
+    if (fs.existsSync(samplePdfPath)) fs.unlinkSync(samplePdfPath);
+  } catch (_) {}
+  try {
+    if (fs.existsSync(duplicatePdfPath)) fs.unlinkSync(duplicatePdfPath);
+  } catch (_) {}
 
   await closeDb();
 });
