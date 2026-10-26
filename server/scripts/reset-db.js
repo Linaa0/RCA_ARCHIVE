@@ -262,6 +262,25 @@ async function resetDb() {
       "SEED_STUDENT_CLASS",
     ];
 
+    const DEFAULT_SEED_ACCOUNTS = {
+      SEED_ADMIN_EMAIL: "deenovdunya01@gmail.com",
+      SEED_ADMIN_PASSWORD: "admintesting123@",
+      SEED_ADMIN_NAME: "Test Admin",
+      SEED_TEACHER_EMAIL: "linaaishimwe777@gmail.com",
+      SEED_TEACHER_PASSWORD: "teachertesting123@",
+      SEED_TEACHER_NAME: "Test Teacher",
+      SEED_STUDENT_EMAIL: "ishimwelina06@gmail.com",
+      SEED_STUDENT_PASSWORD: "studentteacher123@",
+      SEED_STUDENT_NAME: "Test Student",
+      SEED_STUDENT_CLASS: "Y1A",
+    };
+
+    for (const [k, v] of Object.entries(DEFAULT_SEED_ACCOUNTS)) {
+      if (!process.env[k] || !process.env[k].trim()) {
+        process.env[k] = v;
+      }
+    }
+
     const missingVars = requiredSeedVars.filter(
       (varName) => !process.env[varName] || !process.env[varName].trim()
     );

@@ -4,11 +4,11 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_ENV="${RCA_ARCHIVE_CONFIG_ENV:-/opt/configs/rca_archive/.env}"
 
-if [[ ! -f "$CONFIG_ENV" ]]; then
-  if [[ -f "$REPO_ROOT/server/.env" ]]; then
+if [[ ! -r "$CONFIG_ENV" ]]; then
+  if [[ -r "$REPO_ROOT/server/.env" ]]; then
     CONFIG_ENV="$REPO_ROOT/server/.env"
   else
-    echo "ERROR: Could not find environment file at $CONFIG_ENV or $REPO_ROOT/server/.env"
+    echo "ERROR: Could not read environment file at $CONFIG_ENV or $REPO_ROOT/server/.env"
     exit 1
   fi
 fi
