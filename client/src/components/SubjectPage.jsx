@@ -754,10 +754,13 @@ function SubjectPage() {
               >
                 <div className="term-section-title-wrap">
                   <h3 className="term-section-title">{sec.title}</h3>
-                  <TermBadge term={sec.termNumber} size="sm" showUnset={sec.key === "unset"} />
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-muted)" }}>
-                    ({countBadgeText})
-                  </span>
+                  {sec.key === "unset" ? (
+                    <TermBadge term={null} size="sm" />
+                  ) : (
+                    <span className="term-section-count-pill">
+                      {countBadgeText}
+                    </span>
+                  )}
                 </div>
 
                 <div className="term-section-header-actions" onClick={(e) => e.stopPropagation()}>

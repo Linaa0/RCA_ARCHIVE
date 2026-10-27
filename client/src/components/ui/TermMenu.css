@@ -131,6 +131,14 @@
   margin-right: 6px;
 }
 
-.term-menu-dot--1 { background: #174F83; }
-.term-menu-dot--2 { background: #10B981; }
-.term-menu-dot--3 { background: #F59E0B; }
+.term-menu-dot--1,
+.term-menu-dot--2,
+.term-menu-dot--3 {
+  background: #174F83;
+}
+
+[data-theme="dark"] .term-menu-dot--1,
+[data-theme="dark"] .term-menu-dot--2,
+[data-theme="dark"] .term-menu-dot--3 {
+  background: #79B8E8;
+}
