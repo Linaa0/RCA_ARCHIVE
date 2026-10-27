@@ -5,6 +5,7 @@ import Button from "./ui/Button";
 import Badge from "./ui/Badge";
 import Input from "./ui/Input";
 import Avatar from "./ui/Avatar";
+import { EyeIcon, EyeOffIcon } from "./ui/Icons";
 import { clearAuthStorage, persistAuth } from "../utils/auth";
 import { applyTheme, getThemePreference } from "../utils/theme";
 import { errorMessage } from "./assignments/common";
@@ -42,6 +43,8 @@ export default function Profile() {
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [pwMsg, setPwMsg] = useState({ type: "", text: "" });
   const [savingPw, setSavingPw] = useState(false);
 
@@ -352,21 +355,59 @@ export default function Profile() {
 
           <Input
             label="Current Password"
-            type="password"
+            type={showCurrentPassword ? "text" : "password"}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             autoComplete="current-password"
             required
+            iconRight={
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--color-text-tertiary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0,
+                }}
+                aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
+              >
+                {showCurrentPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            }
           />
 
           <div>
             <Input
               label="New Password"
-              type="password"
+              type={showNewPassword ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
               required
+              iconRight={
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--color-text-tertiary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 0,
+                  }}
+                  aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                >
+                  {showNewPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                </button>
+              }
             />
 
             {/* Password Strength Meter */}

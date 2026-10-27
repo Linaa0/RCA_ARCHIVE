@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import AuthBrandPanel from "./ui/AuthBrandPanel";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
-import { EyeIcon } from "./ui/Icons";
+import { EyeIcon, EyeOffIcon } from "./ui/Icons";
 import { persistAuth, getHomePathForRole } from "../utils/auth";
 import api, { getApiErrorMessage } from "../services/api";
 import "./Login.css";
@@ -128,9 +128,9 @@ export default function Login() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
-                    aria-label="Toggle password visibility"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    <EyeIcon size={16} />
+                    {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
                   </button>
                 }
               />

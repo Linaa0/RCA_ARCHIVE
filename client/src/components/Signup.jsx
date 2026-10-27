@@ -5,7 +5,7 @@ import Input from "./ui/Input";
 import Select from "./ui/Select";
 import Button from "./ui/Button";
 import { RCA_CLASSES } from "./ui/ClassChips";
-import { CheckIcon, EyeIcon } from "./ui/Icons";
+import { CheckIcon, EyeIcon, EyeOffIcon } from "./ui/Icons";
 import studentBoy from "../assets/figures/student-boy.png";
 import studentGirl from "../assets/figures/student-girl.png";
 import api, { getApiErrorMessage } from "../services/api";
@@ -461,9 +461,9 @@ export default function Signup() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
-                      aria-label="Toggle password visibility"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      <EyeIcon size={16} />
+                      {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
                     </button>
                   }
                 />

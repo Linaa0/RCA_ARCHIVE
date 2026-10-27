@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom"
 import AuthBrandPanel from "./ui/AuthBrandPanel";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
-import { EyeIcon } from "./ui/Icons";
+import { EyeIcon, EyeOffIcon } from "./ui/Icons";
 import api, { getApiErrorMessage } from "../services/api";
 import "./Login.css";
 
@@ -17,6 +17,7 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -158,16 +159,16 @@ export default function ResetPassword() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
-                    aria-label="Toggle password visibility"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    <EyeIcon size={16} />
+                    {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
                   </button>
                 }
               />
 
               <Input
                 label="Confirm New Password"
-                type={showPassword ? "text" : "password"}
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Re-enter new password"
                 value={confirmPassword}
                 onChange={(e) => {
@@ -175,6 +176,16 @@ export default function ResetPassword() {
                   setError("");
                 }}
                 required
+                iconRight={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                  </button>
+                }
               />
 
               <Button

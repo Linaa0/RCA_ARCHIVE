@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Modal from "./ui/Modal";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
+import { EyeIcon, EyeOffIcon } from "./ui/Icons";
 import api from "../services/api";
 import { setStoredMustChangePassword } from "../utils/auth";
 
@@ -9,6 +10,9 @@ export default function SetPasswordModal({ isOpen, onClose, onSuccess }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -77,7 +81,7 @@ export default function SetPasswordModal({ isOpen, onClose, onSuccess }) {
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <Input
           label="Current Temporary Password"
-          type="password"
+          type={showCurrentPassword ? "text" : "password"}
           value={currentPassword}
           onChange={(e) => {
             setCurrentPassword(e.target.value);
@@ -85,11 +89,30 @@ export default function SetPasswordModal({ isOpen, onClose, onSuccess }) {
           }}
           required
           autoFocus
+          iconRight={
+            <button
+              type="button"
+              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-text-tertiary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+              }}
+              aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
+            >
+              {showCurrentPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+            </button>
+          }
         />
 
         <Input
           label="New Password"
-          type="password"
+          type={showNewPassword ? "text" : "password"}
           value={newPassword}
           onChange={(e) => {
             setNewPassword(e.target.value);
@@ -97,17 +120,55 @@ export default function SetPasswordModal({ isOpen, onClose, onSuccess }) {
           }}
           hint="Minimum 8 characters with at least one letter and one number"
           required
+          iconRight={
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-text-tertiary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+              }}
+              aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+            >
+              {showNewPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+            </button>
+          }
         />
 
         <Input
           label="Confirm New Password"
-          type="password"
+          type={showConfirmPassword ? "text" : "password"}
           value={confirmPassword}
           onChange={(e) => {
             setConfirmPassword(e.target.value);
             setError("");
           }}
           required
+          iconRight={
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-text-tertiary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+              }}
+              aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+            >
+              {showConfirmPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+            </button>
+          }
         />
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px" }}>
