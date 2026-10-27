@@ -16,6 +16,17 @@ const {
 } = require("../services/storageService");
 const { escapeRegExp, getDisplayName } = require("../utils/userUtils");
 const { CLASS_IDS, classLabel, getAcademicYear } = require("../config/classes");
+const {
+  parseTermFilter,
+  termFilterCondition,
+  countsFromGroups,
+  countByTerm,
+  normalizeTerm,
+  termLabel,
+  validateRequiredTerm,
+} = require("../config/terms");
+const { describeLocation } = require("../utils/paperLocation");
+const { logAdminAction } = require("../services/auditService");
 
 function addFilterAnd(filter, condition) {
   filter.$and = filter.$and || [];
@@ -66,8 +77,13 @@ async function addUploaderClasses(papers) {
 
 async function listPapers(req, res) {
   const papers = getPapersCollection();
-  const { subject, year, classId, type, search, sort, limit } = req.query;
+  const { subject, year, classId, type, search, sort, limit, term, withMeta } = req.query;
   const filter = {};
+
+  const termFilter = parseTermFilter(term);
+  if (termFilter.invalid) {
+    return res.status(400).json({ error: "Term filter must be 1, 2, 3 or unset.", field: "term" });
+  }
 
   if (subject) filter.subject = subject;
   if (year) {
@@ -137,6 +153,19 @@ async function listPapers(req, res) {
     });
   }
 
+  // Counts per term describe the current filters, without the term filter itself
+  const wantsMeta = withMeta === "1" || withMeta === "true";
+  let termCounts = null;
+  if (wantsMeta) {
+    const groups = await papers
+      .aggregate([{ $match: filter }, { $group: { _id: "$term", count: { $sum: 1 } } }])
+      .toArray();
+    termCounts = countsFromGroups(groups);
+  }
+
+  const termCondition = termFilterCondition(termFilter.filter);
+  if (termCondition) addFilterAnd(filter, termCondition);
+
   const paperDocs = await papers.find(filter).toArray();
   const papersWithUploaderClasses = await addUploaderClasses(paperDocs);
   let result = papersWithUploaderClasses.map(buildRatingSummary);
@@ -148,7 +177,8 @@ async function listPapers(req, res) {
       }
       return new Date(b.uploadedAt) - new Date(a.uploadedAt);
     });
-  } else if (sort === "recent") {
+  } else {
+    // Newest first, which also means newest first inside each term
     result.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
   }
 
@@ -157,6 +187,9 @@ async function listPapers(req, res) {
     result = result.slice(0, parsedLimit);
   }
 
+  if (wantsMeta) {
+    return res.json({ items: result, termCounts, total: result.length });
+  }
   res.json(result);
 }
 
@@ -214,6 +247,8 @@ function buildDashboardSummary(allPapers = [], user = {}) {
     recentPapers: archivePapers.slice(0, 4),
     myUploadsCount: myUploads.length,
     myUploads: myUploads.slice(0, 5),
+    termCounts: countByTerm(normalizedPapers),
+    myUploadsTermCounts: countByTerm(myUploads),
   };
 }
 
@@ -231,6 +266,7 @@ async function getDashboardSummary(req, res) {
             year: 1,
             classId: 1,
             class: 1,
+            term: 1,
             type: 1,
             category: 1,
             hash: 1,
@@ -249,20 +285,15 @@ async function getDashboardSummary(req, res) {
     const allPapers = await addUploaderClasses(papers || []);
     return res.json(buildDashboardSummary(allPapers, req.user || {}));
   } catch (error) {
+    // A failed request must not look like an empty archive: report the failure
     console.error("Dashboard summary query failed:", error?.message || error);
-    return res.json({
-      totalPapers: 0,
-      topClasses: [],
-      recentPapers: [],
-      myUploadsCount: 0,
-      myUploads: [],
-    });
+    return res.status(500).json({ error: "Could not load the dashboard summary. Please try again." });
   }
 }
 
 const crypto = require("crypto");
 const { JWT_SECRET } = require("../config/env");
-const { emitPaperEvent, emitDeletionEvent } = require("../services/socketService");
+const { emitPaperEvent, emitDeletionEvent, emitStatsEvent } = require("../services/socketService");
 
 function signAccessLink(paperId, action, expiresAt) {
   const data = `${paperId}:${action}:${expiresAt}`;
@@ -337,6 +368,7 @@ async function createAccessLink(req, res) {
     paperId: paper.id,
     title: paper.title,
     originalName,
+    term: paper.term ?? null,
     expiresAt,
     viewUrl,
     downloadUrl,
@@ -505,14 +537,34 @@ async function updatePaper(req, res) {
     Boolean(paper.uploadedBy && paper.uploadedBy === req.user.username) ||
     Boolean(paper.uploadedByEmail && paper.uploadedByEmail === req.user.email);
 
-  if (req.user.role !== "admin" && !isUploader) {
+  const canEditFields = req.user.role === "admin" || isUploader;
+  // Setting the term is also open to every teacher; other students are refused
+  const canSetTerm = canEditFields || req.user.role === "teacher";
+
+  const { title, subject, year, type } = req.body;
+  const hasTerm = req.body.term !== undefined;
+  const hasFieldEdits = [title, subject, year, type].some((v) => v !== undefined);
+
+  if (hasTerm && !canSetTerm) {
+    return res.status(403).json({
+      error: "Only the uploader, a teacher or an admin can change the term of a paper.",
+    });
+  }
+  if ((hasFieldEdits || !hasTerm) && !canEditFields) {
     return res.status(403).json({
       error: "You can only edit papers that you uploaded.",
     });
   }
 
-  const { title, subject, year, type } = req.body;
   const update = {};
+
+  if (hasTerm) {
+    const termCheck = validateRequiredTerm(req.body.term);
+    if (!termCheck.valid) {
+      return res.status(400).json({ error: termCheck.error, field: termCheck.field });
+    }
+    update.term = termCheck.value;
+  }
 
   if (typeof title === "string" && title.trim()) {
     const trimmed = title.trim();
@@ -553,9 +605,12 @@ async function updatePaper(req, res) {
   const updatedPaper = await papers.findOne({ id });
   const summary = buildRatingSummary(updatedPaper);
   emitPaperEvent("updated", summary);
+  if (update.term !== undefined) emitStatsEvent("changed");
 
   return res.json({
-    message: "Paper updated successfully.",
+    message: update.term !== undefined
+      ? `Moved to ${describeLocation(updatedPaper)}`
+      : "Paper updated successfully.",
     paper: summary,
   });
 }

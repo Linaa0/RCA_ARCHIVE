@@ -9,6 +9,8 @@ import AssignmentTable from "../assignments/AssignmentTable";
 import { formatDateTime, toLocalInput, errorMessage } from "../assignments/common";
 import { downloadFrom } from "../assignments/fileUtils";
 import { DEMO_ASSIGNMENTS } from "./demoData";
+import { TermBadge, TermSelector, TermFilter, TermMenu } from "../ui";
+import useRealtime from "../../hooks/useRealtime";
 import "../assignments/assignments.css";
 
 const YEARS = [1, 2, 3];
@@ -16,6 +18,7 @@ const streamLabel = (stream) => (stream === "GenAI" ? "Gen AI" : stream);
 
 function AssignmentForm({ initial, onCancel, onSaved }) {
   const editing = Boolean(initial?.id);
+  const [term, setTerm] = useState(initial?.term || null);
   const [form, setForm] = useState({
     title: initial?.title || "",
     subject: initial?.subject || "",
@@ -63,6 +66,7 @@ function AssignmentForm({ initial, onCancel, onSaved }) {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!term) return setError("Choose Term 1, Term 2 or Term 3.");
     if (!form.title.trim()) return setError("Please enter the title.");
     if (!form.givenAt) return setError("Please choose the time the assignment is given.");
     if (!form.deadline) return setError("Please choose the deadline.");
@@ -72,6 +76,7 @@ function AssignmentForm({ initial, onCancel, onSaved }) {
     }
 
     const body = new FormData();
+    body.append("term", String(term));
     body.append("title", form.title);
     body.append("subject", form.subject);
     body.append("description", form.description);
@@ -87,7 +92,11 @@ function AssignmentForm({ initial, onCancel, onSaved }) {
       else await api.post("/assignments", body);
       onSaved();
     } catch (err) {
-      setError(errorMessage(err));
+      if (err?.response?.data?.field === "term") {
+        setError("Choose Term 1, Term 2 or Term 3.");
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setSaving(false);
     }
@@ -102,6 +111,18 @@ function AssignmentForm({ initial, onCancel, onSaved }) {
       {error && <div className="asg-alert error">{error}</div>}
 
       <div className="asg-field">
+        <label id="asg-term-label">Which term is this for? *</label>
+        <TermSelector
+          value={term}
+          onChange={(val) => {
+            setTerm(val);
+            setError("");
+          }}
+          error={Boolean(error && !term)}
+        />
+      </div>
+
+      <div className="asg-field">
         <label htmlFor="asg-title">Title of the assignment *</label>
         <input id="asg-title" className="asg-input" value={form.title} onChange={set("title")} maxLength={150} placeholder="e.g. Build a REST API" />
       </div>
@@ -113,7 +134,7 @@ function AssignmentForm({ initial, onCancel, onSaved }) {
 
       <div className="asg-field">
         <label htmlFor="asg-desc">Instructions</label>
-        <textarea id="asg-desc" className="asg-textarea" value={form.description} onChange={set("description")} placeholder="Explain what the students must do…" />
+        <textarea id="asg-desc" className="asg-textarea" value={form.description} onChange={set("description")} placeholder="Explain what the students must do..." />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
@@ -129,16 +150,31 @@ function AssignmentForm({ initial, onCancel, onSaved }) {
 
       <div className="asg-field">
         <label>Upload the assignment file</label>
-        <div className="th-upload">
-          <label className="th-upload-btn">
-            <UploadIcon size={16} />
-            {file || initial?.attachmentName ? "Change file" : "Upload file"}
-            <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          </label>
-          <span className="asg-meta" style={{ marginTop: 0 }}>
-            {file ? file.name : initial?.attachmentName ? `Current: ${initial.attachmentName}` : "PDF, Word, ZIP… (max 20 MB, optional)"}
-          </span>
-        </div>
+        {!term ? (
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: "var(--radius-sm, 8px)",
+              background: "var(--color-bg)",
+              border: "1px dashed var(--color-border)",
+              color: "var(--color-muted)",
+              fontSize: "0.85rem",
+            }}
+          >
+            Choose a term first
+          </div>
+        ) : (
+          <div className="th-upload">
+            <label className="th-upload-btn">
+              <UploadIcon size={16} />
+              {file || initial?.attachmentName ? "Change file" : "Upload file"}
+              <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            </label>
+            <span className="asg-meta" style={{ marginTop: 0 }}>
+              {file ? file.name : initial?.attachmentName ? `Current: ${initial.attachmentName}` : "PDF, Word, ZIP (max 20 MB, optional)"}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="asg-field">
@@ -168,12 +204,12 @@ function AssignmentForm({ initial, onCancel, onSaved }) {
 
       <div className="asg-field">
         <button type="button" className="th-link-btn" onClick={() => setShowStudents((v) => !v)}>
-          {showStudents ? "− Hide individual students" : "+ Add individual students"}
+          {showStudents ? "- Hide individual students" : "+ Add individual students"}
           {form.studentIds.length > 0 && ` (${form.studentIds.length} selected)`}
         </button>
         {showStudents && (
           <>
-            <input className="asg-input" placeholder="Search by name, email or class…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+            <input className="asg-input" placeholder="Search by name, email or class..." value={filter} onChange={(e) => setFilter(e.target.value)} />
             <div className="asg-students">
               {visibleStudents.length === 0 && <div className="asg-meta" style={{ padding: "8px 0" }}>No students found.</div>}
               {visibleStudents.map((s) => (
@@ -204,10 +240,13 @@ export default function TeacherAssignments() {
   const [error, setError] = useState("");
   const [isDemo, setIsDemo] = useState(false);
   const [notice, setNotice] = useState("");
+  const [termFilter, setTermFilter] = useState("all");
   const [formState, setFormState] = useState({ open: false, assignment: null });
   const [viewing, setViewing] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  const { subscribe } = useRealtime();
 
   const load = useCallback(async () => {
     try {
@@ -228,6 +267,17 @@ export default function TeacherAssignments() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const unsubs = [
+      subscribe("assignment:created", () => load()),
+      subscribe("assignment:updated", () => load()),
+      subscribe("assignment:deleted", () => load()),
+    ];
+    return () => {
+      unsubs.forEach((u) => u && u());
+    };
+  }, [subscribe, load]);
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -252,7 +302,19 @@ export default function TeacherAssignments() {
     }
   };
 
+  const handleAssignmentTermChanged = (assignmentId, newTerm) => {
+    setAssignments((prev) =>
+      prev.map((a) => (a.id === assignmentId ? { ...a, term: newTerm } : a))
+    );
+  };
+
   const closeForm = () => setFormState({ open: false, assignment: null });
+
+  const visibleAssignments = assignments.filter((a) => {
+    if (termFilter === "all") return true;
+    if (termFilter === "unset") return !a.term;
+    return Number(a.term) === Number(termFilter);
+  });
 
   return (
     <div className="asg-page">
@@ -271,18 +333,27 @@ export default function TeacherAssignments() {
       {notice && <div className="asg-alert success">{notice}</div>}
       {isDemo && <div className="asg-alert info">Showing sample teacher data for preview. Demo assignments are read-only.</div>}
 
+      <div style={{ marginTop: 12, marginBottom: 16 }}>
+        <TermFilter selected={termFilter} onSelect={setTermFilter} />
+      </div>
+
       <div className="asg-panel">
         {loading ? (
-          <p className="asg-sub">Loading…</p>
+          <p className="asg-sub">Loading...</p>
         ) : (
           <AssignmentTable
-            rows={assignments}
-            emptyText="You have not given any assignment yet. Click Give assignment."
+            rows={visibleAssignments}
+            emptyText="No assignments matching your filter. Click Give assignment to create one."
             renderActions={(a) =>
               a.isDemo ? (
                 <span className="th-cell-sub">Sample</span>
               ) : (
                 <>
+                  <TermMenu
+                    item={a}
+                    type="assignment"
+                    onTermChanged={(newTerm) => handleAssignmentTermChanged(a.id, newTerm)}
+                  />
                   <Button size="sm" variant="outline" onClick={() => setViewing(a)}>View</Button>
                   <Button size="sm" variant="secondary" onClick={() => setFormState({ open: true, assignment: a })}>Edit</Button>
                   <Button size="sm" variant="ghost" style={{ color: "#DC2626" }} onClick={() => setConfirmDelete(a)}>Delete</Button>
@@ -310,8 +381,11 @@ export default function TeacherAssignments() {
       <Modal isOpen={Boolean(viewing)} onClose={() => setViewing(null)} title={viewing?.title || ""} maxWidth="600px">
         {viewing && (
           <div className="asg-modal-scroll">
-            <div className="asg-meta">
-              {viewing.subject || "General"} • Given {formatDateTime(viewing.givenAt)} • Deadline {formatDateTime(viewing.deadline)}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+              <div className="asg-meta" style={{ margin: 0 }}>
+                {viewing.subject || "General"} • Given {formatDateTime(viewing.givenAt)} • Deadline {formatDateTime(viewing.deadline)}
+              </div>
+              <TermBadge term={viewing.term} size="sm" />
             </div>
             <div className="asg-section-title">Instructions</div>
             <div className="asg-desc" style={{ marginTop: 0 }}>{viewing.description || "No instructions written."}</div>

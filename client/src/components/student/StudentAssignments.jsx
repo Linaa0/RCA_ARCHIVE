@@ -5,6 +5,7 @@ import Modal from "../ui/Modal";
 import { EyeIcon } from "../ui/Icons";
 import { formatDateTime, errorMessage, AppealBadge, StudentStatusBadge } from "../assignments/common";
 import { downloadFrom } from "../assignments/fileUtils";
+import { TermBadge, TermFilter } from "../ui";
 import "../assignments/assignments.css";
 
 const TABS = [
@@ -33,6 +34,7 @@ function matchesTab(a, tab) {
 export default function StudentAssignments() {
   const [assignments, setAssignments] = useState([]);
   const [tab, setTab] = useState("all");
+  const [termFilter, setTermFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -107,7 +109,13 @@ export default function StudentAssignments() {
     }
   };
 
-  const shown = assignments.filter((a) => !(isDismissed(a) && isAssignmentOverdue(a)) && matchesTab(a, tab));
+  const matchesTerm = (a, filter) => {
+    if (filter === "all") return true;
+    if (filter === "unset") return !a.term;
+    return Number(a.term) === Number(filter);
+  };
+
+  const shown = assignments.filter((a) => !(isDismissed(a) && isAssignmentOverdue(a)) && matchesTab(a, tab) && matchesTerm(a, termFilter));
 
   return (
     <div className="asg-page">
@@ -128,6 +136,10 @@ export default function StudentAssignments() {
             {t.label}
           </button>
         ))}
+      </div>
+
+      <div style={{ marginTop: 12, marginBottom: 16 }}>
+        <TermFilter selected={termFilter} onSelect={setTermFilter} />
       </div>
 
       {loading ? (
@@ -153,6 +165,7 @@ export default function StudentAssignments() {
                     </div>
                   </div>
                   <div className="asg-badges">
+                    <TermBadge term={a.term} size="sm" />
                     <StudentStatusBadge status={statusKey} />
                     {a.appeal && <AppealBadge status={a.appeal.status} />}
                   </div>

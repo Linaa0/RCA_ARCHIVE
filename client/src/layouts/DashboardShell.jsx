@@ -168,6 +168,7 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
   if (role === "admin" && !isAdminStudentView) {
     navItems = [
       { label: "Dashboard", path: "/admin", icon: <DashboardIcon size={20} /> },
+      { label: "Papers", path: "/admin?tab=papers", icon: <MaterialsIcon size={20} /> },
       { label: "Teachers", path: "/admin?tab=teachers", icon: <UsersIcon size={20} /> },
       { label: "Students", path: "/admin?tab=students", icon: <GraduationCapIcon size={20} /> },
       { label: "Deletion Requests", path: "/admin?tab=deletions", icon: <TrashIcon size={20} /> },

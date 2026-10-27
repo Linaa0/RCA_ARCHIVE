@@ -1,0 +1,76 @@
+.term-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  border-radius: var(--radius-pill, 999px);
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.term-badge--sm {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.term-badge--md {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.term-badge--lg {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+/* Light Theme Term Accents */
+.term-badge--t1 {
+  background: rgba(23, 79, 131, 0.08);
+  border: 1px solid rgba(23, 79, 131, 0.25);
+  color: #123D6A;
+}
+
+.term-badge--t2 {
+  background: rgba(16, 185, 129, 0.09);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #065F46;
+}
+
+.term-badge--t3 {
+  background: rgba(217, 119, 6, 0.09);
+  border: 1px solid rgba(217, 119, 6, 0.28);
+  color: #92400E;
+}
+
+.term-badge--unset {
+  background: rgba(81, 91, 133, 0.08);
+  border: 1px dashed rgba(81, 91, 133, 0.32);
+  color: #343D68;
+}
+
+/* Dark Theme Overrides */
+[data-theme="dark"] .term-badge--t1 {
+  background: rgba(121, 184, 232, 0.12);
+  border: 1px solid rgba(121, 184, 232, 0.32);
+  color: #96C9EF;
+}
+
+[data-theme="dark"] .term-badge--t2 {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  color: #6EE7B7;
+}
+
+[data-theme="dark"] .term-badge--t3 {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  color: #FCD34D;
+}
+
+[data-theme="dark"] .term-badge--unset {
+  background: rgba(169, 177, 208, 0.12);
+  border: 1px dashed rgba(169, 177, 208, 0.32);
+  color: #CBD2EC;
+}

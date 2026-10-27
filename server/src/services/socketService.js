@@ -108,6 +108,14 @@ function emitPaperEvent(eventType, paperData) {
 }
 
 /**
+ * Emit teacher resource events (notes and past papers shared by teachers) to all authenticated users.
+ */
+function emitResourceEvent(eventType, resourceData) {
+  if (!io) return;
+  io.to("authenticated").emit(`resource:${eventType}`, resourceData);
+}
+
+/**
  * Emit assignment events to students of targeted classes, plus teacher and admins.
  */
 async function emitAssignmentEvent(eventType, assignmentData) {
@@ -250,6 +258,7 @@ module.exports = {
   emitDeletionEvent,
   emitUserEvent,
   emitStatsEvent,
+  emitResourceEvent,
   notifyUser,
   notifyUserOnce,
 };

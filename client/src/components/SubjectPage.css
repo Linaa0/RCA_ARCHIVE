@@ -861,3 +861,272 @@
   background: #313f8c;
   transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   ACADEMIC TERM PRESENTATION & STICKY JUMP BAR (PART 4)
+   ========================================================================== */
+
+.sticky-jump-bar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  background: var(--color-surface, #FFFFFF);
+  padding: 10px 16px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--color-border, rgba(23, 79, 131, 0.12));
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(11, 45, 82, 0.05));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-theme="dark"] .sticky-jump-bar {
+  background: var(--color-surface, #1B2340);
+  border-color: var(--color-border, rgba(255, 255, 255, 0.10));
+}
+
+.jump-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-muted, #515B85);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+[data-theme="dark"] .jump-bar-btn {
+  color: var(--color-muted, #A9B1D0);
+}
+
+.jump-bar-btn:hover {
+  background: var(--color-surface-hover, #F3F5FC);
+  color: var(--color-ink, #1B2142);
+}
+
+[data-theme="dark"] .jump-bar-btn:hover {
+  background: var(--color-surface-hover, #222B4D);
+  color: var(--color-ink, #E8EBF7);
+}
+
+.jump-bar-btn--active {
+  background: var(--color-indigo-700, #174F83) !important;
+  color: #FFFFFF !important;
+  border-color: var(--color-indigo-700, #174F83) !important;
+}
+
+[data-theme="dark"] .jump-bar-btn--active {
+  background: var(--color-indigo-500, #79B8E8) !important;
+  color: #0F1424 !important;
+  border-color: var(--color-indigo-500, #79B8E8) !important;
+}
+
+.jump-bar-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.jump-bar-btn--active .jump-bar-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .jump-bar-btn--active .jump-bar-count {
+  background: rgba(15, 20, 36, 0.25);
+}
+
+/* Term Section Cards */
+.term-section-card {
+  background: var(--color-surface, #FFFFFF);
+  border-radius: var(--radius-card, 16px);
+  border: 1px solid var(--color-border, rgba(23, 79, 131, 0.09));
+  box-shadow: var(--shadow-card, 0 8px 24px -4px rgba(11, 45, 82, 0.06));
+  margin-bottom: 24px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  scroll-margin-top: 76px;
+}
+
+[data-theme="dark"] .term-section-card {
+  background: var(--color-surface, #1B2340);
+  border-color: var(--color-card-border, rgba(255, 255, 255, 0.08));
+}
+
+.term-section-card--t1 {
+  border-top: 4px solid #174F83;
+}
+
+.term-section-card--t2 {
+  border-top: 4px solid #10B981;
+}
+
+.term-section-card--t3 {
+  border-top: 4px solid #F59E0B;
+}
+
+.term-section-card--unset {
+  border-top: 4px dashed #6A7399;
+}
+
+[data-theme="dark"] .term-section-card--t1 {
+  border-top-color: #79B8E8;
+}
+
+[data-theme="dark"] .term-section-card--t2 {
+  border-top-color: #34D399;
+}
+
+[data-theme="dark"] .term-section-card--t3 {
+  border-top-color: #FBBF24;
+}
+
+[data-theme="dark"] .term-section-card--unset {
+  border-top-color: #8B95BC;
+}
+
+.term-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--color-surface-subtle, #F8F9FD);
+  border-bottom: 1px solid var(--color-border, rgba(23, 79, 131, 0.08));
+  cursor: pointer;
+  user-select: none;
+}
+
+[data-theme="dark"] .term-section-header {
+  background: var(--color-surface-subtle, #171E36);
+  border-bottom-color: var(--color-border, rgba(255, 255, 255, 0.08));
+}
+
+.term-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.term-section-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-ink, #1B2142);
+}
+
+[data-theme="dark"] .term-section-title {
+  color: var(--color-ink, #E8EBF7);
+}
+
+.term-section-chevron {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--color-muted, #515B85);
+}
+
+.term-section-chevron--open {
+  transform: rotate(180deg);
+}
+
+.term-section-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.term-section-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  gap: 12px;
+  color: var(--color-muted, #515B85);
+}
+
+[data-theme="dark"] .term-section-empty {
+  color: var(--color-muted, #A9B1D0);
+}
+
+.term-section-empty p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.upload-to-term-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-indigo-50, #F1F6FA);
+  color: var(--color-indigo-700, #174F83);
+  border: 1px solid rgba(23, 79, 131, 0.22);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+[data-theme="dark"] .upload-to-term-btn {
+  background: rgba(121, 184, 232, 0.12);
+  color: #96C9EF;
+  border-color: rgba(121, 184, 232, 0.30);
+}
+
+.upload-to-term-btn:hover {
+  background: var(--color-indigo-100, #DCEAF5);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .upload-to-term-btn:hover {
+  background: rgba(121, 184, 232, 0.20);
+}
+
+/* Skeletons */
+.term-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px;
+}
+
+.term-skeleton-card {
+  height: 64px;
+  border-radius: var(--radius-md, 10px);
+  background: linear-gradient(90deg, var(--color-surface-subtle, #F8F9FD) 25%, var(--color-surface-hover, #F3F5FC) 50%, var(--color-surface-subtle, #F8F9FD) 75%);
+  background-size: 200% 100%;
+  animation: termSkeletonShimmer 1.5s infinite;
+}
+
+@keyframes termSkeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .jump-bar-btn,
+  .upload-to-term-btn,
+  .term-section-chevron,
+  .term-section-card {
+    transition: none !important;
+  }
+  .term-skeleton-card {
+    animation: none !important;
+  }
+}
+

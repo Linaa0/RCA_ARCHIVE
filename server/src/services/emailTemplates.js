@@ -252,11 +252,12 @@ Rwanda Coding Academy, Nyabihu Campus, Western Province, Rwanda.`;
   };
 }
 
-function getDeletionDecisionTemplate({ name, paperTitle, status, notes }) {
+function getDeletionDecisionTemplate({ name, paperTitle, status, notes, termLabel }) {
   const approved = status === "Approved";
   const decisionText = approved ? "Approved" : "Rejected";
   const subject = `RCA Archive: deletion request ${decisionText.toLowerCase()}`;
-  const paperName = paperTitle || "Academic past paper";
+  const baseName = paperTitle || "Academic past paper";
+  const paperName = termLabel ? `${baseName} (${termLabel})` : baseName;
 
   const text = `Hello ${name || "there"},
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { formatDateTime } from "./common";
+import { TermBadge } from "../ui";
 
 function timeLeft(deadline) {
   const ms = new Date(deadline) - new Date();
@@ -47,7 +48,10 @@ export default function AssignmentTable({ rows, renderActions, emptyText = "Noth
           return (
             <div className={`th-tr ${withActions ? "with-actions" : ""}`} key={a.id}>
               <div>
-                <div className="th-cell-title">{a.title}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 2 }}>
+                  <span className="th-cell-title">{a.title}</span>
+                  <TermBadge term={a.term} size="sm" />
+                </div>
                 {a.subject && <div className="th-cell-sub">{a.subject}</div>}
               </div>
               <Recipients classLabels={a.classLabels} students={a.students} />

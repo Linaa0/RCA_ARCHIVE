@@ -6,6 +6,8 @@ const { hashFile } = require("../services/hashService");
 const { buildRatingSummary } = require("../services/ratingService");
 const { validatePlainText } = require("../utils/validation");
 const { emitPaperEvent } = require("../services/socketService");
+const { validateRequiredTerm } = require("../config/terms");
+const { describeLocation, describeExistingItem } = require("../utils/paperLocation");
 
 function isValidDocumentMagicBytes(filePath) {
   try {
@@ -36,7 +38,22 @@ function isValidDocumentMagicBytes(filePath) {
 }
 
 async function uploadPaper(req, res) {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  if (!req.file) {
+    // The term is still reported first so the form shows the right error
+    const termCheck = validateRequiredTerm(req.body && req.body.term);
+    if (!termCheck.valid) {
+      return res.status(400).json({ error: termCheck.error, field: termCheck.field });
+    }
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  // The term is validated before the file is inspected, hashed or kept
+  const termCheck = validateRequiredTerm(req.body && req.body.term);
+  if (!termCheck.valid) {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: termCheck.error, field: termCheck.field });
+  }
+  const paperTerm = termCheck.value;
 
   if (!isValidDocumentMagicBytes(req.file.path)) {
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -113,17 +130,11 @@ async function uploadPaper(req, res) {
     if (fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
+    const existing = describeExistingItem(duplicate);
     return res.status(409).json({
       error: "duplicate",
-      message: `This paper already exists! It was uploaded as "${duplicate.title}" in ${duplicate.classId || duplicate.year} (${duplicate.subject}) by ${duplicate.uploadedBy}.`,
-      existingPaper: {
-        id: duplicate.id,
-        title: duplicate.title,
-        subject: duplicate.subject,
-        classId: duplicate.classId || duplicate.year,
-        category: duplicate.type || duplicate.category || "past_paper",
-        uploadedBy: duplicate.uploadedBy,
-      },
+      message: `This paper already exists in ${describeLocation(duplicate)}.`,
+      existingPaper: existing,
     });
   }
 
@@ -142,6 +153,7 @@ async function uploadPaper(req, res) {
     subject: vSubject.value,
     year: paperYear,
     classId: classId || paperYear,
+    term: paperTerm,
     type: paperType,
     category: paperType,
     filename: req.file.filename,
@@ -159,7 +171,7 @@ async function uploadPaper(req, res) {
   emitPaperEvent("created", summary);
 
   res.json({
-    message: "Paper uploaded successfully!",
+    message: `Uploaded to ${describeLocation(paper)}`,
     paper: summary,
   });
 }

@@ -588,12 +588,13 @@ async function sendPasswordResetEmail(email, token, frontendBaseUrl, code = null
   });
 }
 
-async function sendDeletionRequestDecisionEmail(email, paperTitle, status, notes = "") {
+async function sendDeletionRequestDecisionEmail(email, paperTitle, status, notes = "", termLabel = "") {
   const t = templates.getDeletionDecisionTemplate({
     name: email.split("@")[0],
     paperTitle,
     status,
     notes,
+    termLabel,
   });
   return sendMailWithOptions({
     to: email,

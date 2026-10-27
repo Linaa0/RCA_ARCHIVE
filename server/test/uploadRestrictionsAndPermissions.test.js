@@ -107,11 +107,12 @@ test("UPLOAD RESTRICTION: Student in Y1B can upload to academic year 1", async (
     .field("title", "Year 1 Math Calculus Notes")
     .field("subject", "Mathematics")
     .field("year", "1")
+    .field("term", "1")
     .field("type", "Notes")
     .attach("file", samplePdfPath);
 
   assert.strictEqual(res.statusCode, 200);
-  assert.strictEqual(res.body.message, "Paper uploaded successfully!");
+  assert.match(res.body.message, /Uploaded to/i);
   assert.ok(res.body.paper);
   uploadedPaperId = res.body.paper.id;
 });
@@ -129,11 +130,12 @@ test("UPLOAD RESTRICTION: Student in Y1B can upload to cohort Y1B", async () => 
       .field("subject", "Algorithms")
       .field("year", "Y1B")
       .field("classId", "Y1B")
+      .field("term", "1")
       .field("type", "Past Paper")
       .attach("file", uniqueDummyPath);
 
     assert.strictEqual(res.statusCode, 200);
-    assert.strictEqual(res.body.message, "Paper uploaded successfully!");
+    assert.match(res.body.message, /Uploaded to/i);
     if (res.body.paper?.id) {
       await getPapersCollection().deleteOne({ id: res.body.paper.id });
     }
@@ -149,6 +151,7 @@ test("UPLOAD RESTRICTION: Student in Y1B cannot upload to Year 2 subjects", asyn
     .field("title", "Year 2 Software Architecture")
     .field("subject", "Software Architecture")
     .field("year", "2")
+    .field("term", "1")
     .field("type", "Notes")
     .attach("file", samplePdfPath);
 
@@ -163,6 +166,7 @@ test("ASSIGNMENT RESTRICTION: Student cannot upload type 'assignment'", async ()
     .field("title", "Forbidden Assignment Upload")
     .field("subject", "Mathematics")
     .field("year", "1")
+    .field("term", "1")
     .field("type", "Assignment")
     .attach("file", samplePdfPath);
 
@@ -198,6 +202,7 @@ test("PAPER DELETION: Non-uploader student cannot delete another user's paper", 
       .field("title", "Y1B Chemistry Midterm")
       .field("subject", "Chemistry")
       .field("year", "1")
+      .field("term", "1")
       .field("type", "Past Paper")
       .attach("file", uniqueDummyPath);
 

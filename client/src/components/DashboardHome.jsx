@@ -18,6 +18,8 @@ import {
 } from "./ui/Icons";
 import { getStoredUser } from "../utils/auth";
 import api, { openPaperDownload } from "../services/api";
+import { TermBadge, TermFilter, TermMenu } from "./ui";
+import useRealtime from "../hooks/useRealtime";
 
 export default function DashboardHome({
   papers = [],
@@ -47,15 +49,33 @@ export default function DashboardHome({
   const [assignments, setAssignments] = useState([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
+  const [termFilter, setTermFilter] = useState("all");
 
-  useEffect(() => {
+  const { subscribe } = useRealtime();
+
+  const loadDashboardData = () => {
     api
       .get("/papers/dashboard")
       .then(({ data }) => setDashboardData(data))
       .catch((error) => {
         console.warn("Could not load dashboard paper summary:", error?.message || error);
       });
+  };
+
+  useEffect(() => {
+    loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    const unsubs = [
+      subscribe("paper:created", () => loadDashboardData()),
+      subscribe("paper:updated", () => loadDashboardData()),
+      subscribe("paper:deleted", () => loadDashboardData()),
+    ];
+    return () => {
+      unsubs.forEach((u) => u && u());
+    };
+  }, [subscribe]);
 
   useEffect(() => {
     setLoadingAssignments(true);
@@ -106,6 +126,29 @@ export default function DashboardHome({
 
   const recentPapers = dashboardData?.recentPapers || [];
   const myUploads = dashboardData?.myUploads || [];
+
+  const filteredRecentPapers = useMemo(() => {
+    return recentPapers.filter((p) => {
+      if (termFilter === "all") return true;
+      if (termFilter === "unset") return !p.term;
+      return Number(p.term) === Number(termFilter);
+    });
+  }, [recentPapers, termFilter]);
+
+  const handleUploadTermChanged = (paperId, newTerm) => {
+    setDashboardData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        myUploads: (prev.myUploads || []).map((u) =>
+          (u.id === paperId || u._id === paperId) ? { ...u, term: newTerm } : u
+        ),
+        recentPapers: (prev.recentPapers || []).map((p) =>
+          (p.id === paperId || p._id === paperId) ? { ...p, term: newTerm } : p
+        ),
+      };
+    });
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
@@ -421,17 +464,21 @@ export default function DashboardHome({
             </div>
           </div>
 
-          {recentPapers.length === 0 ? (
+          <div style={{ marginBottom: "16px" }}>
+            <TermFilter selected={termFilter} onSelect={setTermFilter} />
+          </div>
+
+          {filteredRecentPapers.length === 0 ? (
             <EmptyState
               icon={<MaterialsIcon size={36} />}
-              title="No papers in repository yet"
+              title="No papers matching filter"
               description="Be the first student or faculty member to contribute past papers to the RCA archive."
               actionText="Upload Paper"
               onAction={onOpenUpload}
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {recentPapers.map((paper) => {
+              {filteredRecentPapers.map((paper) => {
                 const paperId = paper.id || paper._id;
                 const dateStr = paper.uploadedAt
                   ? new Date(paper.uploadedAt).toLocaleDateString()
@@ -470,20 +517,22 @@ export default function DashboardHome({
                         PDF
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <strong
-                          title={paper.title}
-                          style={{
-                            display: "block",
-                            fontSize: "0.92rem",
-                            color: "var(--color-text-primary)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            maxWidth: "280px",
-                          }}
-                        >
-                          {paper.title}
-                        </strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 2 }}>
+                          <strong
+                            title={paper.title}
+                            style={{
+                              fontSize: "0.92rem",
+                              color: "var(--color-text-primary)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "260px",
+                            }}
+                          >
+                            {paper.title}
+                          </strong>
+                          <TermBadge term={paper.term} size="sm" />
+                        </div>
                         <span style={{ fontSize: "0.78rem", color: "var(--color-text-secondary)" }}>
                           {paper.subject} : {paper.classLabel} : {paper.type || "Past Paper"}
                           {dateStr ? ` : ${dateStr}` : ""}
@@ -599,26 +648,37 @@ export default function DashboardHome({
                     gap: "8px",
                   }}
                 >
-                  <span
-                    title={up.title}
-                    style={{
-                      fontWeight: 600,
-                      color: "var(--color-text-primary)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {up.title}
-                  </span>
-                  <Link
-                    to={`/view/${up.id || up._id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "var(--color-primary)", fontWeight: 700, textDecoration: "none", flexShrink: 0 }}
-                  >
-                    View
-                  </Link>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <span
+                      title={up.title}
+                      style={{
+                        fontWeight: 600,
+                        color: "var(--color-text-primary)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "180px",
+                      }}
+                    >
+                      {up.title}
+                    </span>
+                    <TermBadge term={up.term} size="sm" />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                    <TermMenu
+                      item={up}
+                      type="paper"
+                      onTermChanged={(newTerm) => handleUploadTermChanged(up.id || up._id, newTerm)}
+                    />
+                    <Link
+                      to={`/view/${up.id || up._id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "var(--color-primary)", fontWeight: 700, textDecoration: "none" }}
+                    >
+                      View
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>

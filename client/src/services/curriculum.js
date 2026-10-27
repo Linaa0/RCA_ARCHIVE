@@ -5,6 +5,8 @@
  * Single source of truth across all views, forms, filters, and subject pages.
  */
 
+import api from "./api";
+
 export const FALLBACK_PROMOTIONS = [
   {
     id: "Y1",
@@ -104,13 +106,42 @@ function getCachedCurriculum() {
   return FALLBACK_PROMOTIONS;
 }
 
-let activePromotions = getCachedCurriculum();
+export const FALLBACK_TERMS = [
+  { id: 1, value: 1, label: "Term 1" },
+  { id: 2, value: 2, label: "Term 2" },
+  { id: 3, value: 3, label: "Term 3" },
+];
 
-import api from "./api";
+const TERMS_STORAGE_KEY = "rca_terms_cache";
+
+function getCachedTerms() {
+  if (typeof window === "undefined") return FALLBACK_TERMS;
+  try {
+    const raw = localStorage.getItem(TERMS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (err) {
+    // Ignore parse error
+  }
+  return FALLBACK_TERMS;
+}
+
+let activeTerms = getCachedTerms();
+let activePromotions = getCachedCurriculum();
 
 export async function fetchCurriculum() {
   try {
     const { data } = await api.get("/curriculum");
+    if (Array.isArray(data?.terms) && data.terms.length > 0) {
+      activeTerms = data.terms;
+      try {
+        localStorage.setItem(TERMS_STORAGE_KEY, JSON.stringify(data.terms));
+      } catch (e) {
+        // Ignore storage error
+      }
+    }
     if (Array.isArray(data?.promotions) && data.promotions.length > 0) {
       activePromotions = data.promotions;
       try {
@@ -132,6 +163,31 @@ export async function fetchCurriculum() {
 // Initial async fetch on load
 if (typeof window !== "undefined") {
   fetchCurriculum();
+}
+
+export function getTerms() {
+  return activeTerms;
+}
+
+export function normalizeTerm(term) {
+  if (term === undefined || term === null) return null;
+  if (typeof term === "number") {
+    return [1, 2, 3].includes(term) ? term : null;
+  }
+  if (typeof term !== "string") return null;
+  const match = term.trim().toLowerCase().match(/^(?:term\s*)?([123])$/);
+  return match ? Number(match[1]) : null;
+}
+
+export function isValidTerm(term) {
+  return normalizeTerm(term) !== null;
+}
+
+export function getTermLabel(term) {
+  const norm = normalizeTerm(term);
+  if (!norm) return "Term not set";
+  const found = activeTerms.find((t) => t.id === norm || t.value === norm);
+  return found ? found.label : `Term ${norm}`;
 }
 
 export function getPromotions() {
@@ -181,6 +237,11 @@ export default {
   getSubjectsForPromotion,
   getSubjectsForClass,
   getAllSubjects,
+  getTerms,
+  getTermLabel,
+  normalizeTerm,
+  isValidTerm,
   fetchCurriculum,
   FALLBACK_PROMOTIONS,
+  FALLBACK_TERMS,
 };

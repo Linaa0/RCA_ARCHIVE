@@ -4,6 +4,7 @@ import { renderAsync } from "docx-preview";
 import api, { API_ROOT, apiUrl } from "../services/api";
 import { getStoredToken } from "../utils/auth";
 import { ArrowLeftIcon, DownloadIcon, EyeIcon } from "./ui/Icons";
+import { TermBadge } from "./ui";
 
 const BLOB_MIME = {
   pdf: "application/pdf",
@@ -70,6 +71,7 @@ export default function FileViewer() {
               setAccessData({
                 title: data.title || "Assignment Attachment",
                 originalName,
+                term: data.term,
                 viewUrl: assignmentObjectUrl,
                 downloadUrl: assignmentObjectUrl,
               });
@@ -85,6 +87,7 @@ export default function FileViewer() {
     } else if (type === "resource") {
       // Notes / past papers uploaded by teachers (listed on the subject pages)
       const originalName = nameParam || "resource";
+      const termParam = searchParams.get("term");
       api
         .get(`/subject-materials/resources/${id}/file`, { responseType: "blob" })
         .then(({ data: fileBlob, headers }) => {
@@ -93,7 +96,13 @@ export default function FileViewer() {
           const match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
           const realName = match ? decodeURIComponent(match[1]) : originalName;
           assignmentObjectUrl = URL.createObjectURL(retypeBlob(fileBlob, realName));
-          setAccessData({ title: nameParam || realName, originalName: realName, viewUrl: assignmentObjectUrl, downloadUrl: assignmentObjectUrl });
+          setAccessData({
+            title: nameParam || realName,
+            originalName: realName,
+            term: termParam ? Number(termParam) : null,
+            viewUrl: assignmentObjectUrl,
+            downloadUrl: assignmentObjectUrl,
+          });
           setLoading(false);
         })
         .catch(() => {
@@ -396,22 +405,28 @@ export default function FileViewer() {
             maxWidth: "600px",
             minWidth: 0,
             overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
-          <h1
-            title={accessData.title}
-            style={{
-              margin: 0,
-              color: "var(--color-ink)",
-              fontWeight: 700,
-              fontSize: "1.05rem",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {accessData.title}
-          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center", maxWidth: "100%" }}>
+            <h1
+              title={accessData.title}
+              style={{
+                margin: 0,
+                color: "var(--color-ink)",
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {accessData.title}
+            </h1>
+            {accessData.term && <TermBadge term={accessData.term} size="sm" />}
+          </div>
           <p
             title={originalName}
             style={{

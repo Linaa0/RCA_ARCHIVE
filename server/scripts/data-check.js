@@ -8,6 +8,7 @@ const {
   getAssignmentsCollection,
   getSubmissionsCollection,
   getAppealsCollection,
+  getTeacherResourcesCollection,
 } = require("../src/models");
 const { UPLOADS_DIR } = require("../src/config/env");
 const { SUBMISSIONS_DIR } = require("../src/services/submissionStorage");
@@ -21,6 +22,7 @@ async function runDataCheck() {
     const assignmentsCol = getAssignmentsCollection();
     const submissionsCol = getSubmissionsCollection();
     const appealsCol = getAppealsCollection();
+    const teacherResourcesCol = getTeacherResourcesCollection();
 
     // 1. Users by role
     const [adminCount, teacherCount, studentCount, totalUsers] = await Promise.all([
@@ -30,8 +32,8 @@ async function runDataCheck() {
       usersCol.countDocuments({}),
     ]);
 
-    // 2. Papers by year (normalize Year 1 / Y1 / Y1GenAI, Year 2 / Y2, Year 3 / Y3)
-    const allPapers = await papersCol.find({}, { projection: { year: 1, classId: 1, filename: 1 } }).toArray();
+    // 2. Papers by year and term
+    const allPapers = await papersCol.find({}, { projection: { year: 1, classId: 1, filename: 1, term: 1 } }).toArray();
     let y1Count = 0;
     let y2Count = 0;
     let y3Count = 0;
@@ -60,9 +62,28 @@ async function runDataCheck() {
       }
     }
 
+    const countByTerm = (items) => {
+      const counts = { 1: 0, 2: 0, 3: 0, unset: 0 };
+      for (const item of items) {
+        if (item.term === 1 || item.term === "1") counts[1] += 1;
+        else if (item.term === 2 || item.term === "2") counts[2] += 1;
+        else if (item.term === 3 || item.term === "3") counts[3] += 1;
+        else counts.unset += 1;
+      }
+      return counts;
+    };
+
+    const paperTermCounts = countByTerm(allPapers);
+
     // 3. Assignments and missing attachment files
-    const allAssignments = await assignmentsCol.find({}, { projection: { attachment: 1 } }).toArray();
+    const allAssignments = await assignmentsCol.find({}, { projection: { attachment: 1, term: 1 } }).toArray();
     const totalAssignments = allAssignments.length;
+    const assignmentTermCounts = countByTerm(allAssignments);
+
+    // 3b. Teacher resources
+    const allResources = await teacherResourcesCol.find({}, { projection: { term: 1 } }).toArray();
+    const totalResources = allResources.length;
+    const resourceTermCounts = countByTerm(allResources);
     let attachmentsMissingFiles = 0;
 
     for (const a of allAssignments) {
@@ -106,6 +127,23 @@ async function runDataCheck() {
       console.log(`  Other: ${otherYearsCount}`);
     }
     console.log(`  Total papers: ${allPapers.length}`);
+    console.log("Papers by term:");
+    console.log(`  Term 1: ${paperTermCounts[1]}`);
+    console.log(`  Term 2: ${paperTermCounts[2]}`);
+    console.log(`  Term 3: ${paperTermCounts[3]}`);
+    console.log(`  No term: ${paperTermCounts.unset}`);
+    console.log("Teacher resources by term:");
+    console.log(`  Term 1: ${resourceTermCounts[1]}`);
+    console.log(`  Term 2: ${resourceTermCounts[2]}`);
+    console.log(`  Term 3: ${resourceTermCounts[3]}`);
+    console.log(`  No term: ${resourceTermCounts.unset}`);
+    console.log(`  Total resources: ${totalResources}`);
+    console.log("Assignments by term:");
+    console.log(`  Term 1: ${assignmentTermCounts[1]}`);
+    console.log(`  Term 2: ${assignmentTermCounts[2]}`);
+    console.log(`  Term 3: ${assignmentTermCounts[3]}`);
+    console.log(`  No term: ${assignmentTermCounts.unset}`);
+    console.log(`  Total assignments: ${totalAssignments}`);
     console.log("Activity counts:");
     console.log(`  Assignments: ${totalAssignments}`);
     console.log(`  Submissions: ${totalSubmissions}`);

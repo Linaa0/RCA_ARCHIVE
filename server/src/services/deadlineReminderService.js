@@ -4,6 +4,7 @@ const {
 } = require("../models");
 const { getNotificationPreferences } = require("../utils/userUtils");
 const { notifyUserOnce } = require("./socketService");
+const { termLabel } = require("../config/terms");
 
 const REMINDER_INTERVAL_MS = 60 * 1000;
 const BATCH_SIZE = 100;
@@ -104,11 +105,12 @@ async function dispatchDueAssignmentReminders(now = new Date()) {
       const isShortDeadline =
         new Date(assignment.deadline).getTime() - new Date(givenAt).getTime() < SHORT_DEADLINE_MS;
       const elapsedLabel = isShortDeadline ? "20 minutes" : "one hour";
+      const termSuffix = assignment.term ? ` (${termLabel(assignment.term)})` : "";
       for (const student of recipients) {
         if (!getNotificationPreferences(student).dueReminders) continue;
         await notifyUserOnce(student.id, {
           id: `assignment-reminder:${assignment.id}:${student.id}:${assignment.reminderDueAt}`,
-          title: `Assignment Reminder: ${assignment.title}`,
+          title: `Assignment Reminder: ${assignment.title}${termSuffix}`,
           message: `You received this assignment ${elapsedLabel} ago and the deadline is close. Open it to review the deadline.`,
           type: "assignment",
           link: "/student/assignments",

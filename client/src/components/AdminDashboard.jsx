@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import DeletionRequests from "./DeletionRequests";
 import TeacherManagement from "./TeacherManagement";
 import StudentManagement from "./StudentManagement";
+import AdminPapers from "./AdminPapers";
+import UserUploadsModal from "./UserUploadsModal";
 import { authDelete, authGet } from "../utils/apiClient";
 import useRealtime from "../hooks/useRealtime";
 import Avatar from "./ui/Avatar";
@@ -14,6 +16,7 @@ import Modal from "./ui/Modal";
 import Button from "./ui/Button";
 import ProgressRing from "./ui/ProgressRing";
 import BarChart from "./ui/BarChart";
+import { TermBadge } from "./ui";
 import {
   UsersIcon,
   MaterialsIcon,
@@ -32,6 +35,7 @@ export default function AdminDashboard() {
   const [teachers, setTeachers] = useState([]);
   const [deletionRequests, setDeletionRequests] = useState([]);
   const [userDeleteTarget, setUserDeleteTarget] = useState(null);
+  const [selectedUserForUploads, setSelectedUserForUploads] = useState(null);
   const [deletingUser, setDeletingUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -242,13 +246,22 @@ export default function AdminDashboard() {
       key: "actions",
       align: "right",
       render: (_, u) => (
-        <IconButton
-          icon={<TrashIcon size={16} />}
-          variant="danger"
-          size="sm"
-          title={`Delete ${u.name || u.email}`}
-          onClick={() => setUserDeleteTarget(u)}
-        />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
+          <IconButton
+            icon={<MaterialsIcon size={16} />}
+            variant="outline"
+            size="sm"
+            title={`View uploads by ${u.name || u.email}`}
+            onClick={() => setSelectedUserForUploads(u)}
+          />
+          <IconButton
+            icon={<TrashIcon size={16} />}
+            variant="danger"
+            size="sm"
+            title={`Delete ${u.name || u.email}`}
+            onClick={() => setUserDeleteTarget(u)}
+          />
+        </div>
       ),
     },
   ];
@@ -259,6 +272,11 @@ export default function AdminDashboard() {
       kicker: "ADMINISTRATION PORTAL",
       title: "Platform Overview",
       description: "Monitor user activity, archive metrics, and system requests.",
+    },
+    papers: {
+      kicker: "ARCHIVE REPOSITORY",
+      title: "Past Papers & Uploads",
+      description: "Manage indexed papers, audit terms, and reassign cohorts in bulk.",
     },
     teachers: {
       kicker: "FACULTY MANAGEMENT",
@@ -553,6 +571,161 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* Papers by Term & Year-by-Term Grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "24px",
+            }}
+          >
+            {/* Papers by Term Card */}
+            <div
+              style={{
+                background: "var(--color-surface)",
+                borderRadius: "var(--radius-card)",
+                padding: "28px",
+                border: "1px solid var(--color-border)",
+                boxShadow: "var(--shadow-card)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                gap: "20px",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <h3
+                    style={{
+                      fontSize: "1.15rem",
+                      fontWeight: 700,
+                      color: "var(--color-text-primary)",
+                      margin: 0,
+                    }}
+                  >
+                    Papers by Term
+                  </h3>
+                  <Badge variant="neutral" size="sm">
+                    {totalPapersCount} total
+                  </Badge>
+                </div>
+                <p style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)", margin: "0 0 16px 0" }}>
+                  Distribution of uploaded papers across academic terms.
+                </p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+                  <div style={{ padding: "12px", borderRadius: "var(--radius-sm, 8px)", background: "var(--color-bg)", border: "1px solid var(--color-border)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                      <TermBadge term={1} size="sm" />
+                      <strong style={{ fontSize: "1.1rem", color: "var(--color-text-primary)" }}>
+                        {stats?.papersByTerm?.[1] ?? 0}
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: "0.74rem", color: "var(--color-text-tertiary)" }}>Term 1 uploads</span>
+                  </div>
+
+                  <div style={{ padding: "12px", borderRadius: "var(--radius-sm, 8px)", background: "var(--color-bg)", border: "1px solid var(--color-border)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                      <TermBadge term={2} size="sm" />
+                      <strong style={{ fontSize: "1.1rem", color: "var(--color-text-primary)" }}>
+                        {stats?.papersByTerm?.[2] ?? 0}
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: "0.74rem", color: "var(--color-text-tertiary)" }}>Term 2 uploads</span>
+                  </div>
+
+                  <div style={{ padding: "12px", borderRadius: "var(--radius-sm, 8px)", background: "var(--color-bg)", border: "1px solid var(--color-border)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                      <TermBadge term={3} size="sm" />
+                      <strong style={{ fontSize: "1.1rem", color: "var(--color-text-primary)" }}>
+                        {stats?.papersByTerm?.[3] ?? 0}
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: "0.74rem", color: "var(--color-text-tertiary)" }}>Term 3 uploads</span>
+                  </div>
+
+                  <div style={{ padding: "12px", borderRadius: "var(--radius-sm, 8px)", background: "var(--color-bg)", border: "1px solid var(--color-border)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                      <TermBadge term={null} size="sm" />
+                      <strong style={{ fontSize: "1.1rem", color: "var(--color-text-primary)" }}>
+                        {stats?.papersByTerm?.unset ?? 0}
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: "0.74rem", color: "var(--color-text-tertiary)" }}>Unassigned term</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/admin?tab=papers&term=unset")}
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  Review {stats?.papersByTerm?.unset ?? 0} unassigned papers →
+                </Button>
+              </div>
+            </div>
+
+            {/* Year by Term Table */}
+            <div
+              style={{
+                background: "var(--color-surface)",
+                borderRadius: "var(--radius-card)",
+                padding: "28px",
+                border: "1px solid var(--color-border)",
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: "1.15rem",
+                  fontWeight: 700,
+                  color: "var(--color-text-primary)",
+                  marginBottom: "6px",
+                }}
+              >
+                Year by Term Breakdown
+              </h3>
+              <p style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)", marginBottom: "16px" }}>
+                Document matrix across academic years and terms. Real counts with zeros shown as 0.
+              </p>
+
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--color-border)", textAlign: "left" }}>
+                      <th style={{ padding: "8px 10px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Cohort</th>
+                      <th style={{ padding: "8px 10px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Term 1</th>
+                      <th style={{ padding: "8px 10px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Term 2</th>
+                      <th style={{ padding: "8px 10px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Term 3</th>
+                      <th style={{ padding: "8px 10px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Not set</th>
+                      <th style={{ padding: "8px 10px", color: "var(--color-text-secondary)", fontWeight: 600, textAlign: "right" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {["Y1", "Y2", "Y3"].map((cohortKey) => {
+                      const row = stats?.papersByYearTerm?.[cohortKey] || { 1: 0, 2: 0, 3: 0, unset: 0 };
+                      const label = cohortKey === "Y1" ? "Year 1" : cohortKey === "Y2" ? "Year 2" : "Year 3";
+                      const rowTotal = (row[1] || 0) + (row[2] || 0) + (row[3] || 0) + (row.unset || 0);
+                      return (
+                        <tr key={cohortKey} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                          <td style={{ padding: "10px", fontWeight: 700, color: "var(--color-text-primary)" }}>{label}</td>
+                          <td style={{ padding: "10px", color: "var(--color-text-secondary)" }}>{row[1] ?? 0}</td>
+                          <td style={{ padding: "10px", color: "var(--color-text-secondary)" }}>{row[2] ?? 0}</td>
+                          <td style={{ padding: "10px", color: "var(--color-text-secondary)" }}>{row[3] ?? 0}</td>
+                          <td style={{ padding: "10px", color: "var(--color-text-tertiary)" }}>{row.unset ?? 0}</td>
+                          <td style={{ padding: "10px", fontWeight: 700, color: "var(--color-primary)", textAlign: "right" }}>{rowTotal}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           {/* Recent Registered Users Table */}
           <section
             style={{
@@ -608,6 +781,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {activeTab === "papers" && <AdminPapers />}
       {activeTab === "teachers" && <TeacherManagement onUpdated={loadDashboard} />}
       {activeTab === "students" && <StudentManagement onUpdated={loadDashboard} />}
       {activeTab === "deletions" && <DeletionRequests onUpdated={loadDashboard} />}
@@ -638,6 +812,13 @@ export default function AdminDashboard() {
           </Button>
         </div>
       </Modal>
+
+      {/* Per-User Resources / Uploads Modal */}
+      <UserUploadsModal
+        user={selectedUserForUploads}
+        isOpen={Boolean(selectedUserForUploads)}
+        onClose={() => setSelectedUserForUploads(null)}
+      />
     </div>
   );
 }

@@ -21,7 +21,7 @@ const {
   getDisplayName,
 } = require("../utils/userUtils");
 const { getFrontendBaseUrl } = require("../utils/urlUtils");
-const { normalizeClass } = require("../config/classes");
+const { normalizeClass, getAcademicYear } = require("../config/classes");
 const {
   sendTeacherInviteEmail,
   sendAccountInviteEmail,
@@ -37,7 +37,14 @@ const {
 const { getPaperById } = require("../services/ratingService");
 const { logAdminAction } = require("../services/auditService");
 const { validateFullName, validateEmail: validateEmailStrict } = require("../utils/validation");
-const { emitUserEvent, emitStatsEvent } = require("../services/socketService");
+const { emitUserEvent, emitStatsEvent, emitPaperEvent } = require("../services/socketService");
+const {
+  validateRequiredTerm,
+  termLabel,
+  parseTermFilter,
+  termFilterCondition,
+  countsFromGroups,
+} = require("../config/terms");
 
 function generateTemporaryPassword() {
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -103,6 +110,7 @@ async function getStats(req, res) {
       openAppeals,
       allPapers,
       papersByTypeAgg,
+      papersByYearTermAgg,
     ] = await Promise.all([
       users.countDocuments(),
       users.countDocuments({ role: "admin" }),
@@ -116,6 +124,17 @@ async function getStats(req, res) {
       papers.find({}, { projection: { year: 1, classId: 1, category: 1, type: 1 } }).toArray(),
       papers.aggregate([
         { $group: { _id: { $ifNull: ["$type", "$category"] }, count: { $sum: 1 } } },
+      ]).toArray(),
+      papers.aggregate([
+        {
+          $group: {
+            _id: {
+              rawYear: { $ifNull: ["$year", "$classId"] },
+              term: "$term",
+            },
+            count: { $sum: 1 },
+          },
+        },
       ]).toArray(),
     ]);
 
@@ -141,6 +160,25 @@ async function getStats(req, res) {
       }
     }
 
+    const papersByTerm = { 1: 0, 2: 0, 3: 0, unset: 0 };
+    const papersByYearTerm = {
+      Y1: { 1: 0, 2: 0, 3: 0, unset: 0 },
+      Y2: { 1: 0, 2: 0, 3: 0, unset: 0 },
+      Y3: { 1: 0, 2: 0, 3: 0, unset: 0 },
+    };
+
+    for (const group of papersByYearTermAgg) {
+      const count = group.count || 0;
+      const termKey = [1, 2, 3].includes(group._id?.term) ? group._id.term : "unset";
+      papersByTerm[termKey] = (papersByTerm[termKey] || 0) + count;
+
+      const yNum = getAcademicYear(group._id?.rawYear);
+      const rowKey = yNum === 1 ? "Y1" : yNum === 2 ? "Y2" : yNum === 3 ? "Y3" : null;
+      if (rowKey) {
+        papersByYearTerm[rowKey][termKey] = (papersByYearTerm[rowKey][termKey] || 0) + count;
+      }
+    }
+
     res.json({
       totalUsers,
       usersByRole: {
@@ -159,6 +197,8 @@ async function getStats(req, res) {
         total: totalPapers,
       },
       papersByType,
+      papersByTerm,
+      papersByYearTerm,
       pendingDeletionRequests,
       totalAssignments,
       totalSubmissions,
@@ -735,6 +775,7 @@ async function approveDeletionRequest(req, res) {
   }
 
   const paper = await getPaperById(request.paperId);
+  const paperTermLabel = paper && paper.term ? termLabel(paper.term) : "";
   if (paper) {
     await permanentlyDeletePaperRecord(paper, request.reason, req.user);
   }
@@ -763,7 +804,9 @@ async function approveDeletionRequest(req, res) {
       const notification = await sendDeletionRequestDecisionEmail(
         request.requestedByEmail,
         request.paperTitle,
-        "Approved"
+        "Approved",
+        "",
+        paperTermLabel
       );
       if (!notification.isReal) {
         notificationMessage =
@@ -810,6 +853,9 @@ async function rejectDeletionRequest(req, res) {
       .json({ error: "This request has already been processed." });
   }
 
+  const paper = await getPaperById(request.paperId);
+  const paperTermLabel = paper && paper.term ? termLabel(paper.term) : "";
+
   const processedAt = new Date().toISOString();
   await deletionRequests.updateOne(
     { id },
@@ -834,7 +880,9 @@ async function rejectDeletionRequest(req, res) {
       const notification = await sendDeletionRequestDecisionEmail(
         request.requestedByEmail,
         request.paperTitle,
-        "Rejected"
+        "Rejected",
+        request.notes || "",
+        paperTermLabel
       );
       if (!notification.isReal) {
         notificationMessage =
@@ -901,31 +949,118 @@ async function getUserResources(req, res) {
       user.username,
     ].filter(Boolean);
 
-    const resources = await papersCollection
-      .find({
-        $or: [
-          { uploadedById: { $in: searchTerms } },
-          { uploadedByEmail: { $in: searchTerms } },
-          { uploadedBy: { $in: searchTerms } },
-          { createdBy: { $in: searchTerms } },
-          { userEmail: { $in: searchTerms } },
-          { ownerEmail: { $in: searchTerms } },
-          { uploaderEmail: { $in: searchTerms } },
-          { createdById: { $in: searchTerms } },
-          { ownerId: { $in: searchTerms } },
-          { userId: { $in: searchTerms } },
-        ],
-      })
-      .sort({ createdAt: -1 })
-      .toArray();
+    const userMatch = {
+      $or: [
+        { uploadedById: { $in: searchTerms } },
+        { uploadedByEmail: { $in: searchTerms } },
+        { uploadedBy: { $in: searchTerms } },
+        { createdBy: { $in: searchTerms } },
+        { userEmail: { $in: searchTerms } },
+        { ownerEmail: { $in: searchTerms } },
+        { uploaderEmail: { $in: searchTerms } },
+        { createdById: { $in: searchTerms } },
+        { ownerId: { $in: searchTerms } },
+        { userId: { $in: searchTerms } },
+      ],
+    };
+
+    const termParam = req.query.term;
+    let termCondition = null;
+    if (termParam !== undefined && termParam !== null && String(termParam).trim() !== "") {
+      const parsed = parseTermFilter(termParam);
+      if (parsed.invalid) {
+        return res.status(400).json({ error: "Choose Term 1, Term 2 or Term 3, or unset", field: "term" });
+      }
+      if (parsed.filter !== null) {
+        termCondition = termFilterCondition(parsed.filter);
+      }
+    }
+
+    const queryFilter = termCondition ? { ...userMatch, ...termCondition } : userMatch;
+
+    const [termGroups, resources] = await Promise.all([
+      papersCollection
+        .aggregate([
+          { $match: userMatch },
+          { $group: { _id: "$term", count: { $sum: 1 } } },
+        ])
+        .toArray(),
+      papersCollection.find(queryFilter).sort({ createdAt: -1 }).toArray(),
+    ]);
 
     res.json({
       user: safeUserFields(user),
+      termCounts: countsFromGroups(termGroups),
       resources,
     });
   } catch (error) {
     console.error("Failed to load admin user resources:", error);
     res.status(500).json({ message: "Failed to load user resources." });
+  }
+}
+
+async function bulkSetPaperTerm(req, res) {
+  try {
+    const { ids, term } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "Provide an array of paper IDs to update", field: "ids" });
+    }
+    if (ids.length > 500) {
+      return res.status(400).json({ error: "Cannot update more than 500 papers at once", field: "ids" });
+    }
+    const cleanIds = ids.map((id) => String(id || "").trim()).filter(Boolean);
+    if (cleanIds.length === 0) {
+      return res.status(400).json({ error: "No valid paper IDs provided", field: "ids" });
+    }
+
+    const termCheck = validateRequiredTerm(term);
+    if (!termCheck.valid) {
+      return res.status(400).json({ error: termCheck.error, field: termCheck.field });
+    }
+
+    const papersCollection = getPapersCollection();
+    const existingPapers = await papersCollection.find({ id: { $in: cleanIds } }).toArray();
+    if (existingPapers.length === 0) {
+      return res.status(404).json({ error: "None of the specified papers were found." });
+    }
+
+    const result = await papersCollection.updateMany(
+      { id: { $in: cleanIds } },
+      { $set: { term: termCheck.value, updatedAt: new Date().toISOString() } }
+    );
+
+    await logAdminAction({
+      actorId: req.user.id,
+      actorEmail: req.user.email,
+      actorRole: req.user.role,
+      action: "papers.bulk_set_term",
+      targetType: "paper",
+      details: {
+        count: result.modifiedCount,
+        requestedCount: cleanIds.length,
+        term: termCheck.value,
+        termLabel: termLabel(termCheck.value),
+      },
+      ip: req.ip,
+    });
+
+    const updatedPapers = await papersCollection
+      .find({ id: { $in: cleanIds } }, { projection: { _id: 0 } })
+      .toArray();
+    for (const paper of updatedPapers) {
+      emitPaperEvent("updated", paper);
+    }
+    emitStatsEvent("changed");
+
+    res.json({
+      message: `Updated ${result.modifiedCount} papers to ${termLabel(termCheck.value)}`,
+      changed: result.modifiedCount,
+      term: termCheck.value,
+      termLabel: termLabel(termCheck.value),
+    });
+  } catch (error) {
+    console.error("Failed to bulk update paper terms:", error);
+    res.status(500).json({ error: "Failed to bulk update paper terms." });
   }
 }
 
@@ -1058,6 +1193,7 @@ module.exports = {
   rejectDeletionRequest,
   listAdminUsers,
   getUserResources,
+  bulkSetPaperTerm,
   deleteUser,
   getEmailHealth: getEmailHealthHandler,
   sendEmailTest: sendEmailTestHandler,

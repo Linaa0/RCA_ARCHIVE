@@ -195,6 +195,35 @@ Deployment is automated via GitHub Actions in `.github/workflows/deploy-backend.
 ---
 
 ## Security Best Practices
-- Real credentials and secrets are kept in `.env` files and **never** committed to version control.
+- Real credentials and secrets are kept in .env files and never committed to version control.
 - All file uploads are hashed using stream-based SHA-256 for instant deduplication.
 - Login endpoints enforce failed attempt rate limiting with automated security email notifications.
+
+---
+
+## Academic Terms (Term 1, Term 2, Term 3)
+
+The portal structures learning resources, past papers, notes, quizzes, exams, and assignments by Rwandan academic terms:
+
+### Data Model and One Source of Truth
+- Valid terms are numbers: 1, 2, or 3. Labels: "Term 1", "Term 2", "Term 3".
+- Validated via `server/src/config/terms.js` and exposed publicly via `GET /api/curriculum` (`terms` array).
+- Legacy records without a term are treated as "Term not set" (null or undefined) without destructive data migrations.
+- Student submissions inherit their assignment term automatically.
+
+### Validation Rules
+- Required on upload: `POST /api/upload`, `POST /api/teacher/resources`, and `POST /api/assignments` reject missing or invalid term with HTTP 400 (`{ error: "Choose Term 1, Term 2 or Term 3", field: "term" }`). Validation occurs before file storage.
+- Duplicate detection: whole-app SHA-256 hash check returns 409 specifying existing item location including term label (for example "This paper already exists in Year 2, Mathematics, Term 1.").
+
+### Key API Endpoints
+- `GET /api/curriculum`: Returns accredited subjects, promotions, and available academic terms with labels.
+- `GET /api/papers?term=1|2|3|unset&withMeta=1`: Filters papers by term and returns `termCounts: { 1: n, 2: n, 3: n, unset: n }`.
+- `PUT /api/papers/:id`: Updates term (allowed for uploader, any teacher, and admin; other students receive 403). Emits `paper:updated`.
+- `PATCH /api/admin/papers/term`: Bulk updates terms for an array of paper IDs (`{ ids: [...], term: 1 }`). Admin-only, records audit log, emits real-time updates.
+- `GET /api/admin/stats`: Includes `papersByTerm` (`{ 1, 2, 3, unset }`) and `papersByYearTerm` (Y1, Y2, Y3 rows by term columns, with real counts and zeros shown as 0).
+- `GET /api/admin/users/:id/resources?term=...`: Per-user uploads with term filter and term counts.
+- `PATCH /api/teacher/resources/:id/term`: Updates teacher resource term (owner teacher or admin). Emits `resource:updated`.
+- `PATCH /api/assignments/:id/term`: Updates assignment term (owner teacher or admin). Emits `assignment:updated`.
+
+### Deployment Synchronization
+Important: The backend and frontend must be deployed together because the server strictly requires a valid term on all uploads.

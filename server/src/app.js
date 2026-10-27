@@ -148,10 +148,12 @@ app.use(
 // Public single source of truth curriculum endpoint
 app.get("/api/curriculum", (_req, res) => {
   const { getPromotions, getAllSubjects } = require("./config/curriculum");
+  const { getTermsPayload } = require("./config/terms");
   res.json({
     status: "ok",
     promotions: getPromotions(),
     allSubjects: getAllSubjects(),
+    terms: getTermsPayload(),
   });
 });
 

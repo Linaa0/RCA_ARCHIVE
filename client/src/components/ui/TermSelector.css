@@ -1,0 +1,119 @@
+.term-selector-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.term-selector-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink, #1B2142);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.term-selector-required {
+  color: var(--color-danger, #EF4444);
+}
+
+.term-selector-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: var(--color-surface-subtle, #F8F9FD);
+  padding: 6px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-border, rgba(23, 79, 131, 0.12));
+}
+
+[data-theme="dark"] .term-selector-segmented {
+  background: var(--color-surface-subtle, #171E36);
+  border-color: var(--color-border, rgba(255, 255, 255, 0.10));
+}
+
+.term-selector-btn {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-muted, #515B85);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  user-select: none;
+}
+
+[data-theme="dark"] .term-selector-btn {
+  color: var(--color-muted, #A9B1D0);
+}
+
+.term-selector-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover, #F3F5FC);
+  color: var(--color-ink, #1B2142);
+}
+
+[data-theme="dark"] .term-selector-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover, #222B4D);
+  color: var(--color-ink, #E8EBF7);
+}
+
+.term-selector-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(23, 79, 131, 0.35);
+}
+
+/* Active Selected States */
+.term-selector-btn--active-1 {
+  background: #FFFFFF;
+  color: #123D6A;
+  border-color: rgba(23, 79, 131, 0.30);
+  box-shadow: 0 2px 8px rgba(11, 45, 82, 0.10);
+}
+
+.term-selector-btn--active-2 {
+  background: #FFFFFF;
+  color: #065F46;
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
+.term-selector-btn--active-3 {
+  background: #FFFFFF;
+  color: #92400E;
+  border-color: rgba(217, 119, 6, 0.35);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.12);
+}
+
+[data-theme="dark"] .term-selector-btn--active-1 {
+  background: #1B2340;
+  color: #96C9EF;
+  border-color: rgba(121, 184, 232, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .term-selector-btn--active-2 {
+  background: #1B2340;
+  color: #6EE7B7;
+  border-color: rgba(52, 211, 153, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .term-selector-btn--active-3 {
+  background: #1B2340;
+  color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.term-selector-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-danger, #EF4444);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

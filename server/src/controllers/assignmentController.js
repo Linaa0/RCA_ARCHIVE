@@ -21,6 +21,14 @@ const {
   emitAssignmentEvent,
   emitAppealEvent,
 } = require("../services/socketService");
+const {
+  validateRequiredTerm,
+  parseTermFilter,
+  termFilterCondition,
+  countsFromGroups,
+  termLabel,
+  normalizeTerm,
+} = require("../config/terms");
 
 const NO_ID = { projection: { _id: 0 } };
 const newId = () => crypto.randomUUID();
@@ -121,6 +129,7 @@ function buildStudentView(a, appeal, studentClass = "", appealDismissed = false)
     title: a.title,
     description: a.description,
     subject: a.subject,
+    term: normalizeTerm(a.term),
     teacherName: a.teacherName,
     classes: a.classes?.length ? a.classes : studentClass ? [studentClass] : [],
     classLabels: a.classes?.length
@@ -159,14 +168,33 @@ function buildStudentView(a, appeal, studentClass = "", appealDismissed = false)
 async function listAssignments(req, res) {
   const assignments = getAssignmentsCollection();
 
+  const termFilter = parseTermFilter(req.query.term);
+  if (termFilter.invalid) {
+    return res.status(400).json({ error: "Term filter must be 1, 2, 3 or unset.", field: "term" });
+  }
+  const termCondition = termFilterCondition(termFilter.filter);
+  const withTerm = (base) => (termCondition ? { $and: [base, termCondition] } : base);
+  const countTerms = async (base) =>
+    countsFromGroups(
+      await assignments.aggregate([{ $match: base }, { $group: { _id: "$term", count: { $sum: 1 } } }]).toArray()
+    );
+
   if (req.user.role === "teacher") {
-    const mine = await assignments.find({ teacherId: req.user.id }, NO_ID).sort({ createdAt: -1 }).toArray();
-    return res.json({ assignments: await describeAssignments(mine) });
+    const base = { teacherId: req.user.id };
+    const [mine, termCounts] = await Promise.all([
+      assignments.find(withTerm(base), NO_ID).sort({ createdAt: -1 }).toArray(),
+      countTerms(base),
+    ]);
+    return res.json({ assignments: await describeAssignments(mine), termCounts });
   }
 
   const or = [{ audience: "all" }, { studentIds: req.user.id }];
   if (req.user.class) or.push({ classes: req.user.class });
-  const all = await assignments.find({ $or: or }, NO_ID).sort({ deadline: 1 }).toArray();
+  const visible = { $or: or };
+  const [all, termCounts] = await Promise.all([
+    assignments.find(withTerm(visible), NO_ID).sort({ deadline: 1 }).toArray(),
+    countTerms(visible),
+  ]);
   const ids = all.map((a) => a.id);
   const [myAppeals, myDismissals] = await Promise.all([
     getAppealsCollection().find({ assignmentId: { $in: ids }, studentId: req.user.id }, NO_ID).toArray(),
@@ -182,6 +210,7 @@ async function listAssignments(req, res) {
         myDismissals.some((d) => d.assignmentId === a.id)
       )
     ),
+    termCounts,
   });
 }
 
@@ -237,6 +266,13 @@ async function createAssignment(req, res) {
     return res.status(400).json({ error: msg });
   };
 
+  // The term comes first, before anything else is read or stored
+  const termCheck = validateRequiredTerm(req.body.term);
+  if (!termCheck.valid) {
+    dropUpload(req);
+    return res.status(400).json({ error: termCheck.error, field: termCheck.field });
+  }
+
   if (!title) return fail("Title is required");
   if (!deadline) return fail("A valid deadline is required");
   if (deadline <= new Date()) return fail("Deadline must be in the future");
@@ -250,6 +286,7 @@ async function createAssignment(req, res) {
     title,
     description: cleanText(req.body.description, 5000),
     subject: cleanText(req.body.subject, 100),
+    term: termCheck.value,
     givenAt: givenAt.toISOString(),
     deadline: deadline.toISOString(),
     reminderDueAt: getAssignmentReminderDueAt(givenAt, deadline),
@@ -275,7 +312,7 @@ async function loadOwnedAssignment(req, res) {
     res.status(404).json({ error: "Assignment not found" });
     return null;
   }
-  if (assignment.teacherId !== req.user.id) {
+  if (req.user.role !== "admin" && assignment.teacherId !== req.user.id) {
     res.status(403).json({ error: "This assignment belongs to another teacher" });
     return null;
   }
@@ -298,6 +335,14 @@ async function updateAssignment(req, res) {
   }
   if (req.body.description !== undefined) update.description = cleanText(req.body.description, 5000);
   if (req.body.subject !== undefined) update.subject = cleanText(req.body.subject, 100);
+  if (req.body.term !== undefined) {
+    const termCheck = validateRequiredTerm(req.body.term);
+    if (!termCheck.valid) {
+      dropUpload(req);
+      return res.status(400).json({ error: termCheck.error, field: termCheck.field });
+    }
+    update.term = termCheck.value;
+  }
   if (req.body.givenAt) {
     const g = parseDate(req.body.givenAt);
     if (!g) return fail("Invalid given time");
@@ -527,10 +572,12 @@ async function resolveAppeal(req, res, decision) {
       { projection: { _id: 0, email: 1, name: 1, username: 1, notifications: 1 } }
     );
     if (student?.email && getNotificationPreferences(student).emailNotifications) {
+      const assignment = await getAssignmentsCollection().findOne({ id: appeal.assignmentId }, { projection: { term: 1 } });
+      const titleWithTerm = assignment?.term ? `${appeal.assignmentTitle} (${termLabel(assignment.term)})` : appeal.assignmentTitle;
       await sendAppealUpdateEmail(
         student.email,
         student.name || student.username,
-        appeal.assignmentTitle,
+        titleWithTerm,
         decision,
         update.teacherNote,
         update.newDeadline
@@ -590,11 +637,38 @@ async function listStudentsForTeacher(_req, res) {
   });
 }
 
+// Owner teacher or any admin can change the term of an assignment
+async function updateAssignmentTerm(req, res) {
+  const termCheck = validateRequiredTerm(req.body && req.body.term);
+  if (!termCheck.valid) {
+    return res.status(400).json({ error: termCheck.error, field: termCheck.field });
+  }
+
+  const collection = getAssignmentsCollection();
+  const assignment = await collection.findOne({ id: req.params.id }, NO_ID);
+  if (!assignment) return res.status(404).json({ error: "Assignment not found." });
+
+  const isOwner = assignment.teacherId === req.user.id;
+  if (req.user.role !== "admin" && !(req.user.role === "teacher" && isOwner)) {
+    return res.status(403).json({ error: "Only the owning teacher or an admin can change the term of this assignment." });
+  }
+
+  await collection.updateOne(
+    { id: assignment.id },
+    { $set: { term: termCheck.value, updatedAt: nowIso() } }
+  );
+
+  const [described] = await describeAssignments([{ ...assignment, term: termCheck.value }]);
+  emitAssignmentEvent("updated", described);
+  res.json({ message: `Moved to ${termLabel(termCheck.value)}`, assignment: described });
+}
+
 module.exports = {
   listAssignments,
   getAssignment,
   createAssignment,
   updateAssignment,
+  updateAssignmentTerm,
   deleteAssignment,
   downloadAttachment,
   viewAttachment,

@@ -27,6 +27,7 @@ router.get("/teacher/stats", requireAuth, requireTeacher, wrap(ctrl.teacherStats
 router.get("/teacher/students", requireAuth, requireTeacher, wrap(ctrl.listStudentsForTeacher));
 router.get("/teacher/resources", requireAuth, requireTeacher, wrap(teacherResources.listResources));
 router.post("/teacher/resources", requireAuth, requireTeacher, uploadLimiter, handleSubmissionUpload, wrap(teacherResources.createResource));
+router.patch("/teacher/resources/:id/term", requireAuth, wrap(teacherResources.updateResourceTerm));
 router.get("/teacher/resources/:id/file", requireAuth, requireTeacher, wrap(teacherResources.getResourceFile));
 
 // Assignments
@@ -34,6 +35,7 @@ router.get("/assignments", requireAuth, teacherOrStudent, wrap(ctrl.listAssignme
 router.post("/assignments", requireAuth, requireTeacher, uploadLimiter, handleSubmissionUpload, wrap(ctrl.createAssignment));
 router.get("/assignments/:id", requireAuth, teacherOrStudent, wrap(ctrl.getAssignment));
 router.put("/assignments/:id", requireAuth, requireTeacher, handleSubmissionUpload, wrap(ctrl.updateAssignment));
+router.patch("/assignments/:id/term", requireAuth, wrap(ctrl.updateAssignmentTerm));
 router.get("/assignments/:id/attachment", requireAuth, teacherOrStudent, wrap(ctrl.downloadAttachment));
 router.get("/assignments/:id/view", requireAuth, teacherOrStudent, wrap(ctrl.viewAttachment));
 router.delete("/assignments/:id", requireAuth, requireTeacher, wrap(ctrl.deleteAssignment));

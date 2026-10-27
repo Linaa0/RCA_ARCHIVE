@@ -30,4 +30,6 @@ router.get("/users", adminController.listAdminUsers);
 router.get("/users/:id/resources", adminController.getUserResources);
 router.delete("/users/:id", adminController.deleteUser);
 
+router.patch("/papers/term", adminController.bulkSetPaperTerm);
+
 module.exports = router;

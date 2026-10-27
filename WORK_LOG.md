@@ -871,5 +871,70 @@ Every location in the codebase where user or paper data could potentially be del
    - Added `[[ ! -r "$CONFIG_ENV" ]]` check in addition to `[[ ! -f "$CONFIG_ENV" ]]` before taking any actions. If the file is missing or unreadable, the script aborts immediately with a clear explanatory error before changing files or stopping the running application.
    - Guaranteed that secrets are never printed or logged.
 3. **Verified Production Safety**:
-   - Confirmed that neither `deploy-backend.yml` nor `deploy-backend.sh` runs any database reset or seed commands.
+   - Confirmed that neither deploy-backend.yml nor deploy-backend.sh runs any database reset or seed commands.
+
+## Phase 8: Academic Terms (Term 1, Term 2, Term 3) Implementation
+
+### 1. Overview and Requirements
+- Implemented full-stack academic terms (Term 1, Term 2, Term 3) across client and server.
+- Stored term as number (1, 2, or 3) on uploaded papers, subject materials, teacher resources, and assignments.
+- Preserved existing legacy records without terms as "Term not set" (null/undefined) with zero destructive migrations.
+- Required term selection FIRST before file chooser is enabled across all upload modals.
+- Presented papers and subject materials grouped into Term 1, Term 2, Term 3, and Term not set sections.
+- Maintained whole-app duplicate detection with SHA-256 hash reporting exact location with term label.
+
+### 2. Changes by Part
+
+#### Part 1: Data Model and One Source of Truth
+- Created `server/src/config/terms.js`: Defined valid terms (1, 2, 3), labels ("Term 1", "Term 2", "Term 3"), validation, normalization, and aggregation helpers (`normalizeTerm`, `isValidTerm`, `termLabel`, `validateRequiredTerm`, `parseTermFilter`, `termFilterCondition`, `countByTerm`, `countsFromGroups`, `getTermsPayload`).
+- Exposed terms array in `GET /api/curriculum` (`server/src/app.js`).
+- Created `server/src/utils/paperLocation.js`: Resolves human-readable paper location for 409 responses with term labels.
+- Added compound indexes in `server/src/models/index.js`:
+  * `{ subject: 1, year: 1, term: 1 }` on `papers`
+  * `{ term: 1, uploadedAt: -1 }` on `papers`
+  * `{ subject: 1, year: 1, term: 1 }` on `teacherResources`
+  * `{ subject: 1, term: 1 }` on `assignments`
+
+#### Part 2: Server Rules and Endpoints
+- `server/src/controllers/uploadController.js`: Validates term before file processing, unlinks temporary upload file immediately if term is invalid (HTTP 400 with `field: "term"`), formats 409 duplicate response with exact location and term label.
+- `server/src/controllers/paperController.js`: Accepts `term` filter (`1`, `2`, `3`, `"unset"`), returns `termCounts: { 1: n, 2: n, 3: n, unset: n }` on `withMeta=1`, validates and updates term in `PUT /api/papers/:id` (uploader, teacher, and admin permitted; other students receive 403), emits `paper:updated`.
+- `server/src/controllers/teacherResourceController.js`: Requires term on create, filters by term on list, added `updateResourceTerm` (owner teacher or admin), emits `resource:updated`.
+- `server/src/controllers/assignmentController.js`: Requires term on create, updates term in `updateAssignment` and `updateAssignmentTerm`, includes term label in assignment views and notifications.
+- `server/src/routes/assignmentRoutes.js`: Added routes `PATCH /teacher/resources/:id/term` and `PATCH /assignments/:id/term`.
+- `server/src/controllers/subjectMaterialsController.js`: Supports `term` filter, returns `termCounts` and term on all resources and assignments.
+- `server/src/controllers/adminController.js`: Added `papersByTerm` and `papersByYearTerm` (Y1, Y2, Y3 rows by term columns with real counts and zeros shown as 0) to `getStats`; added `bulkSetPaperTerm` (`PATCH /api/admin/papers/term`, admin-only, audit logged, emits real-time events); updated `getUserResources` with term filtering and `termCounts`; passed term label to deletion decision emails.
+- Updated `deadlineReminderService.js`, `emailService.js`, `emailTemplates.js`: Included term label in assignment notifications and emails.
+- Added comprehensive integration test suite `server/test/terms.test.js`: 13 test scenarios covering validation, duplicate reporting, listing, permissions, bulk updates, admin stats, assignments, and resources.
+
+#### Part 3 & 4: Upload Flow and Subject Presentation
+- `client/src/services/curriculum.js`: Added fallback terms and active cached terms reading from `/api/curriculum`.
+- Shared UI components created in `client/src/components/ui/`:
+  * `TermBadge`: Renders calm accents per term, WCAG AA compliant across light and dark modes.
+  * `TermSelector`: Segmented control with Term 1, Term 2, Term 3 buttons; nothing pre-selected.
+  * `TermMenu`: Optimistic dropdown menu to change term with error rollback.
+  * `TermFilter`: Filter bar with term counts and selected tab.
+- `SubjectPage.jsx`: Upload modal puts `TermSelector` first, disables file input until term chosen with helper text "Choose a term first". Groups papers into Term 1, Term 2, Term 3, and Term not set sections. Added sticky jump bar with scroll-spy. Added "Upload to Term X" button in empty states pre-selecting the destination term.
+- `SubjectMaterials.jsx`: Groups materials into Term 1, Term 2, Term 3, and Term not set with term badges and term menus.
+- `TeacherResources.jsx`: Modal upload requires term first, disabled file chooser until selected. Filter bar and term menus on resources list.
+- `TeacherAssignments.jsx`: Assignment creation form requires term first. Term filter and badges displayed.
+- `StudentAssignments.jsx` & `AssignmentTable.jsx`: Term badges displayed on assignment rows and cards.
+
+#### Part 5: Term Everywhere Else and Admin
+- `DashboardHome.jsx`: Term badge on recent papers and my uploads, term filter on recent papers, term menu on my uploads with live state update.
+- `FileViewer.jsx`: Term badge displayed in the viewer header.
+- `AdminDashboard.jsx`:
+  * Added "Papers by Term" card (Term 1, Term 2, Term 3, Not set) with "Review unassigned papers" shortcut.
+  * Added "Year by Term Breakdown" table with real numbers and zeros shown as 0.
+  * Wired `activeTab === "papers"` to render `AdminPapers.jsx`.
+  * Added per-user resources modal (`UserUploadsModal.jsx`) accessible from user list and teacher list.
+- `AdminPapers.jsx`: Filter papers by term, view per-term counts, checkbox multi-selection, and bulk term change modal (`PATCH /api/admin/papers/term`).
+- `TeacherManagement.jsx`: Added "Uploads" action button opening `UserUploadsModal` with term filter and term menu.
+
+#### Part 6 & 7: Verification, Documentation, and Data Check
+- Extended `server/scripts/data-check.js` to report papers, resources, and assignments by term (Term 1, Term 2, Term 3, and No term) with counts only.
+- Updated `README.md` and created `docs/API_NOTES.md` with full specifications.
+- Verified zero bare relative `/api` paths with `node scripts/check-built-api-url.js`.
+- Verified WCAG AA contrast compliance with `node scripts/check-wcag.js` (21/21 passed).
+- Ran client production build with `node scripts/build-client.js` (clean build in 11.9s).
+- Ran server test suite (`npm test` in `server/`): 90 tests passed out of 90 (0 failures).
 

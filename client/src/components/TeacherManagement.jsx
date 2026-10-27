@@ -10,6 +10,7 @@ import Avatar from "./ui/Avatar";
 import EmptyState from "./ui/EmptyState";
 import { TrashIcon, SearchIcon, UsersIcon } from "./ui/Icons";
 import CredentialsModal from "./CredentialsModal";
+import UserUploadsModal from "./UserUploadsModal";
 import "./TeacherManagement.css";
 
 const EMPTY_FORM = { name: "", email: "" };
@@ -27,6 +28,7 @@ export default function TeacherManagement({ onUpdated }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [credentialsModalData, setCredentialsModalData] = useState(null);
   const [resendingId, setResendingId] = useState(null);
+  const [uploadsUser, setUploadsUser] = useState(null);
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -225,6 +227,14 @@ export default function TeacherManagement({ onUpdated }) {
       align: "right",
       render: (_, teacher) => (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px" }}>
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => setUploadsUser(teacher)}
+            style={{ fontSize: "0.78rem", padding: "4px 8px" }}
+          >
+            Uploads
+          </Button>
           <Button
             variant="outline"
             size="xs"
@@ -427,6 +437,12 @@ export default function TeacherManagement({ onUpdated }) {
         isOpen={Boolean(credentialsModalData)}
         onClose={() => setCredentialsModalData(null)}
         credentials={credentialsModalData}
+      />
+
+      <UserUploadsModal
+        user={uploadsUser}
+        isOpen={Boolean(uploadsUser)}
+        onClose={() => setUploadsUser(null)}
       />
     </section>
   );

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import "./SubjectPage.css";
 import api, { openPaperDownload } from "../services/api";
 import { RCA_CLASSES } from "./ui/ClassChips";
 import SubjectMaterials from "./SubjectMaterials";
+import { TermSelector, TermBadge, TermMenu, Toast } from "./ui";
+import { useRealtime } from "../hooks/useRealtime";
 
 function SubjectPage() {
   const { year, subject } = useParams();
@@ -12,8 +14,11 @@ function SubjectPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
 
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadTerm, setUploadTerm] = useState(null);
+  const [termError, setTermError] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState("Past Paper");
   const [file, setFile] = useState(null);
@@ -23,17 +28,23 @@ function SubjectPage() {
   const [userClassId, setUserClassId] = useState("");
 
   const [popup, setPopup] = useState(null);
+  const [toast, setToast] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState({
     title: "",
     subject: "",
     year: "",
     type: "",
+    term: 1,
   });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // Jump bar and mobile collapse state
+  const [activeJumpSection, setActiveJumpSection] = useState("1");
+  const [collapsedSections, setCollapsedSections] = useState({});
 
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
@@ -43,6 +54,8 @@ function SubjectPage() {
   const availableClasses = year === "Y1GenAI"
     ? RCA_CLASSES.filter((item) => item.id === "Y1GenAI")
     : RCA_CLASSES.filter((item) => String(item.year) === yearNumber && item.id !== "Y1GenAI");
+
+  const { subscribe } = useRealtime();
 
   useEffect(() => {
     let isMounted = true;
@@ -56,15 +69,13 @@ function SubjectPage() {
           : availableClasses[0]?.id || "");
       })
       .catch((error) => {
-        console.error("Could not load the user's enrolled class:", error);
+        console.error("Could not load user profile class:", error);
         setUploadClassId((current) => current || availableClasses[0]?.id || "");
       });
     return () => { isMounted = false; };
-  // Route year changes determine the available cohort choices.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
 
-  // Close menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       const openMenus = document.querySelectorAll(".more-menu.open");
@@ -81,28 +92,92 @@ function SubjectPage() {
 
   const fetchPapers = async () => {
     setLoading(true);
+    setFetchError("");
     try {
-      const params = new URLSearchParams({ subject, year });
+      const params = new URLSearchParams({ subject, year, withMeta: "1" });
       if (classFilter) params.append("classId", classFilter);
       if (typeFilter !== "All Types") params.append("type", typeFilter);
       if (search) params.append("search", search);
-
       params.append("sort", "top");
+
       const { data } = await api.get(`/papers?${params}`);
-      setPapers(data);
-    } catch {
-      console.error("Could not load papers");
+      const items = Array.isArray(data) ? data : (data?.items || []);
+      setPapers(items);
+    } catch (err) {
+      console.error("Could not load papers:", err);
+      setFetchError("Could not load papers for this subject.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchPapers();
   }, [subject, year, typeFilter, classFilter]);
 
+  // Real-time synchronization
+  useEffect(() => {
+    const unsubCreated = subscribe("paper:created", (paper) => {
+      if (paper && String(paper.subject).trim().toLowerCase() === String(subject).trim().toLowerCase()) {
+        setPapers((prev) => [paper, ...prev.filter((p) => p.id !== paper.id)]);
+      }
+    });
+
+    const unsubUpdated = subscribe("paper:updated", (paper) => {
+      if (paper) {
+        setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, ...paper } : p)));
+      }
+    });
+
+    const unsubDeleted = subscribe("paper:deleted", (data) => {
+      const targetId = data?.id || data;
+      if (targetId) {
+        setPapers((prev) => prev.filter((p) => p.id !== targetId));
+      }
+    });
+
+    return () => {
+      unsubCreated?.();
+      unsubUpdated?.();
+      unsubDeleted?.();
+    };
+  }, [subscribe, subject]);
+
+  // Scroll spy for sticky jump bar
+  useEffect(() => {
+    const handleScroll = () => {
+      const sectionKeys = ["1", "2", "3", "unset"];
+      const scrollPos = window.scrollY + 120;
+
+      for (let i = sectionKeys.length - 1; i >= 0; i--) {
+        const el = document.getElementById(`term-section-${sectionKeys[i]}`);
+        if (el && el.offsetTop <= scrollPos) {
+          setActiveJumpSection(sectionKeys[i]);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const openUploadForTerm = (termNum) => {
+    setUploadTerm(termNum);
+    setTermError("");
+    setShowUpload(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleUpload = async (e) => {
     e.preventDefault();
+    setTermError("");
+
+    if (!uploadTerm) {
+      setTermError("Choose Term 1, Term 2 or Term 3");
+      return;
+    }
+
     if (!file) {
       setPopup({ type: "error", title: "Missing File", message: "Please select a file to upload." });
       return;
@@ -125,18 +200,20 @@ function SubjectPage() {
     formData.append("title", title);
     formData.append("subject", subject);
     formData.append("year", year);
+    formData.append("term", String(uploadTerm));
     if (uploadClassId) formData.append("classId", uploadClassId);
     formData.append("type", type);
 
     try {
-      await api.post("/upload", formData);
+      const res = await api.post("/upload", formData);
       setPopup({
         type: "success",
         title: "Upload Successful",
-        message: `"${title}" has been uploaded to ${subject}.`,
+        message: res.data?.message || `"${title}" has been uploaded to ${subject}.`,
       });
       setTitle("");
       setFile(null);
+      setUploadTerm(null);
       setShowUpload(false);
       fetchPapers();
     } catch (err) {
@@ -146,6 +223,8 @@ function SubjectPage() {
           title: "Paper Already Exists",
           message: err.response.data.message,
         });
+      } else if (err.response?.data?.field === "term") {
+        setTermError(err.response.data.error || "Choose Term 1, Term 2 or Term 3");
       } else {
         setPopup({
           type: "error",
@@ -153,9 +232,9 @@ function SubjectPage() {
           message: err.response?.data?.error || "Upload failed. Please check your assigned cohort and try again.",
         });
       }
+    } finally {
+      setUploading(false);
     }
-
-    setUploading(false);
   };
 
   const handleOpenDeleteRequest = (paper) => {
@@ -170,12 +249,12 @@ function SubjectPage() {
       subject: paper.subject || "",
       year: paper.year || "",
       type: paper.type || "",
+      term: paper.term || 1,
     });
   };
 
   const handleEditPaper = async (event) => {
     event.preventDefault();
-
     if (!editTarget) return;
 
     if (!editForm.title.trim() || !editForm.subject.trim() || !editForm.year.trim() || !editForm.type.trim()) {
@@ -190,6 +269,7 @@ function SubjectPage() {
         subject: editForm.subject.trim(),
         year: editForm.year.trim(),
         type: editForm.type.trim(),
+        term: editForm.term,
       });
       setPopup({
         type: "success",
@@ -232,7 +312,6 @@ function SubjectPage() {
 
   const handleRequestDelete = async (event) => {
     event.preventDefault();
-
     if (!deleteTarget) return;
     if (!deleteReason.trim()) {
       setPopup({
@@ -267,8 +346,67 @@ function SubjectPage() {
     }
   };
 
+  // Group papers by term
+  const term1Papers = useMemo(() => papers.filter((p) => p.term === 1 || p.term === "1"), [papers]);
+  const term2Papers = useMemo(() => papers.filter((p) => p.term === 2 || p.term === "2"), [papers]);
+  const term3Papers = useMemo(() => papers.filter((p) => p.term === 3 || p.term === "3"), [papers]);
+  const unsetPapers = useMemo(() => papers.filter((p) => !p.term || p.term === "unset"), [papers]);
+
+  const sections = useMemo(() => {
+    const list = [
+      { key: "1", title: "Term 1", termNumber: 1, items: term1Papers, accentClass: "term-section-card--t1" },
+      { key: "2", title: "Term 2", termNumber: 2, items: term2Papers, accentClass: "term-section-card--t2" },
+      { key: "3", title: "Term 3", termNumber: 3, items: term3Papers, accentClass: "term-section-card--t3" },
+    ];
+    if (unsetPapers.length > 0) {
+      list.push({
+        key: "unset",
+        title: "Term not set",
+        termNumber: null,
+        items: unsetPapers,
+        accentClass: "term-section-card--unset",
+      });
+    }
+    return list;
+  }, [term1Papers, term2Papers, term3Papers, unsetPapers]);
+
+  // Set initial open collapsible section on mobile
+  useEffect(() => {
+    const firstNonEmpty = sections.find((s) => s.items.length > 0) || sections[0];
+    if (firstNonEmpty) {
+      setCollapsedSections((prev) => ({
+        ...prev,
+        [firstNonEmpty.key]: false,
+      }));
+    }
+  }, [sections]);
+
+  const toggleSection = (key) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const scrollToSection = (key) => {
+    setCollapsedSections((prev) => ({ ...prev, [key]: false }));
+    const el = document.getElementById(`term-section-${key}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+      setActiveJumpSection(key);
+    }
+  };
+
   return (
     <div className="subject-page">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {popup && (
         <div className="popup-overlay" onClick={() => setPopup(null)}>
           <div className="popup-modal" onClick={(e) => e.stopPropagation()}>
@@ -323,6 +461,12 @@ function SubjectPage() {
             </div>
 
             <form onSubmit={handleEditPaper} className="delete-request-form">
+              <TermSelector
+                value={editForm.term}
+                onChange={(t) => setEditForm((c) => ({ ...c, term: t }))}
+                label="Academic term *"
+              />
+
               <label htmlFor="edit-title">Title</label>
               <input
                 id="edit-title"
@@ -443,7 +587,16 @@ function SubjectPage() {
           {subject}: {year === "Y1GenAI" ? "Year 1 GenAI" : (String(year).toLowerCase().startsWith("y") ? `Year ${year.slice(1)}` : (["1", "2", "3"].includes(String(year)) ? `Year ${year}` : year))}
         </h2>
         {canUpload ? (
-          <button className="upload-toggle-btn" onClick={() => setShowUpload(!showUpload)}>
+          <button
+            className="upload-toggle-btn"
+            onClick={() => {
+              setShowUpload(!showUpload);
+              if (!showUpload) {
+                setUploadTerm(null);
+                setTermError("");
+              }
+            }}
+          >
             {showUpload ? "Cancel" : "Upload Paper or Note"}
           </button>
         ) : null}
@@ -453,6 +606,16 @@ function SubjectPage() {
         <div className="upload-form-box">
           <h3>Upload a New Paper or Note</h3>
           <form onSubmit={handleUpload}>
+            <TermSelector
+              value={uploadTerm}
+              onChange={(val) => {
+                setUploadTerm(val);
+                setTermError("");
+              }}
+              error={termError}
+              id="upload-term-selector"
+            />
+
             <label>Title</label>
             <input
               type="text"
@@ -484,21 +647,34 @@ function SubjectPage() {
               ))}
             </select>
 
-            <label>File (PDF or Word document only)</label>
+            <label>
+              File (PDF or Word document only)
+              {!uploadTerm && (
+                <span style={{ fontSize: "12px", color: "var(--color-danger, #EF4444)", marginLeft: "8px" }}>
+                  Choose a term first
+                </span>
+              )}
+            </label>
             <input
               type="file"
               accept=".pdf,.doc,.docx"
+              disabled={!uploadTerm}
               onChange={(e) => setFile(e.target.files[0])}
               required
             />
 
-            <button type="submit" className="upload-btn" disabled={uploading}>
+            <button
+              type="submit"
+              className="upload-btn"
+              disabled={uploading || !uploadTerm}
+            >
               {uploading ? "Uploading..." : "Upload"}
             </button>
           </form>
         </div>
       )}
 
+      {/* Type and Class Filters above sections */}
       <div className="filters">
         <input
           type="text"
@@ -526,98 +702,211 @@ function SubjectPage() {
         <button className="search-btn" onClick={fetchPapers}>Search</button>
       </div>
 
-      <div className="results">
-        {loading ? (
-          <p>Loading...</p>
-        ) : papers.length === 0 ? (
-          <>
-            <p>0 result(s) found</p>
-            <p>No papers found. {token ? "Be the first to upload!" : "Login to upload one."}</p>
-          </>
-        ) : (
-          <>
-            <p>{papers.length} result(s) found</p>
-            {papers.map((paper) => {
-              const isOwnerOrAdmin = Boolean(
-                token && (paper.uploadedBy === username || role === "admin")
-              );
+      {fetchError && (
+        <div style={{ background: "rgba(239, 68, 68, 0.10)", border: "1px solid rgba(239, 68, 68, 0.25)", color: "#EF4444", padding: "12px 18px", borderRadius: "8px", margin: "16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>{fetchError}</span>
+          <button type="button" className="upload-to-term-btn" onClick={fetchPapers}>Retry</button>
+        </div>
+      )}
 
-              return (
-                <div key={paper.id} className="paper-card">
-                  <div className="paper-info">
-                    <strong>{paper.title}</strong>
-                    <span className="paper-meta">
-                      {paper.type} • {paper.classLabel || paper.uploaderClassId || paper.classId || paper.class || paper.year || "Class not specified"} • Uploaded by {paper.uploadedBy} • {new Date(paper.uploadedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="paper-actions">
-                    <a
-                      href={`/view/${paper.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="view-btn"
-                    >
-                      View
-                    </a>
-                    <div className="more-menu-container">
-                      <button
-                        type="button"
-                        className="more-menu-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const menu = e.currentTarget.nextElementSibling;
-                          document.querySelectorAll(".more-menu.open").forEach((m) => {
-                            if (m !== menu) m.classList.remove("open");
-                          });
-                          menu.classList.toggle("open");
-                        }}
-                      >
-                        ⋮
-                      </button>
-                      <div className="more-menu">
+      {/* Sticky Jump Bar */}
+      <div className="sticky-jump-bar" role="navigation" aria-label="Jump to academic term">
+        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-muted)", marginRight: "4px" }}>
+          Terms:
+        </span>
+        {sections.map((sec) => (
+          <button
+            key={sec.key}
+            type="button"
+            className={`jump-bar-btn ${activeJumpSection === sec.key ? "jump-bar-btn--active" : ""}`}
+            onClick={() => scrollToSection(sec.key)}
+          >
+            <span>{sec.title}</span>
+            <span className="jump-bar-count">{sec.items.length}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Grouped Section Cards */}
+      <div className="term-sections-wrapper">
+        {sections.map((sec) => {
+          const isCollapsed = Boolean(collapsedSections[sec.key]);
+          const itemCount = sec.items.length;
+          const countBadgeText = `${itemCount} ${itemCount === 1 ? "item" : "items"}`;
+
+          return (
+            <section
+              key={sec.key}
+              id={`term-section-${sec.key}`}
+              className={`term-section-card ${sec.accentClass}`}
+            >
+              <div
+                className="term-section-header"
+                onClick={() => toggleSection(sec.key)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleSection(sec.key);
+                  }
+                }}
+              >
+                <div className="term-section-title-wrap">
+                  <h3 className="term-section-title">{sec.title}</h3>
+                  <TermBadge term={sec.termNumber} size="sm" showUnset={sec.key === "unset"} />
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-muted)" }}>
+                    ({countBadgeText})
+                  </span>
+                </div>
+
+                <div className="term-section-header-actions" onClick={(e) => e.stopPropagation()}>
+                  <svg
+                    className={`term-section-chevron ${!isCollapsed ? "term-section-chevron--open" : ""}`}
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    onClick={() => toggleSection(sec.key)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+              </div>
+
+              {!isCollapsed && (
+                <div className="term-section-body">
+                  {loading && papers.length === 0 ? (
+                    <div className="term-skeleton-list">
+                      <div className="term-skeleton-card" />
+                      <div className="term-skeleton-card" />
+                    </div>
+                  ) : sec.items.length === 0 ? (
+                    <div className="term-section-empty">
+                      <p>No papers yet for {sec.title}</p>
+                      {canUpload && sec.termNumber && (
                         <button
                           type="button"
-                          className="more-menu-item"
-                          onClick={() => openPaperDownload(paper.id)}
+                          className="upload-to-term-btn"
+                          onClick={() => openUploadForTerm(sec.termNumber)}
                         >
-                          Download
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          Upload to {sec.title}
                         </button>
-                        {isOwnerOrAdmin && (
-                          <button
-                            type="button"
-                            className="more-menu-item"
-                            onClick={() => handleOpenEdit(paper)}
-                          >
-                            Edit
-                          </button>
-                        )}
-                        {isOwnerOrAdmin ? (
-                          <button
-                            type="button"
-                            className="more-menu-item text-danger"
-                            onClick={() => handleDirectDelete(paper)}
-                          >
-                            Delete
-                          </button>
-                        ) : (
-                          token && (
-                            <button
-                              type="button"
-                              className="more-menu-item"
-                              onClick={() => handleOpenDeleteRequest(paper)}
-                            >
-                              Request Deletion
-                            </button>
-                          )
-                        )}
-                      </div>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    sec.items.map((paper) => {
+                      const isOwnerOrAdmin = Boolean(
+                        token && (paper.uploadedBy === username || role === "admin" || role === "teacher")
+                      );
+
+                      return (
+                        <div key={paper.id} className="paper-card">
+                          <div className="paper-info">
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                              <strong>{paper.title}</strong>
+                              <TermBadge term={paper.term} size="sm" />
+                            </div>
+                            <span className="paper-meta">
+                              {paper.type} • {paper.classLabel || paper.uploaderClassId || paper.classId || paper.class || paper.year || "Class not specified"} • Uploaded by {paper.uploadedBy} • {new Date(paper.uploadedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+
+                          <div className="paper-actions">
+                            <TermMenu
+                              item={paper}
+                              itemType="paper"
+                              user={{ id: username, email: username, role }}
+                              prominent={!paper.term}
+                              onTermChange={(newTerm, updatedPaper) => {
+                                setPapers((prev) =>
+                                  prev.map((p) => (p.id === updatedPaper.id ? updatedPaper : p))
+                                );
+                              }}
+                              onNotify={(n) => setToast(n)}
+                            />
+
+                            <a
+                              href={`/view/${paper.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="view-btn"
+                            >
+                              View
+                            </a>
+
+                            <div className="more-menu-container">
+                              <button
+                                type="button"
+                                className="more-menu-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const menu = e.currentTarget.nextElementSibling;
+                                  document.querySelectorAll(".more-menu.open").forEach((m) => {
+                                    if (m !== menu) m.classList.remove("open");
+                                  });
+                                  menu.classList.toggle("open");
+                                }}
+                              >
+                                ⋮
+                              </button>
+                              <div className="more-menu">
+                                <button
+                                  type="button"
+                                  className="more-menu-item"
+                                  onClick={() => openPaperDownload(paper.id)}
+                                >
+                                  Download
+                                </button>
+                                {isOwnerOrAdmin && (
+                                  <button
+                                    type="button"
+                                    className="more-menu-item"
+                                    onClick={() => handleOpenEdit(paper)}
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+                                {isOwnerOrAdmin ? (
+                                  <button
+                                    type="button"
+                                    className="more-menu-item text-danger"
+                                    onClick={() => handleDirectDelete(paper)}
+                                  >
+                                    Delete
+                                  </button>
+                                ) : (
+                                  token && (
+                                    <button
+                                      type="button"
+                                      className="more-menu-item"
+                                      onClick={() => handleOpenDeleteRequest(paper)}
+                                    >
+                                      Request Deletion
+                                    </button>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              );
-            })}
-          </>
-        )}
+              )}
+            </section>
+          );
+        })}
       </div>
 
       {token && <SubjectMaterials subject={subject} />}

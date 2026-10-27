@@ -22,3 +22,7 @@ export { default as Pagination } from "./Pagination";
 export { default as Logo } from "./Logo";
 export { default as ClassChip } from "./ClassChip";
 export { default as ClassChips, RCA_CLASSES } from "./ClassChips";
+export { default as TermBadge } from "./TermBadge";
+export { default as TermSelector } from "./TermSelector";
+export { default as TermMenu } from "./TermMenu";
+export { default as TermFilter } from "./TermFilter";

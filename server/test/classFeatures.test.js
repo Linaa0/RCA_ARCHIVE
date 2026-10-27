@@ -104,6 +104,7 @@ test("SETUP: database, fixtures, and authorization tokens", async () => {
     classes: ["Y1A"],
     deadline: new Date(Date.now() - 3600000).toISOString(),
     audience: "class",
+    term: 1,
     createdAt: new Date().toISOString(),
   });
 });
@@ -116,6 +117,7 @@ test("STUDENT UPLOAD PERMISSION: rejects student uploading to a class other than
     .field("subject", "Physics")
     .field("year", "Y2B")
     .field("classId", "Y2B")
+    .field("term", "1")
     .field("type", "past_paper")
     .attach("file", samplePdfPath);
 
@@ -144,11 +146,12 @@ test("STUDENT UPLOAD PERMISSION: allows student uploading to their own enrolled 
     .field("subject", "Fundamentals of Programming")
     .field("year", "Y1A")
     .field("classId", "Y1A")
+    .field("term", "1")
     .field("type", "past_paper")
     .attach("file", samplePdfPath);
 
   assert.strictEqual(res.statusCode, 200);
-  assert.strictEqual(res.body.message, "Paper uploaded successfully!");
+  assert.match(res.body.message, /Uploaded to/i);
   assert.ok(res.body.paper);
   assert.strictEqual(res.body.paper.classId, "Y1A");
 });
@@ -161,6 +164,7 @@ test("DUPLICATE PAPER UPLOAD: rejects upload with identical file hash with 409 c
     .field("subject", "Fundamentals of Programming")
     .field("year", "Y1A")
     .field("classId", "Y1A")
+    .field("term", "1")
     .field("type", "past_paper")
     .attach("file", duplicatePdfPath);
 

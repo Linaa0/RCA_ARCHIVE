@@ -11,6 +11,8 @@ const { classLabel } = require("../config/classes");
 const { escapeRegExp } = require("../utils/userUtils");
 const { hasStudentAccess } = require("../middleware/roleGuard");
 
+const { parseTermFilter, termFilterCondition, countsFromGroups, normalizeTerm } = require("../config/terms");
+
 const NO_ID = { projection: { _id: 0 } };
 
 // Case-insensitive, whole-name match so "physics" finds "Physics"
@@ -34,17 +36,53 @@ async function listSubjectMaterials(req, res) {
   const subject = String(req.query.subject || "").trim();
   if (!subject) return res.status(400).json({ error: "Subject is required" });
 
+  const termParam = req.query.term;
+  let termCondition = null;
+  if (termParam !== undefined && termParam !== null && String(termParam).trim() !== "") {
+    const parsed = parseTermFilter(termParam);
+    if (parsed.invalid) {
+      return res.status(400).json({ error: "Choose Term 1, Term 2 or Term 3, or unset", field: "term" });
+    }
+    if (parsed.filter !== null) {
+      termCondition = termFilterCondition(parsed.filter);
+    }
+  }
+
   const matcher = subjectMatcher(subject);
-  const [resources, assignments] = await Promise.all([
+  const baseFilter = { subject: matcher };
+  const queryFilter = termCondition ? { ...baseFilter, ...termCondition } : baseFilter;
+
+  const [resourceGroups, assignmentGroups, resources, assignments] = await Promise.all([
+    getTeacherResourcesCollection()
+      .aggregate([
+        { $match: baseFilter },
+        { $group: { _id: "$term", count: { $sum: 1 } } },
+      ])
+      .toArray(),
+    getAssignmentsCollection()
+      .aggregate([
+        { $match: baseFilter },
+        { $group: { _id: "$term", count: { $sum: 1 } } },
+      ])
+      .toArray(),
     getTeacherResourcesCollection()
       .find(
-        { subject: matcher },
-        { projection: { _id: 0, id: 1, title: 1, type: 1, subject: 1, year: 1, originalName: 1, uploadedAt: 1, teacherName: 1 } }
+        queryFilter,
+        { projection: { _id: 0, id: 1, title: 1, type: 1, subject: 1, year: 1, term: 1, originalName: 1, uploadedAt: 1, teacherName: 1 } }
       )
       .sort({ uploadedAt: -1 })
       .toArray(),
-    getAssignmentsCollection().find({ subject: matcher }, NO_ID).sort({ givenAt: -1, createdAt: -1 }).toArray(),
+    getAssignmentsCollection().find(queryFilter, NO_ID).sort({ givenAt: -1, createdAt: -1 }).toArray(),
   ]);
+
+  const rCounts = countsFromGroups(resourceGroups);
+  const aCounts = countsFromGroups(assignmentGroups);
+  const termCounts = {
+    1: rCounts[1] + aCounts[1],
+    2: rCounts[2] + aCounts[2],
+    3: rCounts[3] + aCounts[3],
+    unset: rCounts.unset + aCounts.unset,
+  };
 
   // Names for assignments given to individual students
   const studentIds = [...new Set(assignments.flatMap((a) => a.studentIds || []))];
@@ -61,7 +99,12 @@ async function listSubjectMaterials(req, res) {
   const now = new Date();
   res.json({
     subject,
-    resources: resources.map((r) => ({ ...r, kind: r.type === "past-paper" ? "past-paper" : "notes" })),
+    termCounts,
+    resources: resources.map((r) => ({
+      ...r,
+      term: normalizeTerm(r.term),
+      kind: r.type === "past-paper" ? "past-paper" : "notes",
+    })),
     assignments: assignments.map((a) => {
       const givenTo = [
         ...(a.classes || []).map(classLabel),
@@ -73,6 +116,7 @@ async function listSubjectMaterials(req, res) {
         title: a.title,
         description: a.description || "",
         teacherName: a.teacherName,
+        term: normalizeTerm(a.term),
         givenAt: a.givenAt || a.createdAt,
         deadline: a.deadline,
         isPastDeadline: new Date(a.deadline) < now,
