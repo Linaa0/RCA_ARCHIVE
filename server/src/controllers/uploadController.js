@@ -84,32 +84,12 @@ async function uploadPaper(req, res) {
     return res.status(400).json({ error: "Academic year or class is required.", field: "year" });
   }
 
-  // Permissions: Assignments are teacher-only; Students upload to their own academic year
+  // Permissions: Assignments are teacher-only; students and teachers are permitted to upload to any class or academic year
   if (req.user.role === "student") {
     if (paperType.toLowerCase() === "assignment") {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(403).json({
         error: "Students are not permitted to upload assignments. Only teachers may create assignments.",
-      });
-    }
-
-    const studentClass = (req.user.class || "").trim();
-    const requestedClass = (classId || year || "").trim();
-    const { getAcademicYear } = require("../config/classes");
-    const studentYear = getAcademicYear(studentClass);
-    const requestedYear = getAcademicYear(requestedClass);
-
-    if (studentYear && requestedYear) {
-      if (studentYear !== requestedYear) {
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        return res.status(403).json({
-          error: `Students are only permitted to upload papers to their own enrolled class (${studentClass}) or academic year (Year ${studentYear}).`,
-        });
-      }
-    } else if (studentClass && requestedClass && requestedClass.toLowerCase() !== studentClass.toLowerCase()) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(403).json({
-        error: `Students are only permitted to upload papers to their own enrolled class (${studentClass}).`,
       });
     }
   }

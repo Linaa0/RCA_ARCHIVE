@@ -144,19 +144,31 @@ test("UPLOAD RESTRICTION: Student in Y1B can upload to cohort Y1B", async () => 
   }
 });
 
-test("UPLOAD RESTRICTION: Student in Y1B cannot upload to Year 2 subjects", async () => {
-  const res = await request(app)
-    .post("/api/upload")
-    .set("Authorization", `Bearer ${studentY1BToken}`)
-    .field("title", "Year 2 Software Architecture")
-    .field("subject", "Software Architecture")
-    .field("year", "2")
-    .field("term", "1")
-    .field("type", "Notes")
-    .attach("file", samplePdfPath);
+test("UPLOAD PERMISSION: Student in Y1B can upload to Year 2 subjects", async () => {
+  const uniqueDummyPath = path.join(__dirname, "fixtures", `temp-y2-${Date.now()}.pdf`);
+  fs.writeFileSync(uniqueDummyPath, Buffer.from(`%PDF-1.4 test unique y2 ${Date.now()}`));
 
-  assert.strictEqual(res.statusCode, 403);
-  assert.match(res.body.error, /only permitted to upload/i);
+  try {
+    const res = await request(app)
+      .post("/api/upload")
+      .set("Authorization", `Bearer ${studentY1BToken}`)
+      .field("title", "Year 2 Software Architecture")
+      .field("subject", "Software Architecture")
+      .field("year", "2")
+      .field("classId", "Y2A")
+      .field("term", "1")
+      .field("type", "Notes")
+      .attach("file", uniqueDummyPath);
+
+    assert.strictEqual(res.statusCode, 200);
+    assert.match(res.body.message, /Uploaded to/i);
+    assert.ok(res.body.paper);
+    if (res.body.paper?.id) {
+      await getPapersCollection().deleteOne({ id: res.body.paper.id });
+    }
+  } finally {
+    if (fs.existsSync(uniqueDummyPath)) fs.unlinkSync(uniqueDummyPath);
+  }
 });
 
 test("ASSIGNMENT RESTRICTION: Student cannot upload type 'assignment'", async () => {

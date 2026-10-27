@@ -109,21 +109,31 @@ test("SETUP: database, fixtures, and authorization tokens", async () => {
   });
 });
 
-test("STUDENT UPLOAD PERMISSION: rejects student uploading to a class other than their enrolled class with 403", async () => {
-  const res = await request(app)
-    .post("/api/upload")
-    .set("Authorization", `Bearer ${studentToken}`)
-    .field("title", "Exam Prep Y2B Physics")
-    .field("subject", "Physics")
-    .field("year", "Y2B")
-    .field("classId", "Y2B")
-    .field("term", "1")
-    .field("type", "past_paper")
-    .attach("file", samplePdfPath);
+test("STUDENT UPLOAD PERMISSION: allows student uploading to a class other than their enrolled class", async () => {
+  const uniqueDummyPath = path.join(__dirname, "fixtures", `temp-y2b-${Date.now()}.pdf`);
+  fs.writeFileSync(uniqueDummyPath, Buffer.from(`%PDF-1.4 test unique y2b ${Date.now()}`));
 
-  assert.strictEqual(res.statusCode, 403);
-  assert.ok(res.body.error);
-  assert.match(res.body.error, /only permitted to upload papers to their own enrolled class/i);
+  try {
+    const res = await request(app)
+      .post("/api/upload")
+      .set("Authorization", `Bearer ${studentToken}`)
+      .field("title", "Exam Prep Y2B Physics")
+      .field("subject", "Physics")
+      .field("year", "Y2B")
+      .field("classId", "Y2B")
+      .field("term", "1")
+      .field("type", "past_paper")
+      .attach("file", uniqueDummyPath);
+
+    assert.strictEqual(res.statusCode, 200);
+    assert.match(res.body.message, /Uploaded to/i);
+    assert.ok(res.body.paper);
+    if (res.body.paper?.id) {
+      await getPapersCollection().deleteOne({ id: res.body.paper.id });
+    }
+  } finally {
+    if (fs.existsSync(uniqueDummyPath)) fs.unlinkSync(uniqueDummyPath);
+  }
 });
 
 test("ASSIGNMENTS: student responses include the assigned cohort label", async () => {

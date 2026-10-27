@@ -228,8 +228,8 @@ function SubjectPage() {
       } else {
         setPopup({
           type: "error",
-          title: "Upload Restriction",
-          message: err.response?.data?.error || "Upload failed. Please check your assigned cohort and try again.",
+          title: "Upload Error",
+          message: err.response?.data?.error || "Upload failed. Please try again.",
         });
       }
     } finally {
