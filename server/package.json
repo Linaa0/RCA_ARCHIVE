@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test --test-concurrency=1",
+    "test": "node --test --test-force-exit --test-concurrency=1",
     "reset:db": "node scripts/reset-db.js",
     "check:data": "node scripts/data-check.js"
   },

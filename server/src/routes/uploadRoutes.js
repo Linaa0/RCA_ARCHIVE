@@ -7,6 +7,5 @@ const { handleUploadSingle } = require("../middleware/uploadMiddleware");
 const { uploadLimiter } = require("../middleware/rateLimiter");
 
 router.post("/api/upload", requireAuth, uploadLimiter, handleUploadSingle("file"), uploadController.uploadPaper);
-router.get("/uploads/:filename", uploadController.serveUpload);
 
 module.exports = router;

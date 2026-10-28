@@ -1,9 +1,10 @@
-const { BASE_URL } = require("../config/env");
+"use strict";
+
 const { getPapersCollection } = require("../models");
 
 function buildRatingSummary(paper) {
   if (!paper) return null;
-  const ratings = paper.ratings || [];
+  const ratings = Array.isArray(paper.ratings) ? paper.ratings : [];
   const ratingCount = ratings.length;
   const averageRating = ratingCount
     ? Number(
@@ -16,14 +17,12 @@ function buildRatingSummary(paper) {
     ratings,
     ratingCount,
     averageRating,
-    viewUrl: `${BASE_URL}/api/papers/${paper.id}/view`,
-    downloadUrl: `${BASE_URL}/api/papers/${paper.id}/download`,
   };
 }
 
 async function getPaperById(paperId) {
   const papers = getPapersCollection();
-  return papers.findOne({ id: paperId });
+  return papers.findOne({ id: String(paperId) });
 }
 
 module.exports = {

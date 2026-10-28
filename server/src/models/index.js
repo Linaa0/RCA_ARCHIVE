@@ -53,6 +53,9 @@ async function connectToMongo() {
     db.collection("security_logs").createIndex({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 }),
     db.collection("notifications").createIndex({ userId: 1, read: 1, createdAt: -1 }),
     db.collection("notifications").createIndex({ id: 1 }, { unique: true }),
+    db.collection("sessions").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    db.collection("sessions").createIndex({ id: 1 }, { unique: true }),
+    db.collection("sessions").createIndex({ userId: 1, revoked: 1 }),
   ]);
 
   return db;
@@ -127,6 +130,10 @@ function getNotificationsCollection() {
   return getDb().collection("notifications");
 }
 
+function getSessionsCollection() {
+  return getDb().collection("sessions");
+}
+
 async function checkDbHealth() {
   if (!db || !client) {
     try {
@@ -171,5 +178,6 @@ module.exports = {
   getAdminAuditLogsCollection,
   getSecurityLogsCollection,
   getNotificationsCollection,
+  getSessionsCollection,
   closeDb,
 };

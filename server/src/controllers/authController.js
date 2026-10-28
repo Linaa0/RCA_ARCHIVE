@@ -27,6 +27,7 @@ const { normalizeEmail } = require("../utils/userUtils");
 const { resolveRole } = require("../config/roles");
 const { normalizeClass } = require("../config/classes");
 const { getFrontendBaseUrl, buildPasswordSetupUrl } = require("../utils/urlUtils");
+const { mapUserForRole } = require("../utils/responseMappers");
 const {
   generateOtp,
   sendVerificationEmail,
@@ -36,6 +37,16 @@ const {
   isRealSmtpConfigured,
   createMailTransporter,
 } = require("../services/emailService");
+const {
+  createSession,
+  revokeSession,
+  revokeAllUserSessions,
+  refreshSession,
+} = require("../services/sessionService");
+const {
+  disconnectSocketSession,
+  disconnectUserSockets,
+} = require("../services/socketService");
 
 function canUseAdminBootstrapRoute(req) {
   if (NODE_ENV !== "production") {
@@ -234,6 +245,44 @@ async function sendTeacherOtp(req, res) {
   return sendOtp(req, res);
 }
 
+async function verifyOtp(req, res) {
+  const { email, otp, operation } = req.body || {};
+  if (!email || !otp) {
+    return res.status(400).json({ error: "Email and verification code are required" });
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+  if (operation === "signup" || !operation) {
+    const pendingSignups = getPendingSignupsCollection();
+    const pending = await pendingSignups.findOne({ email: normalizedEmail });
+    if (!pending) {
+      return res.status(400).json({ error: "No pending registration found or code expired." });
+    }
+    if (pending.expiresAt && new Date(pending.expiresAt) <= new Date()) {
+      return res.status(400).json({ error: "Verification code has expired." });
+    }
+    const match = await bcrypt.compare(String(otp).trim(), pending.hashedOtp);
+    if (!match) {
+      return res.status(400).json({ error: "Incorrect verification code." });
+    }
+    return res.json({ message: "Verification code is valid.", valid: true });
+  }
+
+  const otpCollection = getOtpCollection();
+  const otpRecord = await otpCollection.findOne({
+    email: normalizedEmail,
+    operation: operation || "reset-password",
+  });
+  if (!otpRecord || otpRecord.expiresAt <= Date.now()) {
+    return res.status(400).json({ error: "Invalid or expired OTP." });
+  }
+  const match = await bcrypt.compare(String(otp).trim(), otpRecord.hashedCode || "");
+  if (!match) {
+    return res.status(400).json({ error: "Invalid or expired OTP." });
+  }
+  return res.json({ message: "Verification code is valid.", valid: true });
+}
+
 async function forgotPassword(req, res) {
   const { email } = req.body;
   const normalizedEmail = normalizeEmail(email);
@@ -354,8 +403,13 @@ async function resetPassword(req, res) {
 
     await users.updateOne(
       { email: normalizeEmail(resetRecord.email) },
-      { $set: update }
+      { $set: update, $inc: { tokenVersion: 1 } }
     );
+
+    if (user && user.id) {
+      await revokeAllUserSessions(user.id);
+      disconnectUserSockets(user.id);
+    }
 
     await resetCollection.deleteMany({
       email: normalizeEmail(resetRecord.email),
@@ -411,7 +465,15 @@ async function resetPassword(req, res) {
       update.status = "active";
     }
 
-    await users.updateOne({ email: normalizedEmail }, { $set: update });
+    await users.updateOne(
+      { email: normalizedEmail },
+      { $set: update, $inc: { tokenVersion: 1 } }
+    );
+
+    if (user && user.id) {
+      await revokeAllUserSessions(user.id);
+      disconnectUserSockets(user.id);
+    }
 
     await otpCollection.deleteMany({
       email: normalizedEmail,
@@ -523,7 +585,7 @@ async function signup(req, res) {
 
   const resolvedRole = resolveRole(normalizedEmail, "student");
   const user = {
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     email: normalizedEmail,
     name: pending.fullName || (req.body.fullName || req.body.name || "").trim() || pending.username,
     username: pending.username || (username ? username.trim().toLowerCase() : normalizedEmail.split("@")[0]),
@@ -632,32 +694,18 @@ async function login(req, res) {
     );
   }
 
-  const token = jwt.sign(
-    {
-      id: user.id,
-      email: user.email,
-      username: user.username || user.name,
-      role,
-    },
-    JWT_SECRET,
-    { algorithm: "HS256", expiresIn: "12h" }
-  );
+  const sessionResult = await createSession({ ...user, role }, req);
 
   return res.json({
-    token,
+    token: sessionResult.token,
+    sessionId: sessionResult.sessionId,
+    expiresAt: sessionResult.expiresAt,
     email: user.email,
     username: user.username || user.name,
     name: user.name || user.username,
     role,
     mustChangePassword: Boolean(user.mustChangePassword),
-    user: {
-      id: user.id,
-      email: user.email,
-      username: user.username || user.name,
-      name: user.name || user.username,
-      role,
-      mustChangePassword: Boolean(user.mustChangePassword),
-    },
+    user: mapUserForRole({ ...user, role }, { role: "admin", id: user.id }),
   });
 }
 
@@ -694,10 +742,53 @@ async function changePassword(req, res) {
         tempPasswordExpiresAt: null,
         updatedAt: new Date().toISOString(),
       },
+      $inc: { tokenVersion: 1 },
     }
   );
 
+  await revokeAllUserSessions(user.id);
+  disconnectUserSockets(user.id);
+
   return res.json({ message: "Password updated successfully." });
+}
+
+async function logout(req, res) {
+  const sessionId = req.sessionId || req.body?.sessionId;
+  if (sessionId) {
+    await revokeSession(sessionId);
+    disconnectSocketSession(sessionId);
+  }
+  return res.json({ message: "Logged out successfully" });
+}
+
+async function logoutAll(req, res) {
+  const userId = req.user?.id;
+  if (userId) {
+    await revokeAllUserSessions(userId);
+    disconnectUserSockets(userId);
+  }
+  return res.json({ message: "All sessions have been revoked" });
+}
+
+async function refreshAuthToken(req, res) {
+  const tokenStr =
+    req.body?.token ||
+    (req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1]);
+
+  if (!tokenStr) {
+    return res.status(401).json({ error: "Token is required for refresh" });
+  }
+
+  const result = await refreshSession(tokenStr, req);
+  if (!result.success) {
+    return res.status(result.status || 401).json({ error: result.error });
+  }
+
+  return res.json({
+    token: result.token,
+    expiresAt: result.expiresAt,
+    user: result.user,
+  });
 }
 
 async function deleteAccount(req, res) {
@@ -709,6 +800,8 @@ async function deleteAccount(req, res) {
     return res.status(404).json({ error: "User not found" });
   }
 
+  await revokeAllUserSessions(user.id);
+  disconnectUserSockets(user.id);
   await users.deleteOne({ email: normalizedEmail });
   res.json({ message: "Account deleted successfully" });
 }
@@ -716,10 +809,14 @@ async function deleteAccount(req, res) {
 module.exports = {
   sendOtp,
   sendTeacherOtp,
+  verifyOtp,
   forgotPassword,
   resetPassword,
   signup,
   login,
   changePassword,
+  logout,
+  logoutAll,
+  refreshAuthToken,
   deleteAccount,
 };

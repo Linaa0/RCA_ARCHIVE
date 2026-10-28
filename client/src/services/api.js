@@ -78,20 +78,106 @@ const api = axios.create({
 });
 
 export async function openPaperDownload(paperId) {
-  try {
-    const { data } = await api.post(`/papers/${paperId}/access-link`);
-    if (data?.downloadUrl) {
-      window.location.href = apiUrl(data.downloadUrl);
-      return;
-    }
-  } catch (_) {}
-  window.location.href = apiUrl(`/papers/${paperId}/download`);
+  const { data } = await api.post(`/papers/${paperId}/access-link`);
+  if (data?.downloadUrl) {
+    window.location.href = apiUrl(data.downloadUrl);
+    return;
+  }
+  throw new Error("Failed to generate secure download link");
 }
 
-api.interceptors.request.use((config) => {
-  const token = getStoredToken();
+let refreshPromise = null;
 
-  if (token && !(isTokenExpired(token) || isSessionExpired())) {
+export async function silentRenewToken() {
+  const token = getStoredToken();
+  if (!token) return null;
+
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/refresh`,
+        { token },
+        { headers: { "Content-Type": "application/json" }, timeout: 8000 }
+      );
+      if (response.data?.token) {
+        localStorage.setItem("token", response.data.token);
+        if (response.data.expiresAt) {
+          localStorage.setItem(
+            "auth_expires_at",
+            String(new Date(response.data.expiresAt).getTime())
+          );
+        }
+        return response.data.token;
+      }
+      return null;
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        clearAuthStorage();
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/signup" &&
+          window.location.pathname !== "/"
+        ) {
+          if (!sessionStorage.getItem("login_notice")) {
+            sessionStorage.setItem(
+              "login_notice",
+              "Your session has expired. Please sign in again."
+            );
+          }
+          window.location.href = `/login?redirect=${encodeURIComponent(
+            window.location.pathname + window.location.search
+          )}`;
+        }
+      }
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+export function shouldRenewToken(token) {
+  if (!token) return false;
+  const { decodeJwt } = require ? {} : {}; // fallback check
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    const base64Url = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64Url)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (!payload?.exp) return false;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const remainingSec = payload.exp - nowSec;
+    // Renew at 80% of 30 min lifetime (last 6 minutes = 360 seconds)
+    return remainingSec <= 360;
+  } catch (_) {
+    return false;
+  }
+}
+
+api.interceptors.request.use(async (config) => {
+  let token = getStoredToken();
+
+  if (token && shouldRenewToken(token)) {
+    const renewed = await silentRenewToken();
+    if (renewed) {
+      token = renewed;
+    }
+  }
+
+  if (token && !isTokenExpired(token) && !isSessionExpired()) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -108,7 +194,7 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
     const isNetworkError = !error.response || error.code === "ERR_NETWORK";
     const isRouteError = status === 404 || status === 405;
@@ -120,6 +206,15 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
+      if (!error.config?._isRetry && !error.config?.url?.includes("/auth/refresh")) {
+        error.config._isRetry = true;
+        const renewedToken = await silentRenewToken();
+        if (renewedToken) {
+          error.config.headers.Authorization = `Bearer ${renewedToken}`;
+          return api(error.config);
+        }
+      }
+
       const hadAuth = Boolean(
         error.config?.headers?.Authorization || error.config?.headers?.authorization
       );

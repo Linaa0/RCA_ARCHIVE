@@ -90,7 +90,7 @@ verify_deployment() {
   local max_attempts="${3:-60}"
   local sleep_seconds="${4:-3}"
   local health_url="http://127.0.0.1:${port}/api/health"
-  local curriculum_url="http://127.0.0.1:${port}/api/curriculum"
+  local curriculum_url="http://127.0.0.1:${port}/api/public/curriculum"
 
   echo "Verifying deployment at ${health_url} and ${curriculum_url} (expected commit: ${expected_commit})..."
 
@@ -128,7 +128,7 @@ verify_deployment() {
     if [[ "$last_health_code" == "200" && "$last_curriculum_code" != "404" && "$last_curriculum_code" == "200" && "$commit_ok" -eq 1 ]]; then
       echo "Verification passed on port ${port} (attempt ${i}/${max_attempts}):"
       echo "  /api/health: HTTP 200, commit=${last_returned_commit}"
-      echo "  /api/curriculum: HTTP ${last_curriculum_code}"
+      echo "  /api/public/curriculum: HTTP ${last_curriculum_code}"
       return 0
     fi
 

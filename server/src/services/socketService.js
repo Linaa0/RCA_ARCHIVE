@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { JWT_SECRET, CORS_ORIGINS, NODE_ENV } = require("../config/env");
 const { DEFAULT_CORS_ORIGINS } = require("../config/constants");
 
@@ -40,8 +41,8 @@ function initSocketServer(httpServer) {
     transports: ["websocket", "polling"],
   });
 
-  // JWT handshake authentication
-  io.use((socket, next) => {
+  // JWT handshake authentication with session validation
+  io.use(async (socket, next) => {
     const token =
       socket.handshake.auth?.token ||
       socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, "");
@@ -51,8 +52,16 @@ function initSocketServer(httpServer) {
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
+      const { validateSession } = require("./sessionService");
+      const sessionRes = await validateSession(decoded, null);
+      if (!sessionRes.valid) {
+        return next(new Error("Invalid or revoked realtime session"));
+      }
+
       socket.user = decoded;
+      socket.sessionId = decoded.jti || null;
+      socket.userId = String(decoded.id || decoded.userId || "");
       return next();
     } catch (err) {
       return next(new Error("Invalid or expired realtime session token"));
@@ -202,7 +211,7 @@ async function notifyUser(userId, { title, message, type = "info", link = null }
   try {
     const notifications = getNotificationsCollection();
     const doc = {
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+      id: crypto.randomUUID(),
       userId: String(userId),
       title,
       message,
@@ -248,6 +257,25 @@ async function notifyUserOnce(userId, { id, title, message, type = "info", link 
   return true;
 }
 
+function disconnectSocketSession(sessionId) {
+  if (!io || !sessionId) return;
+  for (const [, socket] of io.sockets.sockets) {
+    if (socket.sessionId === sessionId) {
+      socket.disconnect(true);
+    }
+  }
+}
+
+function disconnectUserSockets(userId) {
+  if (!io || !userId) return;
+  const targetId = String(userId);
+  for (const [, socket] of io.sockets.sockets) {
+    if (socket.userId === targetId) {
+      socket.disconnect(true);
+    }
+  }
+}
+
 module.exports = {
   initSocketServer,
   getIo,
@@ -261,4 +289,6 @@ module.exports = {
   emitResourceEvent,
   notifyUser,
   notifyUserOnce,
+  disconnectSocketSession,
+  disconnectUserSockets,
 };

@@ -12,7 +12,7 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const unique = require("crypto").randomUUID();
     cb(null, unique + path.extname(file.originalname));
   },
 });

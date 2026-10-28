@@ -17,7 +17,7 @@ const ALLOWED = [".pdf", ".doc", ".docx", ".zip", ".txt", ".ppt", ".pptx", ".xls
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, SUBMISSIONS_DIR),
   filename: (_req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const unique = require("crypto").randomUUID();
     cb(null, unique + path.extname(file.originalname).toLowerCase());
   },
 });

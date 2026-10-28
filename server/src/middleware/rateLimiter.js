@@ -1,18 +1,15 @@
-const rateLimit = require("express-rate-limit");
+"use strict";
+
 const { getFailedLoginAttemptsCollection, getSecurityLogsCollection } = require("../models");
 const { sendSuspiciousLoginEmail } = require("../services/emailService");
 
 const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILED_ATTEMPTS = 5;
 
-function isTestEnv() {
-  return (
-    process.env.NODE_ENV === "test" ||
-    process.env.DISABLE_RATE_LIMIT === "true" ||
-    (Array.isArray(process.argv) && process.argv.some((arg) => arg.includes("test"))) ||
-    (Array.isArray(process.execArgv) && process.execArgv.some((arg) => arg.includes("test")))
-  );
-}
+// In a single-instance PM2 setup (default), this memory store provides high-performance tracking.
+// Note: If the backend is ever scaled to multiple instances, a shared store (e.g. MongoDB-backed
+// store via rate-limit-mongo or Redis) MUST be configured so counters are synchronized across instances.
+const limiterStores = new Map();
 
 function normalizeKey(value) {
   return (value || "").toString().trim().toLowerCase();
@@ -31,29 +28,95 @@ function normalizeIp(ip) {
 }
 
 function getClientIp(req) {
-  const raw =
-    req?.headers?.["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req?.ip ||
-    req?.socket?.remoteAddress ||
-    "127.0.0.1";
+  // With app.set("trust proxy", 1), Express resolves req.ip securely from the single trusted proxy.
+  // We do not parse raw X-Forwarded-For headers directly to prevent client IP spoofing attacks.
+  const raw = req?.ip || req?.socket?.remoteAddress || "127.0.0.1";
   return normalizeIp(raw);
 }
 
-function createLimiter({ windowMs, max, message, logType = "rate_limit_hit", keyGenerator }) {
-  return rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: keyGenerator || ((req) => getClientIp(req)),
-    skip: () => {
-      // Allow testing environments to bypass rate limiters to prevent test flakiness
-      if (process.env.DISABLE_RATE_LIMIT === "true" || isTestEnv()) return true;
-      return false;
-    },
-    handler: async (req, res, _next, options) => {
-      const retryAfterSeconds = Math.max(1, Math.ceil(options.windowMs / 1000));
-      const retryMinutes = Math.max(1, Math.ceil(options.windowMs / (60 * 1000)));
+function applyBindingRateLimitHeaders(res, { limit, remaining, resetSeconds, windowMs }) {
+  if (!res.locals) res.locals = {};
+  const current = res.locals._bindingRateLimit;
+
+  // Binding limit: the limiter closest to exhaustion (fewer requests remaining)
+  if (
+    !current ||
+    remaining < current.remaining ||
+    (remaining === current.remaining && limit < current.limit)
+  ) {
+    res.locals._bindingRateLimit = { limit, remaining, resetSeconds, windowMs };
+
+    const policy = `${limit};w=${Math.ceil(windowMs / 1000)}`;
+    res.setHeader("RateLimit-Limit", String(limit));
+    res.setHeader("RateLimit-Remaining", String(Math.max(0, remaining)));
+    res.setHeader("RateLimit-Reset", String(Math.max(0, resetSeconds)));
+    res.setHeader("RateLimit-Policy", policy);
+    res.setHeader(
+      "RateLimit",
+      `limit=${limit}, remaining=${Math.max(0, remaining)}, reset=${Math.max(0, resetSeconds)}`
+    );
+  }
+
+  // Strictly strip legacy X-RateLimit-* headers to adhere to draft-7 standard
+  res.removeHeader("X-RateLimit-Limit");
+  res.removeHeader("X-RateLimit-Remaining");
+  res.removeHeader("X-RateLimit-Reset");
+}
+
+function createLimiter({
+  windowMs,
+  max,
+  message,
+  logType = "rate_limit_hit",
+  keyGenerator,
+  id,
+}) {
+  const storeId = id || `${windowMs}_${max}_${logType}`;
+  if (!limiterStores.has(storeId)) {
+    limiterStores.set(storeId, new Map());
+  }
+  const store = limiterStores.get(storeId);
+
+  // Periodic cleanup of expired keys in this store
+  const cleanupInterval = Math.max(30000, windowMs);
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of store.entries()) {
+      if (now >= entry.resetTime) {
+        store.delete(key);
+      }
+    }
+  }, cleanupInterval).unref();
+
+  return async function rateLimitMiddleware(req, res, next) {
+    if (process.env.DISABLE_RATE_LIMIT === "true") {
+      return next();
+    }
+
+    const key = keyGenerator ? keyGenerator(req) : getClientIp(req);
+    const now = Date.now();
+
+    let record = store.get(key);
+    if (!record || now >= record.resetTime) {
+      record = { count: 0, resetTime: now + windowMs };
+      store.set(key, record);
+    }
+
+    record.count += 1;
+    const remaining = Math.max(0, max - record.count);
+    const resetSeconds = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
+
+    applyBindingRateLimitHeaders(res, {
+      limit: max,
+      remaining,
+      resetSeconds,
+      windowMs,
+    });
+
+    if (record.count > max) {
+      // 429 Too Many Requests
+      const retryAfterSeconds = resetSeconds;
+      const retryMinutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
 
       try {
         const securityLogs = getSecurityLogsCollection();
@@ -61,17 +124,16 @@ function createLimiter({ windowMs, max, message, logType = "rate_limit_hit", key
           await securityLogs.insertOne({
             type: logType,
             ip: getClientIp(req),
+            key,
             path: req.originalUrl || req.path,
             method: req.method,
             userAgent: req.headers["user-agent"] || "",
             createdAt: new Date(),
           });
         }
-      } catch (err) {
-        // Non-blocking log persistence
-      }
+      } catch (_) {}
 
-      res.set("Retry-After", String(retryAfterSeconds));
+      res.setHeader("Retry-After", String(retryAfterSeconds));
       return res.status(429).json({
         error:
           message ||
@@ -80,53 +142,141 @@ function createLimiter({ windowMs, max, message, logType = "rate_limit_hit", key
           }.`,
         retryAfter: retryAfterSeconds,
       });
-    },
-  });
+    }
+
+    return next();
+  };
 }
 
-// 1. Global rate limiter: 1000 requests per 15 minutes per IP (3000 in development)
-// Sized for educational institutions where multiple active users share a campus NAT gateway
+// Global rate limiter: 1000 requests per 15 minutes per IP
 const globalLimiter = createLimiter({
+  id: "global",
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || (process.env.NODE_ENV === "development" ? 3000 : 1000),
   logType: "global_rate_limit",
   message: "Too many requests from this network. Please try again in 15 minutes.",
 });
 
-// 2. Signup limiter: 5 per hour per IP
+// Light health endpoint limiter: 60 requests per minute per IP
+const healthLimiter = createLimiter({
+  id: "health",
+  windowMs: 60 * 1000,
+  max: 60,
+  logType: "health_rate_limit",
+  message: "Too many health check requests. Please try again in a minute.",
+});
+
+// Public endpoints limiter (curriculum, summary): 60 requests per minute per IP
+const publicLimiter = createLimiter({
+  id: "public",
+  windowMs: 60 * 1000,
+  max: 60,
+  logType: "public_rate_limit",
+  message: "Too many public requests. Please try again in a minute.",
+});
+
+// Signup limiter: 5 per hour per IP
 const signupLimiter = createLimiter({
+  id: "signup",
   windowMs: 60 * 60 * 1000,
   max: 5,
   logType: "signup_rate_limit",
   message: "Too many sign-up attempts from this network. Please try again in an hour.",
 });
 
-// 3. Send OTP limiter: 3 per 10 minutes per email and per IP
+// Send OTP limiter: 3 per 10 minutes keyed by IP and account
 const sendOtpLimiter = createLimiter({
+  id: "send_otp",
   windowMs: 10 * 60 * 1000,
   max: 3,
   keyGenerator: (req) => {
-    const email = (req.body?.email || "").toLowerCase().trim();
-    return `${getClientIp(req)}_${email}`;
+    const ip = getClientIp(req);
+    const email = normalizeKey(req.body?.email || "");
+    return `${ip}_${email}`;
   },
   logType: "otp_rate_limit",
   message: "Too many verification code requests for this address. Please try again in 10 minutes.",
 });
 
-// 4. Forgot password limiter: 3 per hour per email and IP
+// Verify OTP limiter: 10 attempts per 10 minutes keyed by IP and account
+const verifyOtpLimiter = createLimiter({
+  id: "verify_otp",
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => {
+    const ip = getClientIp(req);
+    const email = normalizeKey(req.body?.email || "");
+    return `${ip}_${email}`;
+  },
+  logType: "verify_otp_rate_limit",
+  message: "Too many verification attempts. Please request a new code or try again later.",
+});
+
+// Forgot password limiter: 3 per hour keyed by IP and account
 const forgotPasswordLimiter = createLimiter({
+  id: "forgot_password",
   windowMs: 60 * 60 * 1000,
   max: 3,
   keyGenerator: (req) => {
-    const email = (req.body?.email || "").toLowerCase().trim();
-    return `${getClientIp(req)}_${email}`;
+    const ip = getClientIp(req);
+    const email = normalizeKey(req.body?.email || "");
+    return `${ip}_${email}`;
   },
   logType: "forgot_password_rate_limit",
   message: "Too many password reset requests. Please try again in an hour.",
 });
 
-// 5. Uploads limiter: 20 per hour per user / IP
+// Reset password limiter: 5 attempts per 15 minutes keyed by IP and account/token
+const resetPasswordLimiter = createLimiter({
+  id: "reset_password",
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => {
+    const ip = getClientIp(req);
+    const account = normalizeKey(req.body?.email || req.body?.token || "");
+    return `${ip}_${account}`;
+  },
+  logType: "reset_password_rate_limit",
+  message: "Too many password reset attempts. Please try again in 15 minutes.",
+});
+
+// Login rate limiter: 10 attempts per 5 minutes keyed by IP and account
+const loginLimiter = createLimiter({
+  id: "login",
+  windowMs: 5 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_LOGIN_MAX) || 10,
+  keyGenerator: (req) => {
+    const ip = getClientIp(req);
+    const identifier = normalizeKey(req.body?.email || req.body?.identifier || "");
+    return `${ip}_${identifier}`;
+  },
+  logType: "login_rate_limit",
+  message: "Too many login attempts for this account. Please try again in 5 minutes.",
+});
+
+// Change password limiter: 10 attempts per 15 minutes per user / IP
+const changePasswordLimiter = createLimiter({
+  id: "change_password",
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?.id || getClientIp(req),
+  logType: "change_password_rate_limit",
+  message: "Too many password change attempts. Please try again in 15 minutes.",
+});
+
+// Refresh token limiter: 30 requests per 15 minutes per IP
+const refreshLimiter = createLimiter({
+  id: "refresh",
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => getClientIp(req),
+  logType: "refresh_rate_limit",
+  message: "Too many session renewal requests. Please try again in 15 minutes.",
+});
+
+// Uploads limiter: 20 per hour per user / IP
 const uploadLimiter = createLimiter({
+  id: "upload",
   windowMs: 60 * 60 * 1000,
   max: 20,
   keyGenerator: (req) => req.user?.id || getClientIp(req),
@@ -134,38 +284,24 @@ const uploadLimiter = createLimiter({
   message: "Hourly upload limit reached (maximum 20 uploads per hour). Please try again later.",
 });
 
-// 6. Appeals limiter: 3 per day per user
+// Appeals limiter: 5 per day per user / IP
 const appealLimiter = createLimiter({
+  id: "appeal",
   windowMs: 24 * 60 * 60 * 1000,
-  max: 3,
+  max: 5,
   keyGenerator: (req) => req.user?.id || getClientIp(req),
   logType: "appeal_rate_limit",
-  message: "Daily appeal submission limit reached (maximum 3 appeals per day). Please try again tomorrow.",
+  message: "Daily appeal submission limit reached (maximum 5 appeals per day). Please try again tomorrow.",
 });
 
-// 7. Login rate limiter: 10 attempts per 5 minutes per IP
-const loginLimiter = createLimiter({
-  windowMs: 5 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_LOGIN_MAX) || (process.env.NODE_ENV === "test" ? 1000 : 10),
-  logType: "login_rate_limit",
-  message: "Too many login attempts from this network. Please try again in 5 minutes.",
-});
-
-// 8. Reset password rate limiter: 10 attempts per 15 minutes per IP
-const resetPasswordLimiter = createLimiter({
+// Admin operations limiter: 300 per 15 minutes
+const adminLimiter = createLimiter({
+  id: "admin",
   windowMs: 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_RESET_MAX) || (process.env.NODE_ENV === "test" ? 1000 : 10),
-  logType: "reset_password_rate_limit",
-  message: "Too many password reset attempts. Please try again in 15 minutes.",
-});
-
-// 9. Change password rate limiter: 10 attempts per 15 minutes per user / IP
-const changePasswordLimiter = createLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_CHANGE_PW_MAX) || (process.env.NODE_ENV === "test" ? 1000 : 10),
+  max: 300,
   keyGenerator: (req) => req.user?.id || getClientIp(req),
-  logType: "change_password_rate_limit",
-  message: "Too many password change attempts. Please try again in 15 minutes.",
+  logType: "admin_rate_limit",
+  message: "Too many administrative operations. Please try again in 15 minutes.",
 });
 
 async function checkFailedAttempts(identifier, ip) {
@@ -243,7 +379,6 @@ async function recordFailedAttempt(req, identifier, ip, user) {
   const check = await checkFailedAttempts(normEmail, clientIp);
 
   if (check.count >= MAX_FAILED_ATTEMPTS) {
-    // Record security log for failed login lockout
     try {
       const securityLogs = getSecurityLogsCollection();
       if (securityLogs) {
@@ -255,9 +390,7 @@ async function recordFailedAttempt(req, identifier, ip, user) {
           createdAt: new Date(),
         });
       }
-    } catch (err) {
-      // non-blocking
-    }
+    } catch (_) {}
 
     if (user) {
       sendSuspiciousLoginEmail(user, clientIp).catch((err) =>
@@ -288,15 +421,22 @@ async function clearFailedAttemptsForEmail(identifier, ip) {
 }
 
 module.exports = {
+  createLimiter,
+  applyBindingRateLimitHeaders,
   globalLimiter,
+  healthLimiter,
+  publicLimiter,
   signupLimiter,
   sendOtpLimiter,
+  verifyOtpLimiter,
   forgotPasswordLimiter,
+  resetPasswordLimiter,
+  loginLimiter,
+  changePasswordLimiter,
+  refreshLimiter,
   uploadLimiter,
   appealLimiter,
-  loginLimiter,
-  resetPasswordLimiter,
-  changePasswordLimiter,
+  adminLimiter,
   checkFailedAttempts,
   recordFailedAttempt,
   clearFailedAttemptsForEmail,

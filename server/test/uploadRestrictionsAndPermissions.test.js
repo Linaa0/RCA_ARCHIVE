@@ -51,12 +51,18 @@ const teacher = {
   status: "active",
 };
 
+function makeValidPdfBuffer(comment = "") {
+  return Buffer.from(
+    `%PDF-1.4\n% ${comment}\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\nxref\n0 3\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \ntrailer\n<< /Size 3 /Root 1 0 R >>\nstartxref\n115\n%%EOF`
+  );
+}
+
 test.before(async () => {
   await connectToMongo();
   if (!fs.existsSync(path.dirname(samplePdfPath))) {
     fs.mkdirSync(path.dirname(samplePdfPath), { recursive: true });
   }
-  fs.writeFileSync(samplePdfPath, Buffer.from("%PDF-1.4 sample pdf document for testing upload restrictions\n%%EOF"));
+  fs.writeFileSync(samplePdfPath, makeValidPdfBuffer("sample test document"));
 
   const users = getUsersCollection();
   await users.deleteMany({
@@ -120,7 +126,7 @@ test("UPLOAD RESTRICTION: Student in Y1B can upload to academic year 1", async (
 test("UPLOAD RESTRICTION: Student in Y1B can upload to cohort Y1B", async () => {
   // Use a modified dummy file so hash differs
   const uniqueDummyPath = path.join(__dirname, "fixtures", `temp-${Date.now()}.pdf`);
-  fs.writeFileSync(uniqueDummyPath, Buffer.from(`%PDF-1.4 test unique ${Date.now()}`));
+  fs.writeFileSync(uniqueDummyPath, makeValidPdfBuffer(`unique-${Date.now()}`));
 
   try {
     const res = await request(app)
@@ -146,7 +152,7 @@ test("UPLOAD RESTRICTION: Student in Y1B can upload to cohort Y1B", async () => 
 
 test("UPLOAD PERMISSION: Student in Y1B can upload to Year 2 subjects", async () => {
   const uniqueDummyPath = path.join(__dirname, "fixtures", `temp-y2-${Date.now()}.pdf`);
-  fs.writeFileSync(uniqueDummyPath, Buffer.from(`%PDF-1.4 test unique y2 ${Date.now()}`));
+  fs.writeFileSync(uniqueDummyPath, makeValidPdfBuffer(`y2-${Date.now()}`));
 
   try {
     const res = await request(app)
@@ -204,7 +210,7 @@ test("PAPER DELETION: Uploader can delete their own uploaded paper directly", as
 test("PAPER DELETION: Non-uploader student cannot delete another user's paper", async () => {
   // Create a paper by Y1B
   const uniqueDummyPath = path.join(__dirname, "fixtures", `temp-y1b-${Date.now()}.pdf`);
-  fs.writeFileSync(uniqueDummyPath, Buffer.from(`%PDF-1.4 test owner ${Date.now()}`));
+  fs.writeFileSync(uniqueDummyPath, makeValidPdfBuffer(`owner-${Date.now()}`));
   let paperId;
 
   try {

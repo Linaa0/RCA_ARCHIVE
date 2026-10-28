@@ -25,6 +25,8 @@ export const FALLBACK_PROMOTIONS = [
       "Embedded Systems",
       "Web User Interface",
       "Graphical User Interface",
+      "Computer Basics",
+      "Short Courses",
     ],
   },
   {
@@ -133,7 +135,19 @@ let activePromotions = getCachedCurriculum();
 
 export async function fetchCurriculum() {
   try {
-    const { data } = await api.get("/curriculum");
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+    const endpoint = token ? "/curriculum" : "/public/curriculum";
+    let res;
+    try {
+      res = await api.get(endpoint);
+    } catch (e) {
+      if (token && e.response?.status === 401) {
+        res = await api.get("/public/curriculum");
+      } else {
+        throw e;
+      }
+    }
+    const data = res?.data;
     if (Array.isArray(data?.terms) && data.terms.length > 0) {
       activeTerms = data.terms;
       try {
@@ -143,9 +157,14 @@ export async function fetchCurriculum() {
       }
     }
     if (Array.isArray(data?.promotions) && data.promotions.length > 0) {
-      activePromotions = data.promotions;
+      activePromotions = data.promotions.map((p) => ({
+        id: p.id || p.name || "",
+        label: p.label || p.name || "",
+        classes: p.classes || [],
+        subjects: p.subjects || [],
+      }));
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.promotions));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(activePromotions));
       } catch (e) {
         // Ignore storage errors
       }

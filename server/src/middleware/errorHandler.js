@@ -1,5 +1,9 @@
+"use strict";
+
 function errorHandler(err, req, res, _next) {
-  console.error("Unhandled Error:", err);
+  if (process.env.NODE_ENV !== "test") {
+    console.error("Unhandled Error:", err?.message || err);
+  }
 
   const status =
     typeof err.status === "number"
@@ -7,23 +11,19 @@ function errorHandler(err, req, res, _next) {
       : typeof err.statusCode === "number"
       ? err.statusCode
       : 500;
-  const isProd = process.env.NODE_ENV === "production";
 
-  // Prevent leaking internal system details or database exceptions to clients
   let message;
   if (err.userMessage) {
     message = err.userMessage;
   } else if (status < 500) {
     message = err.message || "Bad request";
-  } else if (isProd) {
-    message = "An unexpected error occurred. Please try again later.";
   } else {
-    message = err.message || "Internal server error";
+    message = "An unexpected error occurred. Please try again later.";
   }
 
-  res.status(status).json({
+  // Uniform JSON error shape without stack traces or internal details
+  return res.status(status).json({
     error: message,
-    ...(!isProd && err.stack ? { stack: err.stack } : {}),
   });
 }
 

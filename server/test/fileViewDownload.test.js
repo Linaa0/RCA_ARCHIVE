@@ -155,7 +155,9 @@ test("File view and download suite", async (t) => {
   });
 
   await t.test("1. View paper: returns Content-Disposition inline with correct Content-Type", async () => {
-    const res = await request(app).get(`/api/papers/${testPaperId}/view`);
+    const res = await request(app)
+      .get(`/api/papers/${testPaperId}/view`)
+      .set("Authorization", `Bearer ${studentToken}`);
     assert.equal(res.status, 200);
     assert.equal(res.headers["content-type"], "application/pdf");
     assert.ok(res.headers["content-disposition"].startsWith("inline;"));
@@ -163,7 +165,9 @@ test("File view and download suite", async (t) => {
   });
 
   await t.test("2. Download paper: returns Content-Disposition attachment with RFC 5987 encoding", async () => {
-    const res = await request(app).get(`/api/papers/${testPaperId}/download`);
+    const res = await request(app)
+      .get(`/api/papers/${testPaperId}/download`)
+      .set("Authorization", `Bearer ${studentToken}`);
     assert.equal(res.status, 200);
     assert.equal(res.headers["content-type"], "application/pdf");
     assert.ok(res.headers["content-disposition"].startsWith("attachment;"));

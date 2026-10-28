@@ -15,7 +15,9 @@
     "build": "node scripts/build-client.js",
     "build:client": "node scripts/build-client.js",
     "postinstall": "npm install --prefix client",
-    "install:all": "npm install && npm install --prefix client && npm install --prefix server"
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server",
+    "test": "npm run test --prefix server",
+    "test:security": "node --test --test-force-exit server/test/part1Security.test.js server/test/part2Sessions.test.js server/test/part3RateLimit.test.js server/test/part4UploadValidation.test.js server/test/routeSecurityAudit.test.js server/test/part6Curriculum.test.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

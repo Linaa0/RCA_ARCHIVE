@@ -11,6 +11,7 @@ const {
   buildRatingSummary,
   getPaperById,
 } = require("../services/ratingService");
+const { mapPaperForRole } = require("../utils/responseMappers");
 const {
   permanentlyDeletePaperRecord,
 } = require("../services/storageService");
@@ -187,10 +188,12 @@ async function listPapers(req, res) {
     result = result.slice(0, parsedLimit);
   }
 
+  const mappedResult = result.map((p) => mapPaperForRole(p, req.user));
+
   if (wantsMeta) {
-    return res.json({ items: result, termCounts, total: result.length });
+    return res.json({ items: mappedResult, termCounts, total: mappedResult.length });
   }
-  res.json(result);
+  res.json(mappedResult);
 }
 
 function getPaperClass(paper) {
@@ -295,34 +298,85 @@ const crypto = require("crypto");
 const { JWT_SECRET } = require("../config/env");
 const { emitPaperEvent, emitDeletionEvent, emitStatsEvent } = require("../services/socketService");
 
+function canUserAccessPaper(user, paper) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  if (
+    (paper.uploadedById && String(paper.uploadedById) === String(user.id)) ||
+    (paper.uploadedByEmail && String(paper.uploadedByEmail).toLowerCase() === String(user.email || "").toLowerCase()) ||
+    (paper.uploadedBy && String(paper.uploadedBy).toLowerCase() === String(user.username || "").toLowerCase())
+  ) {
+    return true;
+  }
+  if (user.role === "teacher") return true;
+  if (paper.isClassRestricted && paper.classId && user.class && paper.classId !== user.class) {
+    return false;
+  }
+  return true;
+}
+
+async function getPaper(req, res) {
+  const paper = await getPaperById(req.params.id);
+  if (!paper) {
+    return res.status(404).json({ error: "Paper not found" });
+  }
+  if (!canUserAccessPaper(req.user, paper)) {
+    return res.status(403).json({ error: "Access denied to this paper" });
+  }
+  return res.json({ paper: mapPaperForRole(paper, req.user) });
+}
+
 function signAccessLink(paperId, action, expiresAt) {
-  const data = `${paperId}:${action}:${expiresAt}`;
+  const nonce = crypto.randomBytes(16).toString("hex");
+  const data = `${paperId}:${action}:${expiresAt}:${nonce}`;
   const sig = crypto.createHmac("sha256", JWT_SECRET).update(data).digest("base64url");
-  return `${paperId}.${action}.${expiresAt}.${sig}`;
+  return `${paperId}.${action}.${expiresAt}.${nonce}.${sig}`;
 }
 
 function verifyAccessLink(token) {
   if (!token || typeof token !== "string") return null;
   const parts = token.split(".");
-  if (parts.length !== 4) return null;
-  const [paperId, action, expiresAtStr, sig] = parts;
-  const expiresAt = Number(expiresAtStr);
-  if (Number.isNaN(expiresAt)) return null;
-  if (Date.now() > expiresAt) {
-    return { expired: true, paperId, action };
-  }
-  const data = `${paperId}:${action}:${expiresAtStr}`;
-  const expectedSig = crypto.createHmac("sha256", JWT_SECRET).update(data).digest("base64url");
-  try {
-    const a = Buffer.from(sig);
-    const b = Buffer.from(expectedSig);
-    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+  if (parts.length === 5) {
+    const [paperId, action, expiresAtStr, nonce, sig] = parts;
+    const expiresAt = Number(expiresAtStr);
+    if (Number.isNaN(expiresAt)) return null;
+    if (Date.now() > expiresAt) {
+      return { expired: true, paperId, action };
+    }
+    const data = `${paperId}:${action}:${expiresAtStr}:${nonce}`;
+    const expectedSig = crypto.createHmac("sha256", JWT_SECRET).update(data).digest("base64url");
+    try {
+      const a = Buffer.from(sig);
+      const b = Buffer.from(expectedSig);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        return null;
+      }
+    } catch (_) {
       return null;
     }
-  } catch (_) {
-    return null;
+    return { valid: true, paperId, action, expiresAt };
   }
-  return { valid: true, paperId, action, expiresAt };
+  if (parts.length === 4) {
+    const [paperId, action, expiresAtStr, sig] = parts;
+    const expiresAt = Number(expiresAtStr);
+    if (Number.isNaN(expiresAt)) return null;
+    if (Date.now() > expiresAt) {
+      return { expired: true, paperId, action };
+    }
+    const data = `${paperId}:${action}:${expiresAtStr}`;
+    const expectedSig = crypto.createHmac("sha256", JWT_SECRET).update(data).digest("base64url");
+    try {
+      const a = Buffer.from(sig);
+      const b = Buffer.from(expectedSig);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
+    return { valid: true, paperId, action, expiresAt };
+  }
+  return null;
 }
 
 function formatContentDisposition(type, originalName) {
@@ -346,6 +400,9 @@ async function createAccessLink(req, res) {
   const paper = await getPaperById(id);
   if (!paper) {
     return res.status(404).json({ error: "Paper not found" });
+  }
+  if (!canUserAccessPaper(req.user, paper)) {
+    return res.status(403).json({ error: "Access denied to this paper" });
   }
 
   const filePath = path.join(UPLOADS_DIR, paper.filename);
@@ -409,24 +466,32 @@ async function accessPaperFile(req, res) {
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
   const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
+  const SAFE_INLINE = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt"];
+  const isInline = (mode === "view" || verified.action === "view") && SAFE_INLINE.includes(ext);
+
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
+  res.setHeader("Content-Type", contentType);
 
-  if (mode === "download" || verified.action === "download") {
-    res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
-    res.setHeader("Content-Type", contentType);
+  if (isInline) {
+    res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
     return res.sendFile(filePath);
   }
 
-  res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
-  res.setHeader("Content-Type", contentType);
+  res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
   return res.sendFile(filePath);
 }
 
 async function getPaperFile(req, res) {
   const paper = await getPaperById(req.params.id);
   if (!paper) return res.status(404).json({ error: "Paper not found" });
+  if (req.user && !canUserAccessPaper(req.user, paper)) {
+    return res.status(403).json({ error: "Access denied to this paper" });
+  }
 
   const filePath = resolveSafeUploadPath(paper.filename);
   if (!filePath || !fs.existsSync(filePath)) {
@@ -437,24 +502,32 @@ async function getPaperFile(req, res) {
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
   const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
+  const SAFE_INLINE = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt"];
+  const isInline = req.query.download !== "1" && SAFE_INLINE.includes(ext);
+
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
+  res.setHeader("Content-Type", contentType);
 
-  if (req.query.download === "1") {
-    res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
-    res.setHeader("Content-Type", contentType);
+  if (isInline) {
+    res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
     return res.sendFile(filePath);
   }
 
-  res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
-  res.setHeader("Content-Type", contentType);
+  res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
   return res.sendFile(filePath);
 }
 
 async function viewPaper(req, res) {
   const paper = await getPaperById(req.params.id);
   if (!paper) return res.status(404).json({ error: "Paper not found" });
+  if (req.user && !canUserAccessPaper(req.user, paper)) {
+    return res.status(403).json({ error: "Access denied to this paper" });
+  }
 
   const filePath = resolveSafeUploadPath(paper.filename);
   if (!filePath || !fs.existsSync(filePath)) {
@@ -465,17 +538,29 @@ async function viewPaper(req, res) {
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
   const originalName = paper.originalName || `${paper.title || "document"}${ext || ".pdf"}`;
 
+  const SAFE_INLINE = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt"];
+  const isInline = SAFE_INLINE.includes(ext);
+
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
   res.setHeader("Content-Type", contentType);
-  res.setHeader("Content-Disposition", formatContentDisposition("inline", originalName));
+  res.setHeader(
+    "Content-Disposition",
+    formatContentDisposition(isInline ? "inline" : "attachment", originalName)
+  );
   return res.sendFile(filePath);
 }
 
 async function downloadPaper(req, res) {
   const paper = await getPaperById(req.params.id);
   if (!paper) return res.status(404).json({ error: "Paper not found" });
+  if (req.user && !canUserAccessPaper(req.user, paper)) {
+    return res.status(403).json({ error: "Access denied to this paper" });
+  }
 
   const filePath = resolveSafeUploadPath(paper.filename);
   if (!filePath || !fs.existsSync(filePath)) {
@@ -488,7 +573,10 @@ async function downloadPaper(req, res) {
 
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
   res.setHeader("Content-Type", contentType);
   res.setHeader("Content-Disposition", formatContentDisposition("attachment", originalName));
   return res.sendFile(filePath);
@@ -664,7 +752,7 @@ async function requestDeletePaper(req, res) {
   }
 
   const request = {
-    id: `del-${Date.now().toString()}`,
+    id: `del-${crypto.randomUUID()}`,
     paperId: paper.id,
     paperTitle: paper.title,
     requestedBy: getDisplayName(req.user),
@@ -704,6 +792,8 @@ async function getStats(req, res) {
 
 module.exports = {
   listPapers,
+  getPaper,
+  canUserAccessPaper,
   getDashboardSummary,
   buildDashboardSummary,
   getPaperFile,

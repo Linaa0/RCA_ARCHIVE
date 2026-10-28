@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { clearAuthStorage } from "../utils/auth";
+import { clearAuthStorage, performLogout } from "../utils/auth";
 import "./Navbar.css";
 
 function Navbar() {
@@ -9,8 +9,7 @@ function Navbar() {
   const token = localStorage.getItem("token");
 
   const handleLogout = () => {
-    clearAuthStorage();
-    navigate("/login");
+    performLogout();
   };
 
   const initial = username ? username.charAt(0).toUpperCase() : "U";

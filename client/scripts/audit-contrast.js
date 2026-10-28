@@ -136,6 +136,7 @@ async function runAudit() {
     { name: "Login", path: "/login" },
     { name: "Signup", path: "/signup" },
     { name: "Reset Password", path: "/reset-password" },
+    { name: "Theme Showcase", path: "/__theme" },
   ];
 
   for (const pageInfo of publicPages) {

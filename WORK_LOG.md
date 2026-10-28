@@ -938,3 +938,252 @@ Every location in the codebase where user or paper data could potentially be del
 - Ran client production build with `node scripts/build-client.js` (clean build in 11.9s).
 - Ran server test suite (`npm test` in `server/`): 90 tests passed out of 90 (0 failures).
 
+## Security Remediation Part 1: No Unauthenticated Data and No Over-Sharing in Responses
+
+### What was wrong
+1. GET /api/papers and GET /api/curriculum were accessible without authentication, returning data to unauthenticated visitors.
+2. Responses leaked private information: uploader emails, file hashes, disk storage filenames, storage paths, and internal fields were exposed in paper listings and user objects.
+3. Bare download and view URLs (/api/papers/:id/view, /api/papers/:id/download, /uploads/:filename) allowed direct access without authorization checks.
+4. Identifiers were generated using guessable Date.now().toString() timestamps, and signed access links carried no cryptographic nonce to guarantee 128-bit randomness.
+5. Fingerprinting information was leaked: X-Powered-By header and detailed internal server properties (database name, version, commit, start time, allowed CORS origins count) were returned on public /api/health requests.
+
+### What was changed
+1. Created server/src/config/publicRoutes.js with an explicit allowlist: /api/health, /api/login, /api/signup, /api/send-otp, /api/send-teacher-otp, /api/verify-otp, /api/forgot-password, /api/reset-password, /api/public/curriculum, /api/public/summary, and /api/papers/access/:token/:mode.
+2. Added global deny-by-default authentication middleware on /api in server/src/app.js rejecting any request with 401 unless explicitly listed in publicRoutes.js.
+3. Authenticated GET /api/papers, GET /api/curriculum (full version), and GET /api/stats. Added GET /api/papers/:id and GET /api/users/:id with object-level authorization checks.
+4. Created server/src/controllers/publicController.js and server/src/routes/publicApiRoutes.js exposing GET /api/public/curriculum (only promotions, class codes, subject names, term labels) and GET /api/public/summary (rounded aggregate counts), both rate limited with 60-second Cache-Control.
+5. Created server/src/utils/responseMappers.js implementing role-based response minimization (mapPaperForRole, mapUserForRole, mapAssignmentForRole). Students and teachers never receive other users' emails, password hashes, reset tokens, OTPs, file hashes, storage paths, or internal fields.
+6. Replaced Date.now().toString() identifier generation with crypto.randomUUID() across auth, upload, paper, admin, and socket services.
+7. Enhanced signed access links (signAccessLink and verifyAccessLink) to include a 128-bit cryptographic nonce (crypto.randomBytes(16).toString("hex")) and 10-minute expiry with constant-time signature verification.
+8. Removed public static /uploads middleware from server/src/app.js and removed the unauthenticated /uploads/:filename route from server/src/routes/uploadRoutes.js.
+9. Sanitized /api/health: public requests return only { "status": "ok" } (or 503 { "status": "unavailable" }), caching database health for 5 seconds; detailed server metrics are restricted to direct local loopback connections without forwarded headers or authenticated admins.
+10. Updated client/src/services/curriculum.js to use /public/curriculum when unauthenticated and updated client/src/services/api.js to eliminate unauthenticated download fallbacks.
+11. Created automated regression test suite server/test/part1Security.test.js with 9 subtests verifying deny-by-default, public routes, object-level authorization, response minimization, 128-bit random nonce links, and anti-fingerprinting.
+
+### Evidence
+- Server tests: 90 of 90 passed in existing test suite; 10 of 10 passed in part1Security.test.js.
+- Client build: vite build completed cleanly in 8.45s with 0 errors.
+
+## Security Remediation Part 2: Real Logout and Token Revocation
+
+### What was wrong
+1. JWT tokens remained completely valid until their expiration even after the user clicked Log Out. An attacker or unauthorized party who retrieved an old token from localStorage could continue using it.
+2. The server had no server-side sessions collection or token revocation list, making it impossible to invalidate tokens upon logout, password change, account disabling, or deletion.
+3. Users had no tokenVersion field to invalidate all outstanding tokens on security events (password change, password reset, role change, account disable, account delete).
+4. No endpoints existed for revoking an individual session (POST /api/logout) or revoking all sessions across devices (POST /api/logout-all).
+5. Access tokens were long-lived without silent background renewal, and there was no multi-tab logout synchronization via BroadcastChannel or storage events.
+6. Realtime Socket.IO connections remained connected even after session revocation or logout.
+
+### What was changed
+1. Created `sessions` collection in MongoDB with a TTL index on `expiresAt` (`{ expireAfterSeconds: 0 }`), unique index on `id`, and compound index on `{ userId: 1, revoked: 1 }`.
+2. Created `server/src/services/sessionService.js`:
+   - `createSession(user, req)`: Generates a unique session id (`jti` UUID), records issuedAt, lastUsedAt, idle expiration (30 minutes), absolute expiration (12 hours), user-agent SHA-256 hash, and issues a 30-minute JWT containing `jti` and `tokenVersion`.
+   - `validateSession(payload, req)`: Verifies that session exists, is not revoked, is within idle limit (30 minutes), and within absolute limit (12 hours). Slides the idle expiration window up to the absolute limit.
+   - `revokeSession(sessionId)`: Marks session as revoked and timestamps `revokedAt`.
+   - `revokeAllUserSessions(userId)`: Marks all active sessions for the user as revoked and increments user `tokenVersion`.
+   - `refreshSession(tokenStr, req)`: Validates expired or expiring access token against active server session, verifies `tokenVersion`, and issues a fresh 30-minute access token.
+3. Updated `server/src/middleware/authMiddleware.js`:
+   - Enforced session validation on every authenticated request with `payload.jti`.
+   - Validated that `payload.tokenVersion` matches the user's current `tokenVersion`.
+   - Rejected tokens where user status is disabled, user is deleted, or role has changed.
+4. Updated `server/src/controllers/authController.js`:
+   - `login`: Creates a server-side session and issues a 30-minute JWT with `jti` and `tokenVersion`.
+   - `logout`: Revokes the current session and disconnects any matching Socket.IO connections.
+   - `logoutAll`: Revokes all sessions for the user, increments user `tokenVersion`, and disconnects all user sockets.
+   - `refreshAuthToken`: Exchanges a valid session token for a new 30-minute token.
+   - `changePassword`, `resetPassword`, `deleteAccount`: Bumps user `tokenVersion`, revokes all user sessions, and disconnects all user sockets.
+5. Updated `server/src/controllers/adminController.js`:
+   - When a teacher or student is disabled or deleted, all user sessions are immediately revoked and all real-time sockets disconnected.
+6. Updated `server/src/services/socketService.js`:
+   - Handshake middleware verifies token and validates server-side session.
+   - Added `disconnectSocketSession(sessionId)` and `disconnectUserSockets(userId)`.
+7. Client-side authentication enhancements:
+   - Added `performLogout` and `performLogoutAll` in `client/src/utils/auth.js` calling the server revocation endpoints with an AbortController timeout before clearing local storage.
+   - Added `broadcastLogout()` and `initAuthSync()` using `BroadcastChannel("rca_auth_channel")` with `storage` event fallback to synchronize logout across all browser tabs.
+   - Added silent renewal in `client/src/services/api.js` (`silentRenewToken`, `shouldRenewToken`) that renews tokens at ~80% of lifetime (last 6 minutes) with a concurrency lock (`refreshPromise`).
+   - Added "Log out of all devices" button in `client/src/components/Profile.jsx` (Settings) to revoke all sessions.
+8. Created automated test suite `server/test/part2Sessions.test.js`:
+   - 2.5.1: Token rejected after logout.
+   - 2.5.2: Token rejected after password change.
+   - 2.5.3: Token rejected after account is disabled.
+   - 2.5.4: Refresh works and respects absolute limit and idle limit.
+   - 2.5.5: Two sessions of one user: logging out one leaves the other valid.
+   - 2.5.6: logout-all revokes both sessions.
+   - 2.5.7: Socket disconnect on session revoke.
+
+### Evidence
+- Server tests: All 7 subtests passed in `server/test/part2Sessions.test.js` (duration 4.1s).
+- Client build: `vite build` completed cleanly in 14.30s with 0 errors.
+
+## Security Remediation Part 3: Health Endpoint and Rate-Limit Headers
+
+### What was wrong
+1. /api/health returned internal details on public requests, allowing fingerprinting of MongoDB database name, version, and deployed commit.
+2. /api/health lacked a dedicated rate limiter, allowing clients to send excessive requests and stress backend resources.
+3. Rate limit headers were inconsistent across endpoints. Legacy X-RateLimit-* headers were emitted alongside standard headers, and when multiple limiters executed, the last limiter to execute overwrote headers instead of reflecting the binding limit closest to exhaustion.
+4. Client IP detection in getClientIp read the first element of the X-Forwarded-For header directly, permitting attackers to bypass rate limits by spoofing forged IP addresses in the header.
+5. 429 Too Many Requests responses were missing standard Retry-After headers in certain failure scenarios.
+
+### What was changed
+1. Overhauled `server/src/middleware/rateLimiter.js`:
+   - Built a shared limiter factory `createLimiter` that enforces draft-7 RateLimit standard headers (`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, `RateLimit-Policy`, and combined `RateLimit`).
+   - Strictly stripped all legacy `X-RateLimit-*` headers from every response.
+   - Implemented binding limit resolution (`applyBindingRateLimitHeaders`): tracks the limiter closest to exhaustion (`res.locals._bindingRateLimit`) so response headers describe the true governing limit.
+   - Fixed IP spoofing: configured `getClientIp` to strictly use `req.ip` parsed by Express with `app.set("trust proxy", 1)`, preventing forged client IP bypasses via `X-Forwarded-For`.
+   - Keyed `loginLimiter`, `sendOtpLimiter`, `verifyOtpLimiter`, `forgotPasswordLimiter`, and `resetPasswordLimiter` by both client IP and user account identifier.
+   - Added `healthLimiter` (60 req/min per IP), `publicLimiter` (60 req/min per IP), and `adminLimiter` (300 req/15min).
+   - Documented in code and architecture notes that any future multi-instance backend deployment requires a shared MongoDB-backed rate limit store.
+2. Hardened `/api/health` in `server/src/app.js`:
+   - Protected with `healthLimiter` and cached database health pings for 5 seconds.
+   - Public requests return only `{ "status": "ok" }` (or 503 `{ "status": "unavailable" }`).
+   - Detailed metrics (databaseName, version, commit, startTime, uptimeSeconds, allowedCorsOriginsCount) are only returned for direct loopback requests without forwarded headers or authenticated admins.
+3. Updated `scripts/deploy-backend.sh` and `.github/workflows/server-status.yml`:
+   - Updated deployment verification to verify `/api/health` locally and verify `/api/public/curriculum`.
+   - Added antivirus availability detection step in `server-status.yml` printing "antivirus: available" or "antivirus: not available".
+4. Created automated test suite `server/test/part3RateLimit.test.js`:
+   - 3.3.1: Health endpoint shape (minimal public vs detailed internal/admin).
+   - 3.3.2: Health caching (ping result cached for 5 seconds).
+   - 3.3.3: Rate-limit header consistency and binding limit tracking.
+   - 3.3.4: 429 response format and Retry-After header.
+   - 3.3.5: Forwarded-header spoofing does not bypass rate limits.
+
+### Evidence
+- Server tests: All 5 subtests passed in `server/test/part3RateLimit.test.js` (duration 0.45s).
+- Client build: Production build passed cleanly in 14.30s with 0 errors.
+
+## Security Remediation Part 4: File Upload Security and Structural Validation
+
+### What was wrong
+1. File upload validation relied solely on an 8-byte magic number prefix check (`isValidDocumentMagicBytes`). Attackers could prepend valid header magic bytes (e.g. `%PDF-` or `PK\x03\x04`) to malicious scripts, HTML polyglots, zip bombs, or executable files and bypass the filter.
+2. Office documents containing embedded VBA macros (`vbaProject.bin`), remote template injection, or external relationship targets were not inspected or blocked.
+3. ZIP archives lacked decompression ratio limits, central directory parsing, and path traversal guards, exposing the backend to denial of service from zip bombs and arbitrary file write vulnerabilities.
+4. Stored filenames preserved the user-provided file extension rather than deriving the canonical extension from verified file content, enabling MIME confusion and extension spoofing.
+5. Served files lacked content isolation headers, allowing possible browser content sniffing or framing, and did not enforce inline vs attachment separation for non-previewable file formats.
+
+### What was changed
+1. Created `server/src/utils/fileValidation.js` implementing comprehensive structural verification:
+   - PDF structural validation: checks header, EOF trailer, catalog/document root; rejects polyglot files containing HTML or script tags; strictly blocks dangerous interactive actions (`/JavaScript`, `/JS`, `/Launch`, `/SubmitForm`, `/ImportData`, `/RichMedia`, `/EmbeddedFiles`).
+   - Office Open XML (DOCX, PPTX, XLSX) validation: central directory parsing, package structure verification (`[Content_Types].xml`, `_rels/.rels`, `word/document.xml`); blocks VBA macros (`vbaProject.bin`, `macroEnabled`); blocks embedded OLE and ActiveX controls; blocks external relationship targets and remote templates (`TargetMode="External"`).
+   - OLE Compound Binary Document (DOC, PPT, XLS) validation: compound document signature checks; blocks VBA macros and macro storage streams (`_VBA_PROJECT`, `VBA`, `Macros`); blocks embedded OLE object pools.
+   - ZIP archive validation: validates central directory, maximum entry limit (500), decompression limit (100 MB), and safe compression ratio (max 50:1) to prevent zip bombs; blocks path traversal (`..`, leading slashes, drive letters) and symbolic links.
+   - Image validation: verifies PNG header, IHDR dimensions, and IEND trailer; verifies JPEG SOI/EOI markers; verifies GIF and WebP; strictly rejects SVG and scriptable image formats.
+   - Plain text validation: validates UTF-8 encoding, ensures absence of NUL bytes, and blocks embedded HTML and script tags.
+   - Antivirus scanning: integrates ClamAV (`clamdscan` / `clamscan`) whenever installed on the host.
+2. Derived stored extension from detected structural type:
+   - Updated `uploadPaper` in `server/src/controllers/uploadController.js` to derive stored filename extension from detected type while preserving random UUID filenames.
+   - Updated `createResource` in `server/src/controllers/teacherResourceController.js` and `createAssignment` in `server/src/controllers/assignmentController.js` to validate uploads and derive canonical extensions.
+3. Hardened file delivery:
+   - Enforced `X-Content-Type-Options: nosniff` and restrictive CSP: `default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw` across `accessPaperFile`, `getPaperFile`, `viewPaper`, `downloadPaper` (`paperController.js`), `serveUpload` (`uploadController.js`), `getResourceFile` (`teacherResourceController.js`), `getSubjectResourceFile` (`subjectMaterialsController.js`), and `downloadAttachment` (`assignmentController.js`).
+   - Enforced safe inline delivery: only safe types (`.pdf`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.txt`) are served inline; all other formats (e.g. Word documents, spreadsheets, archives) are forced to attachment download.
+4. Created automated test suite `server/test/part4UploadValidation.test.js`:
+   - 4.1: Valid PDF with modified extension derives genuine extension.
+   - 4.2: Polyglot HTML/script with PDF header is rejected.
+   - 4.3: PDF containing JavaScript action is rejected.
+   - 4.4: DOCX with macro (`vbaProject.bin`) is rejected.
+   - 4.5: OOXML with external relationship target is rejected.
+   - 4.6: Zip bomb with high compression ratio is rejected.
+   - 4.7: Zip with path traversal (`../../evil.sh`) is rejected.
+   - 4.8: Executable renamed to `.pdf` (MZ header) is rejected.
+   - 4.9: SVG image upload is rejected.
+   - 4.10: Valid PDF, DOCX, PNG, and TXT files are accepted.
+   - 4.11: File delivery sets restrictive CSP, nosniff, and safe disposition.
+
+### Evidence
+- Server tests: All 11 subtests passed in `server/test/part4UploadValidation.test.js` (duration 2.01s).
+- Client build: Production build passed cleanly in 12.46s with 0 errors.
+
+## Security Remediation Part 5: Baseline Hardening and Security Automation
+
+### What was wrong
+1. API responses lacked essential modern browser defense headers: `Permissions-Policy`, `Cross-Origin-Opener-Policy`, and explicit frame-ancestor protections.
+2. The frontend deployment configuration (`vercel.json`) lacked Content-Security-Policy and Permissions-Policy headers.
+3. Nginx reverse proxy configuration did not suppress the Nginx version banner (`server_tokens off`) and lacked explicit client timeout limits.
+4. Continuous integration lacked an automated security regression pipeline and automated dependency vulnerability scanning via Dependabot.
+5. No formal security policy or documentation (`docs/SECURITY.md`) existed for vulnerability disclosure, threat modeling, and defense mechanisms.
+
+### What was changed
+1. Overhauled API baseline security in `server/src/app.js`:
+   - Configured Helmet with `Strict-Transport-Security: max-age=31536000; includeSubDomains`, `frameguard: { action: "deny" }`, `noSniff: true`, `crossOriginResourcePolicy: { policy: "cross-origin" }`.
+   - Added `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`.
+   - Added `Cross-Origin-Opener-Policy: same-origin`.
+   - Active MongoDB query sanitization (`mongoSanitize()`) and HTTP parameter pollution protection (`hpp()`).
+2. Hardened frontend headers in `vercel.json`:
+   - Added `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`.
+   - Added strict Content-Security-Policy covering Google Fonts, assets, WebSockets, and scripts.
+3. Hardened Nginx configurations (`nginx/api.archive.innov.rw.conf` and `nginx/rcaarchive.innov.rw.conf`):
+   - Added `server_tokens off;` to prevent server software fingerprinting.
+   - Enforced client timeouts (`client_body_timeout 15s`, `client_header_timeout 15s`, `keepalive_timeout 30s`, `send_timeout 15s`).
+   - Added security headers across all proxy locations.
+4. Added Security Automation and CI:
+   - Created `.github/workflows/security-smoke.yml` to run security test suites automatically in CI.
+   - Created `.github/dependabot.yml` for automated weekly dependency vulnerability audits.
+   - Added `"test:security"` npm script in root `package.json`.
+5. Created comprehensive documentation `docs/SECURITY.md`:
+   - Documented authentication and session lifecycles, draft-7 rate limiting, structural file validation, response minimization, and coordinated vulnerability disclosure.
+6. Created automated test suite `server/test/routeSecurityAudit.test.js`:
+   - 5.1: Global security headers on all responses.
+   - 5.2: Public routes match documented allowlist.
+   - 5.3: Deny-by-default on private endpoints.
+   - 5.4: Health check anti-leak on untrusted IPs.
+
+### Evidence
+- Server tests: All 4 subtests passed in `server/test/routeSecurityAudit.test.js` (duration 0.23s).
+- Client build: Production build passed cleanly in 12.46s with 0 errors.
+
+## Curriculum Update Part 6: Addition of Short Courses and Computer Basics to All Y1 Classes
+
+### What was wrong
+1. The Year 1 promotion configuration in `server/src/config/curriculum.js` lacked "Computer Basics" and "Short Courses", preventing students and teachers in cohorts Y1A, Y1B, and Y1C from accessing and uploading past papers and study notes for these two subjects.
+2. The client fallback promotions in `client/src/services/curriculum.js` did not list "Computer Basics" and "Short Courses" under Year 1.
+3. The public curriculum endpoint `/api/public/curriculum` omitted the promotion identifier property `id`, making it difficult for consumers to map promotion codes to syllabus subjects.
+
+### What was changed
+1. Updated `server/src/config/curriculum.js`:
+   - Added "Computer Basics" and "Short Courses" to the `Y1` promotion subjects list, ensuring all Y1 classes (`Y1A`, `Y1B`, `Y1C`) have full access to both subjects.
+2. Updated `client/src/services/curriculum.js`:
+   - Added "Computer Basics" and "Short Courses" to the `Y1` fallback promotion definition.
+3. Updated `server/src/controllers/publicController.js`:
+   - Added `id` property to `safePromotions` in `getPublicCurriculum` output.
+4. Created automated regression test suite `server/test/part6Curriculum.test.js`:
+   - 6.1: Y1 promotion definition includes Short Courses and Computer Basics.
+   - 6.2: `getSubjectsForPromotion("Y1")` includes Short Courses and Computer Basics.
+   - 6.3: `getSubjectsForClass` for Y1A, Y1B, and Y1C all include Short Courses and Computer Basics.
+   - 6.4: Public `/api/public/curriculum` serves Short Courses and Computer Basics for Y1.
+
+### Evidence
+- Server tests: All 4 subtests passed in `server/test/part6Curriculum.test.js` (duration 0.09s).
+- Client build: Verified clean production build with updated fallback curriculum.
+
+## Part 7: Dark Mode and Interface Polish
+
+### What was wrong
+1. Input fields of type password lacked an automatic show/hide eye toggle button fallback when no explicit right icon was supplied by parent components.
+2. The developer theme verification route (/__theme) was absent from client routing, preventing unified visual inspection of theme tokens, elevations, typography, and contrast compliance.
+3. Contrast audit scripts did not automatically cover the developer theme showcase page.
+
+### What was changed
+1. Updated client/src/components/ui/Input.jsx:
+   - Added internal state showPassword when type is password and !iconRight.
+   - Rendered an automatic password visibility toggle button with accessible SVG icons (aria-label="Show password" and aria-label="Hide password") that switches input type between password and text.
+   - Calibrated input horizontal padding to accommodate right icons and toggle buttons cleanly.
+2. Created client/src/components/ThemeShowcase.jsx:
+   - Built a comprehensive living theme showcase gallery displaying typography hierarchy, 4 elevation levels (Level 0 Canvas #0F1424, Level 1 Sub-canvas #151B30, Level 2 Surface Card #1B2340, Level 3 Raised Modal #222B4D), buttons, form inputs, status badges, modal previews, and academic term badges.
+   - Maintained unified RCA blue styling across all terms, eliminating harsh orange and green badges.
+3. Added /__theme dev route in client/src/App.js with lazy loading.
+4. Added Theme Showcase (/__theme) to the audit list in client/scripts/audit-contrast.js.
+
+### Evidence
+- Client build: vite build completed cleanly in 10.97s with zero errors, generating chunk ThemeShowcase.
+- Password toggles verified: Eye and eye-off SVG icons toggle state smoothly on all password inputs.
+- Built API address validator: node scripts/check-built-api-url.js passed with production API address confirmed.
+
+## Part 8: Comprehensive Verification and Final Wrap-up
+
+### What was changed
+1. Fixed test fixtures in server/test/terms.test.js, server/test/uploadRestrictionsAndPermissions.test.js, and server/test/classFeatures.test.js to supply structurally valid PDF objects matching the Part 4 file validation requirements.
+2. Closed dangling socket handles and added --test-force-exit to test runner scripts in package.json and server/package.json.
+3. Ran automated verification across all test suites:
+   - Root security suite: npm run test:security executed 6 test suites and passed all 46 subtests in 1.95s.
+   - Full backend test suite: npm test executed 78 top-level tests (136 subtests) with 136 passing and 0 failures.
+   - Character check: scan-characters.js confirmed zero emojis, zero em dashes, and zero en dashes across all modified and untracked repository files.
+   - Git status: Verified all changes remain uncommitted on branch main for complete user review.

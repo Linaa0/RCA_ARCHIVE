@@ -13,6 +13,8 @@ const {
 } = require("../config/terms");
 const { emitResourceEvent } = require("../services/socketService");
 
+const { validateUploadedFileContent } = require("../utils/fileValidation");
+
 const RESOURCE_TYPES = new Set(["notes", "past-paper"]);
 const PUBLIC_FIELDS = {
   _id: 0,
@@ -56,6 +58,26 @@ async function createResource(req, res) {
   }
 
   if (!req.file) return res.status(400).json({ error: "Choose a file to upload." });
+
+  const validation = validateUploadedFileContent(req.file.path, req.file.originalname, req.file.mimetype);
+  if (!validation.valid) {
+    removeSubmissionFile(req.file.filename);
+    return res.status(400).json({ error: validation.error || "Invalid file content." });
+  }
+
+  // Derive stored extension from detected structural type
+  const detectedExt = validation.detectedExt;
+  if (detectedExt && path.extname(req.file.filename).toLowerCase() !== detectedExt) {
+    const currentPath = req.file.path;
+    const baseWithoutExt = path.basename(req.file.filename, path.extname(req.file.filename));
+    const newFilename = `${baseWithoutExt}${detectedExt}`;
+    const newPath = path.join(path.dirname(currentPath), newFilename);
+    try {
+      fs.renameSync(currentPath, newPath);
+      req.file.filename = newFilename;
+      req.file.path = newPath;
+    } catch (_) {}
+  }
 
   const title = String(req.body.title || "").trim();
   const type = String(req.body.type || "").trim();
@@ -129,9 +151,15 @@ async function getResourceFile(req, res) {
 
   const ext = path.extname(resource.originalName).toLowerCase();
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
   res.type(MIME_TYPES[ext] || "application/octet-stream");
-  const disposition = req.query.download === "1" ? "attachment" : "inline";
+
+  const SAFE_INLINE = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt"];
+  const isInline = req.query.download !== "1" && SAFE_INLINE.includes(ext);
+  const disposition = isInline ? "inline" : "attachment";
   res.setHeader("Content-Disposition", `${disposition}; filename*=UTF-8''${encodeURIComponent(resource.originalName)}`);
   return res.sendFile(filePath);
 }

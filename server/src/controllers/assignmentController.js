@@ -21,6 +21,7 @@ const {
   emitAssignmentEvent,
   emitAppealEvent,
 } = require("../services/socketService");
+const { validateUploadedFileContent } = require("../utils/fileValidation");
 const {
   validateRequiredTerm,
   parseTermFilter,
@@ -281,6 +282,25 @@ async function createAssignment(req, res) {
   const rec = await resolveRecipients(req.body);
   if (rec.error) return fail(rec.error);
 
+  if (req.file) {
+    const valRes = validateUploadedFileContent(req.file.path, req.file.originalname, req.file.mimetype);
+    if (!valRes.valid) {
+      return fail(valRes.error || "Invalid file content.");
+    }
+    const detectedExt = valRes.detectedExt;
+    if (detectedExt && path.extname(req.file.filename).toLowerCase() !== detectedExt) {
+      const currentPath = req.file.path;
+      const baseWithoutExt = path.basename(req.file.filename, path.extname(req.file.filename));
+      const newFilename = `${baseWithoutExt}${detectedExt}`;
+      const newPath = path.join(path.dirname(currentPath), newFilename);
+      try {
+        fs.renameSync(currentPath, newPath);
+        req.file.filename = newFilename;
+        req.file.path = newPath;
+      } catch (_) {}
+    }
+  }
+
   const assignment = {
     id: newId(),
     title,
@@ -423,10 +443,14 @@ async function downloadAttachment(req, res) {
 
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
   res.setHeader("Content-Type", contentType);
 
-  const isInline = req.query.inline === "1" || req.path.endsWith("/view");
+  const SAFE_INLINE = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt"];
+  const isInline = (req.query.inline === "1" || req.path.endsWith("/view")) && SAFE_INLINE.includes(ext);
   res.setHeader(
     "Content-Disposition",
     formatContentDisposition(isInline ? "inline" : "attachment", originalName)

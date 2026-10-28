@@ -37,7 +37,8 @@ const {
 const { getPaperById } = require("../services/ratingService");
 const { logAdminAction } = require("../services/auditService");
 const { validateFullName, validateEmail: validateEmailStrict } = require("../utils/validation");
-const { emitUserEvent, emitStatsEvent, emitPaperEvent } = require("../services/socketService");
+const { emitUserEvent, emitStatsEvent, emitPaperEvent, disconnectUserSockets } = require("../services/socketService");
+const { revokeAllUserSessions } = require("../services/sessionService");
 const {
   validateRequiredTerm,
   termLabel,
@@ -246,7 +247,7 @@ async function createTeacher(req, res) {
   const teacherUsername = (normalizedEmail.split("@")[0] || "teacher").toLowerCase();
 
   const teacher = {
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     email: normalizedEmail,
     name: vName.value,
     username: teacherUsername,
@@ -338,7 +339,7 @@ async function createTeacherDirect(req, res) {
 
     const passwordHash = await bcrypt.hash(rawPassword, 12);
     const now = new Date().toISOString();
-    const teacherId = Date.now().toString();
+    const teacherId = crypto.randomUUID();
     const teacherRecord = {
       id: teacherId,
       name: normalizedName,
@@ -486,6 +487,11 @@ async function updateTeacher(req, res) {
 
   await users.updateOne({ id: currentTeacher.id }, { $set: update });
 
+  if (status === "disabled") {
+    await revokeAllUserSessions(currentTeacher.id);
+    disconnectUserSockets(currentTeacher.id);
+  }
+
   let previewUrl = null;
   const refreshedTeacher = await findUserById(currentTeacher.id);
   if (emailChanged && refreshedTeacher.status === "pending_password_setup") {
@@ -548,6 +554,8 @@ async function deleteTeacher(req, res) {
 
     // Remove the teacher account
     await users.deleteOne({ _id: teacher._id });
+    await revokeAllUserSessions(teacherIdentifier);
+    disconnectUserSockets(teacherIdentifier);
 
     // Remove reset tokens
     await getPasswordResetCollection().deleteMany({
@@ -647,6 +655,11 @@ async function updateStudent(req, res) {
   update.updatedAt = new Date().toISOString();
   await getUsersCollection().updateOne({ _id: student._id }, { $set: update });
 
+  if (req.body.status === "disabled") {
+    await revokeAllUserSessions(student.id || String(student._id));
+    disconnectUserSockets(student.id || String(student._id));
+  }
+
   await logAdminAction({
     actorId: req.user.id || String(req.user._id),
     actorEmail: req.user.email,
@@ -676,6 +689,8 @@ async function deleteStudent(req, res) {
 
     const studentIdentifier = student.id || String(student._id);
     await getUsersCollection().deleteOne({ _id: student._id });
+    await revokeAllUserSessions(studentIdentifier);
+    disconnectUserSockets(studentIdentifier);
 
     await getPasswordResetCollection().deleteMany({
       email: student.email,
@@ -1097,6 +1112,8 @@ async function deleteUser(req, res) {
 
     const usersCollection = getUsersCollection();
     await usersCollection.deleteOne({ _id: user._id });
+    await revokeAllUserSessions(userIdentifier);
+    disconnectUserSockets(userIdentifier);
 
     await getPasswordResetCollection().deleteMany({
       email: user.email,

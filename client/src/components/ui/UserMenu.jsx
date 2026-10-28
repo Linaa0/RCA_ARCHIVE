@@ -12,7 +12,7 @@ import {
   getThemePreference,
   applyTheme,
 } from "../../utils/theme";
-import { clearAuthStorage, getStoredRole, getStoredUser } from "../../utils/auth";
+import { clearAuthStorage, getStoredRole, getStoredUser, performLogout } from "../../utils/auth";
 
 export default function UserMenu() {
   const navigate = useNavigate();
@@ -61,8 +61,7 @@ export default function UserMenu() {
   };
 
   const handleLogout = () => {
-    clearAuthStorage();
-    navigate("/login");
+    performLogout();
   };
 
   const userGender = user?.gender || (typeof localStorage !== "undefined" ? localStorage.getItem("rca_user_gender") : null);

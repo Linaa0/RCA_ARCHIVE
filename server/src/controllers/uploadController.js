@@ -1,41 +1,17 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { UPLOADS_DIR } = require("../config/env");
 const { getPapersCollection } = require("../models");
 const { hashFile } = require("../services/hashService");
 const { buildRatingSummary } = require("../services/ratingService");
+const { mapPaperForRole } = require("../utils/responseMappers");
 const { validatePlainText } = require("../utils/validation");
 const { emitPaperEvent } = require("../services/socketService");
 const { validateRequiredTerm } = require("../config/terms");
 const { describeLocation, describeExistingItem } = require("../utils/paperLocation");
 
-function isValidDocumentMagicBytes(filePath) {
-  try {
-    const fd = fs.openSync(filePath, "r");
-    const buffer = Buffer.alloc(8);
-    const bytesRead = fs.readSync(fd, buffer, 0, 8, 0);
-    fs.closeSync(fd);
-
-    if (bytesRead < 4) return false;
-
-    // PDF: %PDF- (0x25 0x50 0x44 0x46)
-    if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
-      return true;
-    }
-    // DOC (Compound Binary): D0 CF 11 E0
-    if (buffer[0] === 0xd0 && buffer[1] === 0xcf && buffer[2] === 0x11 && buffer[3] === 0xe0) {
-      return true;
-    }
-    // DOCX (ZIP archive): PK\x03\x04
-    if (buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04) {
-      return true;
-    }
-
-    return false;
-  } catch (_) {
-    return false;
-  }
-}
+const { validateUploadedFileContent } = require("../utils/fileValidation");
 
 async function uploadPaper(req, res) {
   if (!req.file) {
@@ -55,11 +31,32 @@ async function uploadPaper(req, res) {
   }
   const paperTerm = termCheck.value;
 
-  if (!isValidDocumentMagicBytes(req.file.path)) {
+  const validation = validateUploadedFileContent(
+    req.file.path,
+    req.file.originalname,
+    req.file.mimetype,
+    [".pdf", ".doc", ".docx"]
+  );
+
+  if (!validation.valid) {
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     return res.status(400).json({
-      error: "Invalid file content. Uploaded file must be a genuine PDF or Word document.",
+      error: validation.error || "Invalid file content. Uploaded file must be a genuine PDF or Word document.",
     });
+  }
+
+  // Derive stored extension from detected structural type and ensure disk filename matches
+  const detectedExt = validation.detectedExt;
+  if (detectedExt && path.extname(req.file.filename).toLowerCase() !== detectedExt) {
+    const currentPath = req.file.path;
+    const baseWithoutExt = path.basename(req.file.filename, path.extname(req.file.filename));
+    const newFilename = `${baseWithoutExt}${detectedExt}`;
+    const newPath = path.join(path.dirname(currentPath), newFilename);
+    try {
+      fs.renameSync(currentPath, newPath);
+      req.file.filename = newFilename;
+      req.file.path = newPath;
+    } catch (_) {}
   }
 
   const { title, subject, year, type, classId, category } = req.body;
@@ -128,7 +125,7 @@ async function uploadPaper(req, res) {
   }
 
   const paper = {
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     title: vTitle.value,
     subject: vSubject.value,
     year: paperYear,
@@ -152,7 +149,7 @@ async function uploadPaper(req, res) {
 
   res.json({
     message: `Uploaded to ${describeLocation(paper)}`,
-    paper: summary,
+    paper: mapPaperForRole(paper, req.user),
   });
 }
 
@@ -171,7 +168,15 @@ async function serveUpload(req, res) {
   }
 
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
+
+  const safeInlineExts = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt"];
+  const ext = path.extname(safeFilename).toLowerCase();
+  const disposition = safeInlineExts.includes(ext) ? "inline" : "attachment";
+  res.setHeader("Content-Disposition", `${disposition}; filename="${safeFilename}"`);
 
   if (fs.existsSync(filePath)) {
     return res.sendFile(filePath);

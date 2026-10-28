@@ -77,7 +77,10 @@ test.before(async () => {
   if (!fs.existsSync(path.dirname(samplePdfPath))) {
     fs.mkdirSync(path.dirname(samplePdfPath), { recursive: true });
   }
-  fs.writeFileSync(samplePdfPath, Buffer.from("%PDF-1.4 sample terms test document\n%%EOF"));
+  const validPdf = Buffer.from(
+    "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\nxref\n0 3\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \ntrailer\n<< /Size 3 /Root 1 0 R >>\nstartxref\n115\n%%EOF"
+  );
+  fs.writeFileSync(samplePdfPath, validPdf);
 
   const users = getUsersCollection();
   for (const u of [student1, student2, teacher1, teacher2, adminUser]) {
@@ -113,7 +116,9 @@ test.after(async () => {
 });
 
 test("CURRICULUM: GET /api/curriculum includes terms list and labels", async () => {
-  const res = await request(app).get("/api/curriculum");
+  const res = await request(app)
+    .get("/api/curriculum")
+    .set("Authorization", `Bearer ${student1Token}`);
   assert.strictEqual(res.statusCode, 200);
   assert.ok(Array.isArray(res.body.terms));
   assert.strictEqual(res.body.terms.length, 3);
@@ -361,7 +366,10 @@ test("ASSIGNMENT: requires term on creation and allows term update", async () =>
 
 test("TEACHER RESOURCE: requires term on creation and allows term update", async () => {
   const dummyFile = path.join(__dirname, "fixtures", `terms-resource-${Date.now()}.pdf`);
-  fs.writeFileSync(dummyFile, Buffer.from("%PDF-1.4 resource test doc\n%%EOF"));
+  const validPdf = Buffer.from(
+    "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\nxref\n0 3\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \ntrailer\n<< /Size 3 /Root 1 0 R >>\nstartxref\n115\n%%EOF"
+  );
+  fs.writeFileSync(dummyFile, validPdf);
 
   let resourceId;
   try {

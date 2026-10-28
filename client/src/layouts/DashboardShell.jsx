@@ -22,7 +22,7 @@ import {
 import Logo from "../components/ui/Logo";
 import "./DashboardShell.css";
 import api from "../services/api";
-import { clearAuthStorage, getStoredRole, getStoredUser, isAuthenticated } from "../utils/auth";
+import { clearAuthStorage, getStoredRole, getStoredUser, isAuthenticated, performLogout } from "../utils/auth";
 import { toggleTheme, getInitialTheme } from "../utils/theme";
 import Avatar from "../components/ui/Avatar";
 import ThemeToggle from "../components/ui/ThemeToggle";
@@ -84,8 +84,7 @@ export default function DashboardShell({ children, onSearch, currentSearch = "" 
   }, [loggedIn, role, location.pathname]);
 
   const handleLogout = () => {
-    clearAuthStorage();
-    navigate("/login");
+    performLogout();
   };
 
   const handleSearchSubmit = (e) => {

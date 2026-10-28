@@ -23,6 +23,8 @@ const PROMOTIONS = [
       "Embedded Systems",
       "Web User Interface",
       "Graphical User Interface",
+      "Computer Basics",
+      "Short Courses",
     ],
   },
   {

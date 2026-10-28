@@ -6,7 +6,7 @@ import Badge from "./ui/Badge";
 import Input from "./ui/Input";
 import Avatar from "./ui/Avatar";
 import { EyeIcon, EyeOffIcon } from "./ui/Icons";
-import { clearAuthStorage, persistAuth } from "../utils/auth";
+import { clearAuthStorage, persistAuth, performLogoutAll } from "../utils/auth";
 import { applyTheme, getThemePreference } from "../utils/theme";
 import { errorMessage } from "./assignments/common";
 
@@ -58,6 +58,15 @@ export default function Profile() {
   });
   const [notifMsg, setNotifMsg] = useState({ type: "", text: "" });
   const [savingNotif, setSavingNotif] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+
+  const handleLogoutAll = async () => {
+    if (!window.confirm("Are you sure you want to log out of all devices? You will be signed out everywhere.")) {
+      return;
+    }
+    setLoggingOutAll(true);
+    await performLogoutAll();
+  };
 
   useEffect(() => {
     api
@@ -442,6 +451,37 @@ export default function Profile() {
             <Button type="submit" variant="primary" size="sm" loading={savingPw}>
               Update Password
             </Button>
+          </div>
+
+          <div
+            style={{
+              marginTop: "20px",
+              paddingTop: "20px",
+              borderTop: "1px solid var(--color-border)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "var(--color-text-primary)" }}>
+                  Active Sessions
+                </h4>
+                <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "var(--color-text-secondary)" }}>
+                  Revoke all active sessions on other phones, tablets, or computers.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleLogoutAll}
+                loading={loggingOutAll}
+              >
+                Log out of all devices
+              </Button>
+            </div>
           </div>
         </form>
       </div>

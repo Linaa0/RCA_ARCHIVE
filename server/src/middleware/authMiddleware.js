@@ -19,6 +19,8 @@ async function findUserByEmail(email) {
   });
 }
 
+const { validateSession } = require("../services/sessionService");
+
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   const tokenMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
@@ -41,13 +43,31 @@ function requireAuth(req, res, next) {
     }
 
     findUserByEmail(payload.email)
-      .then((user) => {
+      .then(async (user) => {
         if (!user) {
           return res.status(401).json({ error: "User not found" });
         }
 
         if (user.status === "disabled") {
           return res.status(403).json({ error: "Account is disabled" });
+        }
+
+        if (payload.role && user.role !== payload.role) {
+          return res.status(401).json({ error: "Role has changed. Please log in again." });
+        }
+
+        const userTokenVersion = typeof user.tokenVersion === "number" ? user.tokenVersion : 1;
+        if (payload.tokenVersion !== undefined && payload.tokenVersion !== userTokenVersion) {
+          return res.status(401).json({ error: "Session has been invalidated. Please log in again." });
+        }
+
+        if (payload.jti) {
+          const sessionRes = await validateSession(payload, req);
+          if (!sessionRes.valid) {
+            return res.status(401).json({ error: sessionRes.reason || "Session expired or revoked" });
+          }
+          req.session = sessionRes.session;
+          req.sessionId = payload.jti;
         }
 
         req.user = {
@@ -60,6 +80,7 @@ function requireAuth(req, res, next) {
           class: user.class || "",
           gender: user.gender || "",
           notifications: user.notifications,
+          tokenVersion: userTokenVersion,
         };
         next();
         return null;

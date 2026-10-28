@@ -111,7 +111,8 @@ test("SETUP: database, fixtures, and authorization tokens", async () => {
 
 test("STUDENT UPLOAD PERMISSION: allows student uploading to a class other than their enrolled class", async () => {
   const uniqueDummyPath = path.join(__dirname, "fixtures", `temp-y2b-${Date.now()}.pdf`);
-  fs.writeFileSync(uniqueDummyPath, Buffer.from(`%PDF-1.4 test unique y2b ${Date.now()}`));
+  const validPdf = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000060 00000 n \n0000000117 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n168\n%%EOF";
+  fs.writeFileSync(uniqueDummyPath, validPdf);
 
   try {
     const res = await request(app)

@@ -3,7 +3,7 @@ import { Routes, Route, useLocation, Navigate, useNavigate } from "react-router-
 import PrivateRoute from "./components/PrivateRoute";
 import "./styles/App.css";
 import api, { openPaperDownload, apiUrl, API_ROOT } from "./services/api";
-import { isAuthenticated, getStoredRole, getHomePathForRole } from "./utils/auth";
+import { isAuthenticated, getStoredRole, getHomePathForRole, initAuthSync } from "./utils/auth";
 import { applyTheme, getThemePreference } from "./utils/theme";
 import curriculumService from "./services/curriculum";
 
@@ -23,8 +23,8 @@ const TeacherAssignments = lazy(() => import("./components/teacher/TeacherAssign
 const TeacherAppeals = lazy(() => import("./components/teacher/TeacherAppeals"));
 const TeacherResources = lazy(() => import("./components/teacher/TeacherResources"));
 const StudentAssignments = lazy(() => import("./components/student/StudentAssignments"));
-const StudentAssignmentsWidget = lazy(() => import("./components/student/StudentAssignmentsWidget"));
 const Profile = lazy(() => import("./components/Profile"));
+const ThemeShowcase = lazy(() => import("./components/ThemeShowcase"));
 
 function PaperResultCard({ paper }) {
   const date = new Date(paper.uploadedAt).toLocaleDateString();
@@ -262,7 +262,15 @@ function App() {
   const [serverUnreachable, setServerUnreachable] = useState(false);
   const [checkingHealth, setCheckingHealth] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isAuthPage = location.pathname === "/login" || location.pathname === "/signup";
+
+  useEffect(() => {
+    const cleanup = initAuthSync(() => {
+      navigate("/login");
+    });
+    return cleanup;
+  }, [navigate]);
 
   const checkHealth = useCallback(async () => {
     setCheckingHealth(true);
@@ -544,6 +552,9 @@ function App() {
 
         {/* Dedicated File Viewer (full-screen focus) */}
         <Route path="/view/:id" element={<FileViewer />} />
+
+        {/* Developer Theme Showcase */}
+        <Route path="/__theme" element={<ThemeShowcase />} />
 
         {/* Fallback 404 */}
         <Route path="*" element={<NotFound />} />

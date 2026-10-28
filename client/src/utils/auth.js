@@ -79,6 +79,7 @@ export function getStoredToken() {
 }
 
 const MUST_CHANGE_PASSWORD_KEY = "must_change_password";
+const AUTH_CHANNEL_NAME = "rca_auth_channel";
 
 export function clearAuthStorage() {
   if (typeof window === "undefined") {
@@ -91,6 +92,132 @@ export function clearAuthStorage() {
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(SESSION_EXPIRES_AT_KEY);
   localStorage.removeItem(MUST_CHANGE_PASSWORD_KEY);
+  localStorage.removeItem("rca_user_gender");
+}
+
+export function broadcastLogout() {
+  if (typeof window === "undefined") return;
+  try {
+    if (typeof window.BroadcastChannel === "function") {
+      const channel = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      channel.postMessage({ type: "LOGOUT", timestamp: Date.now() });
+      channel.close();
+    }
+  } catch (_) {}
+}
+
+export function initAuthSync(onLogout) {
+  if (typeof window === "undefined") return () => {};
+
+  let channel = null;
+  try {
+    if (typeof window.BroadcastChannel === "function") {
+      channel = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      channel.onmessage = (event) => {
+        if (event.data?.type === "LOGOUT") {
+          clearAuthStorage();
+          if (typeof onLogout === "function") {
+            onLogout();
+          } else if (
+            window.location.pathname !== "/login" &&
+            window.location.pathname !== "/signup" &&
+            window.location.pathname !== "/"
+          ) {
+            window.location.href = "/login";
+          }
+        }
+      };
+    }
+  } catch (_) {}
+
+  const storageHandler = (event) => {
+    if (event.key === TOKEN_KEY && !event.newValue) {
+      clearAuthStorage();
+      if (typeof onLogout === "function") {
+        onLogout();
+      } else if (
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/signup" &&
+        window.location.pathname !== "/"
+      ) {
+        window.location.href = "/login";
+      }
+    }
+  };
+  window.addEventListener("storage", storageHandler);
+
+  return () => {
+    if (channel) {
+      try {
+        channel.close();
+      } catch (_) {}
+    }
+    window.removeEventListener("storage", storageHandler);
+  };
+}
+
+export async function performLogout(apiBaseUrl = "/api") {
+  const token = getStoredToken();
+  if (token) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const url = apiBaseUrl.endsWith("/api") ? `${apiBaseUrl}/logout` : `${apiBaseUrl}/api/logout`;
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (_) {}
+  }
+
+  clearAuthStorage();
+  broadcastLogout();
+  if (typeof window !== "undefined") {
+    if (
+      window.location.pathname !== "/login" &&
+      window.location.pathname !== "/signup" &&
+      window.location.pathname !== "/"
+    ) {
+      window.location.href = "/login";
+    }
+  }
+}
+
+export async function performLogoutAll(apiBaseUrl = "/api") {
+  const token = getStoredToken();
+  if (token) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const url = apiBaseUrl.endsWith("/api") ? `${apiBaseUrl}/logout-all` : `${apiBaseUrl}/api/logout-all`;
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (_) {}
+  }
+
+  clearAuthStorage();
+  broadcastLogout();
+  if (typeof window !== "undefined") {
+    if (
+      window.location.pathname !== "/login" &&
+      window.location.pathname !== "/signup" &&
+      window.location.pathname !== "/"
+    ) {
+      window.location.href = "/login";
+    }
+  }
 }
 
 export function isAuthenticated() {
@@ -135,14 +262,15 @@ export function setStoredMustChangePassword(mustChange) {
   }
 }
 
-export function persistAuth({ token, email, username, role, mustChangePassword, user }) {
+export function persistAuth({ token, email, username, role, mustChangePassword, user, expiresAt: customExpiresAt }) {
   if (typeof window === "undefined") {
     return;
   }
 
   const tokenPayload = decodeJwt(token);
   const tokenExpiresAt = tokenPayload?.exp ? tokenPayload.exp * 1000 : null;
-  const sessionExpiresAt = Date.now() + DEFAULT_SESSION_HOURS * 60 * 60 * 1000;
+  const serverExpiresAt = customExpiresAt ? new Date(customExpiresAt).getTime() : null;
+  const sessionExpiresAt = serverExpiresAt || (Date.now() + 30 * 60 * 1000); // 30 mins
   const expiresAt = tokenExpiresAt ? Math.min(tokenExpiresAt, sessionExpiresAt) : sessionExpiresAt;
 
   if (token) {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { clearAuthStorage } from "../utils/auth";
+import { clearAuthStorage, performLogout } from "../utils/auth";
 import "./Sidebar.css";
 
 function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, toggleDarkMode }) {
@@ -13,8 +13,7 @@ function Sidebar({ activeYear, onYearChange, allYears = [1, 2, 3], isDarkMode, t
   const [yearsOpen, setYearsOpen] = useState(isAcademicPage);
 
   const handleLogout = () => {
-    clearAuthStorage();
-    navigate("/login");
+    performLogout();
   };
 
   const handleYearClick = (y) => {

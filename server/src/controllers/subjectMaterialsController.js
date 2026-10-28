@@ -143,9 +143,15 @@ async function getSubjectResourceFile(req, res) {
   const ext = path.extname(resource.originalName).toLowerCase();
   res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; sandbox; frame-ancestors 'self' https://*.vercel.app https://archive.innov.rw"
+  );
   res.type(MIME_TYPES[ext] || "application/octet-stream");
-  const disposition = req.query.download === "1" ? "attachment" : "inline";
+
+  const SAFE_INLINE = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt"];
+  const isInline = req.query.download !== "1" && SAFE_INLINE.includes(ext);
+  const disposition = isInline ? "inline" : "attachment";
   res.setHeader("Content-Disposition", `${disposition}; filename*=UTF-8''${encodeURIComponent(resource.originalName)}`);
   return res.sendFile(filePath);
 }

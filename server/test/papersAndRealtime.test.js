@@ -132,8 +132,12 @@ test("DASHBOARD SUMMARY: matches uploader identity and normalizes legacy year la
 });
 
 test("PAPERS API: year and search filters are applied together", async () => {
-  const matching = await request(app).get("/api/papers?year=Y2&search=Realtime");
-  const notMatching = await request(app).get("/api/papers?year=Y2&search=missing-title");
+  const matching = await request(app)
+    .get("/api/papers?year=Y2&search=Realtime")
+    .set("Authorization", `Bearer ${testToken}`);
+  const notMatching = await request(app)
+    .get("/api/papers?year=Y2&search=missing-title")
+    .set("Authorization", `Bearer ${testToken}`);
 
   assert.strictEqual(matching.status, 200);
   assert.ok(matching.body.some((paper) => paper.id === testPaper.id));

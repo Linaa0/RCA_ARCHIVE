@@ -92,24 +92,22 @@ jobs:
           echo "Commit: ${HEALTH_COMMIT:-not available}"
 
           echo ""
-          echo "=== Testing /api/curriculum on port ${PORT} ==="
-          CURR_RAW=$(curl -s --max-time 10 -w "\n%{http_code}" "http://127.0.0.1:${PORT}/api/curriculum" 2>/dev/null || echo -e "\nnot available")
+          echo "=== Testing /api/public/curriculum on port ${PORT} ==="
+          CURR_RAW=$(curl -s --max-time 10 -w "\n%{http_code}" "http://127.0.0.1:${PORT}/api/public/curriculum" 2>/dev/null || echo -e "\nnot available")
           CURR_STATUS=$(echo "$CURR_RAW" | tail -n1)
           CURR_BODY=$(echo "$CURR_RAW" | sed '$d')
-          CURR_COMMIT=$(echo "$CURR_BODY" | node -e '
-            let s = "";
-            process.stdin.on("data", c => s += c);
-            process.stdin.on("end", () => {
-              try {
-                const parsed = JSON.parse(s);
-                console.log(parsed.commit || "not available");
-              } catch {
-                console.log("not available");
-              }
-            });' 2>/dev/null || echo "not available")
 
           echo "HTTP status: ${CURR_STATUS:-not available}"
-          echo "Commit: ${CURR_COMMIT:-not available}"
+
+      - name: Antivirus Scanner Availability
+        continue-on-error: true
+        run: |
+          echo "=== Antivirus Scanner Status ==="
+          if command -v clamdscan >/dev/null 2>&1 || command -v clamscan >/dev/null 2>&1; then
+            echo "antivirus: available"
+          else
+            echo "antivirus: not available"
+          fi
 
       - name: Data Integrity and Counts Summary
         continue-on-error: true
